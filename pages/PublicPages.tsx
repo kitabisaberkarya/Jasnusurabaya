@@ -1,0 +1,307 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
+import { MemberStatus } from '../types';
+
+const fadeIn = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+};
+
+const LOGO_URL = "https://res.cloudinary.com/dt1nrarpq/image/upload/v1768810509/Logoo_stivmi.png";
+
+export const Home: React.FC = () => {
+  const { news } = useApp();
+  
+  return (
+    <motion.div initial="hidden" animate="visible" variants={fadeIn}>
+      {/* Hero Section */}
+      <section className="relative bg-primary-900 text-white py-24 lg:py-32 overflow-hidden min-h-[90vh] flex items-center justify-center">
+        {/* Modern Background Patterns */}
+        <div className="absolute inset-0 z-0">
+           <div className="absolute inset-0 bg-gradient-to-b from-primary-900 via-primary-800 to-primary-900 opacity-90"></div>
+           <div className="absolute top-0 left-0 w-full h-full opacity-10" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"1\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }}></div>
+           <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-secondary-500 rounded-full blur-[128px] opacity-20 animate-pulse"></div>
+           <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-primary-400 rounded-full blur-[128px] opacity-20"></div>
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          
+          {/* Central Logo Identity with Multi-layer Glow */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, type: "spring" }}
+            className="mb-10 flex justify-center relative"
+          >
+            <div className="relative">
+               {/* Outer Glow Rings */}
+               <div className="absolute inset-0 bg-secondary-500 rounded-full blur-2xl opacity-40 animate-pulse"></div>
+               <div className="absolute -inset-4 border border-secondary-500/30 rounded-full animate-[spin_10s_linear_infinite]"></div>
+               <div className="absolute -inset-8 border border-white/10 rounded-full animate-[spin_15s_linear_infinite_reverse]"></div>
+               
+               <img 
+                 src={LOGO_URL} 
+                 alt="Logo Utama JSN" 
+                 className="relative w-32 h-32 md:w-44 md:h-44 rounded-full shadow-2xl border-4 border-white/20 ring-4 ring-primary-900/50 object-cover backdrop-blur-sm"
+               />
+            </div>
+          </motion.div>
+
+          <motion.span 
+            initial={{ opacity: 0, y: -20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.2 }}
+            className="inline-block px-5 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-secondary-300 font-medium text-sm mb-6 uppercase tracking-[0.2em] shadow-lg"
+          >
+            Ahlan Wa Sahlan
+          </motion.span>
+
+          <motion.h1 
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }} 
+            transition={{ delay: 0.4 }}
+            className="text-4xl md:text-6xl lg:text-7xl font-bold font-serif mb-6 leading-tight drop-shadow-lg"
+          >
+            Menyemai Cinta,<br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-300 to-secondary-500">Meraih Syafaat.</span>
+          </motion.h1>
+          
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="text-lg md:text-xl text-primary-100 max-w-2xl mx-auto mb-12 leading-relaxed font-light"
+          >
+            Bergabunglah bersama ribuan jamaah Jamiyah Sholawat Nariyah Kota Surabaya dalam majelis dzikir, ilmu, dan ukhuwah.
+          </motion.p>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="flex flex-col sm:flex-row gap-5 justify-center"
+          >
+            <Link to="/register" className="group px-8 py-4 bg-secondary-600 hover:bg-secondary-500 text-white font-bold rounded-full transition-all shadow-[0_10px_30px_rgba(217,119,6,0.3)] hover:shadow-[0_15px_40px_rgba(217,119,6,0.5)] transform hover:-translate-y-1 flex items-center justify-center gap-2">
+              Daftar Anggota <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link to="/news" className="px-8 py-4 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/20 text-white font-semibold rounded-full transition flex items-center justify-center">
+              Lihat Kegiatan
+            </Link>
+          </motion.div>
+        </div>
+
+        {/* Scroll Indicator */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5, duration: 1 }}
+          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 text-primary-200/50"
+        >
+          <span className="text-[10px] uppercase tracking-widest">Scroll</span>
+          <ChevronDown className="animate-bounce" />
+        </motion.div>
+      </section>
+
+      {/* About Section */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+           <div className="grid md:grid-cols-2 gap-16 items-center">
+             <div className="relative group">
+                <div className="absolute -inset-4 bg-secondary-100 rounded-3xl transform rotate-3 transition-transform group-hover:rotate-6"></div>
+                <div className="absolute -inset-4 bg-primary-100 rounded-3xl transform -rotate-3 transition-transform group-hover:-rotate-6 opacity-70"></div>
+                <img 
+                  src="https://picsum.photos/600/400?random=10" 
+                  alt="Kegiatan Majelis" 
+                  className="relative rounded-2xl shadow-2xl w-full h-auto object-cover transform transition hover:scale-[1.02]"
+                />
+             </div>
+             <div>
+               <h2 className="text-3xl md:text-5xl font-serif font-bold text-primary-900 mb-8 leading-tight">Membangun Ukhuwah <br/><span className="italic text-secondary-600">Islamiyah</span></h2>
+               <p className="text-neutral-600 mb-8 leading-relaxed text-lg">
+                 Jamiyah Sholawat Nariyah Kota Surabaya didirikan sebagai wadah untuk mempererat tali persaudaraan sesama muslim melalui lantunan sholawat dan kajian keislaman yang menyejukkan hati.
+               </p>
+               <ul className="space-y-6 mb-10">
+                 {[
+                   'Rutin melaksanakan pembacaan Sholawat Nariyah 4444x',
+                   'Kajian kitab kuning bersama para Kyai & Habaib',
+                   'Santunan sosial dan pemberdayaan ekonomi umat'
+                 ].map((item, i) => (
+                   <li key={i} className="flex items-start gap-4">
+                     <div className="mt-1 w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                        <CheckCircle size={18} />
+                     </div>
+                     <span className="text-neutral-800 font-medium text-lg">{item}</span>
+                   </li>
+                 ))}
+               </ul>
+             </div>
+           </div>
+        </div>
+      </section>
+
+      {/* Latest News Preview */}
+      <section className="py-24 bg-neutral-50 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-4">
+            <div>
+              <span className="text-secondary-600 font-bold tracking-wider uppercase text-sm">Update Terkini</span>
+              <h2 className="text-4xl font-serif font-bold text-primary-900 mt-2">Kabar Kegiatan</h2>
+            </div>
+            <Link to="/news" className="group text-primary-700 font-bold hover:text-primary-800 flex items-center gap-2 bg-white px-6 py-3 rounded-full shadow-sm hover:shadow-md transition">
+              Lihat Semua Berita <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            {news.slice(0, 3).map((item) => (
+              <div key={item.id} className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group border border-neutral-100 flex flex-col h-full">
+                <div className="h-56 overflow-hidden relative">
+                  <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg text-xs font-bold text-primary-900 shadow-sm">
+                    {item.date}
+                  </div>
+                  <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </div>
+                <div className="p-8 flex flex-col flex-grow">
+                  <h3 className="font-serif text-2xl font-bold text-neutral-900 mb-3 line-clamp-2 group-hover:text-primary-700 transition-colors">{item.title}</h3>
+                  <p className="text-neutral-600 text-sm line-clamp-3 mb-6 flex-grow leading-relaxed">{item.excerpt}</p>
+                  <span className="text-secondary-600 text-sm font-bold flex items-center gap-2 group/link cursor-pointer">
+                    Baca Selengkapnya <ArrowRight size={16} className="group-hover/link:translate-x-1 transition-transform" />
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </motion.div>
+  );
+};
+
+export const News: React.FC = () => {
+  const { news } = useApp();
+  return (
+    <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="text-center mb-20">
+        <h1 className="text-5xl font-serif font-bold text-primary-900 mb-6">Berita & Artikel</h1>
+        <p className="text-neutral-500 max-w-2xl mx-auto text-lg">Informasi terkini mengenai jadwal pengajian, dokumentasi kegiatan, dan artikel keislaman.</p>
+      </div>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
+        {news.map((item) => (
+          <article key={item.id} className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden flex flex-col h-full hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+            <img src={item.imageUrl} alt={item.title} className="h-64 w-full object-cover" />
+            <div className="p-8 flex flex-col flex-grow">
+              <div className="flex items-center gap-2 text-sm text-secondary-600 font-medium mb-4">
+                <Calendar size={16} />
+                <span>{item.date}</span>
+              </div>
+              <h2 className="text-2xl font-bold font-serif text-neutral-900 mb-4">{item.title}</h2>
+              <p className="text-neutral-600 mb-6 flex-grow leading-relaxed">{item.excerpt}</p>
+              <button className="text-primary-700 font-bold self-start hover:text-primary-900 flex items-center gap-2">
+                Baca Selengkapnya <ArrowRight size={18} />
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+export const Gallery: React.FC = () => {
+  const { gallery } = useApp();
+  return (
+    <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="text-center mb-20">
+        <h1 className="text-5xl font-serif font-bold text-primary-900 mb-6">Galeri Kegiatan</h1>
+        <p className="text-neutral-500 text-lg">Momen kebersamaan dalam setiap majelis.</p>
+      </div>
+      <div className="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
+        {gallery.map((item) => (
+          <div key={item.id} className="break-inside-avoid rounded-3xl overflow-hidden relative group cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500">
+            <img src={item.url} alt={item.caption} className="w-full h-auto rounded-3xl transform group-hover:scale-110 transition duration-700" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-8">
+              <p className="text-white font-medium text-lg translate-y-4 group-hover:translate-y-0 transition duration-500">{item.caption}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+export const Database: React.FC = () => {
+  const { users } = useApp();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Only show active members
+  const activeMembers = users.filter(
+    u => u.status === MemberStatus.ACTIVE && u.role !== 'admin' && 
+    u.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-serif font-bold text-primary-900 mb-6">Database Anggota</h1>
+          <p className="text-neutral-500 text-lg">Cek status keanggotaan resmi Jamiyah Sholawat Nariyah.</p>
+        </div>
+
+        <div className="bg-white p-8 rounded-3xl shadow-lg border border-neutral-100 mb-10 -mt-8 relative z-10">
+          <div className="relative group">
+            <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-neutral-400 group-focus-within:text-primary-500 transition-colors" size={24} />
+            <input 
+              type="text" 
+              placeholder="Cari nama anggota..." 
+              className="w-full pl-16 pr-6 py-5 rounded-2xl border-2 border-neutral-100 focus:border-primary-500 focus:ring-0 outline-none transition text-lg bg-neutral-50 focus:bg-white"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
+          {activeMembers.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-primary-50 border-b border-primary-100">
+                  <tr>
+                    <th className="px-8 py-6 font-serif font-bold text-primary-900">Nama Lengkap</th>
+                    <th className="px-8 py-6 font-serif font-bold text-primary-900">NIA</th>
+                    <th className="px-8 py-6 font-serif font-bold text-primary-900">Wilayah</th>
+                    <th className="px-8 py-6 font-serif font-bold text-primary-900 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {activeMembers.map((member) => (
+                    <tr key={member.id} className="hover:bg-neutral-50 transition group">
+                      <td className="px-8 py-5 font-bold text-neutral-900 group-hover:text-primary-700">{member.name}</td>
+                      <td className="px-8 py-5 font-mono text-sm text-neutral-600 bg-neutral-50/50">{member.nia}</td>
+                      <td className="px-8 py-5 text-neutral-600 flex items-center gap-2">
+                        <MapPin size={16} className="text-secondary-500" />
+                        {member.wilayah || '-'}
+                      </td>
+                      <td className="px-8 py-5 text-center">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          <CheckCircle size={12} className="mr-1" /> AKTIF
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-20 text-center text-neutral-400">
+              <Search size={48} className="mx-auto mb-4 opacity-20" />
+              <p className="text-lg">Data anggota tidak ditemukan.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};

@@ -1,0 +1,8 @@
+{
+  "name": "Jasnusurabaya",
+  "description": "Sistem Informasi Manajemen Jamiyah Sholawat Nariyah Kota Surabaya. Mencakup pendaftaran anggota, absensi majelis, manajemen berita, dan dashboard admin.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
