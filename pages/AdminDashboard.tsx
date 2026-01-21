@@ -120,14 +120,20 @@ export const AdminDashboard: React.FC = () => {
           return;
        }
     } else {
-       // Instagram Embed
-       // Naive: Append embed to post URL if it ends with / or add /embed
-       // Regex to check valid IG URL
-       if (mediaForm.url.includes("instagram.com/p/")) {
-           const cleanUrl = mediaForm.url.split('?')[0];
-           embedUrl = cleanUrl.endsWith('/') ? `${cleanUrl}embed` : `${cleanUrl}/embed`;
+       // Instagram Embed (Support Post, Reel, TV)
+       // Checks for instagram.com followed by p, reel, or tv
+       if (mediaForm.url.match(/instagram\.com\/(p|reel|tv)\//)) {
+           // Remove query parameters (like ?igsh=...)
+           let cleanUrl = mediaForm.url.split('?')[0];
+           
+           // Ensure no trailing slash before appending embed
+           if (cleanUrl.endsWith('/')) {
+               cleanUrl = cleanUrl.slice(0, -1);
+           }
+           
+           embedUrl = `${cleanUrl}/embed`;
        } else {
-           showToast("URL Instagram tidak valid (Gunakan Link Postingan)", "error");
+           showToast("URL Instagram tidak valid (Gunakan Link Postingan/Reel)", "error");
            return;
        }
     }
@@ -630,7 +636,7 @@ export const AdminDashboard: React.FC = () => {
                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Link Video (URL)</label>
                                 <input 
                                    type="text" 
-                                   placeholder="https://www.youtube.com/watch?v=..."
+                                   placeholder="https://www.instagram.com/reel/..."
                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none"
                                    required
                                    value={mediaForm.url}
@@ -850,7 +856,6 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {/* Recap, Settings, Backup remain same */}
             {activeTab === 'recap' && (
                <div className="bg-white border-t-[3px] border-[#605ca8] shadow-sm rounded-sm">
                   <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center flex-wrap gap-2">
