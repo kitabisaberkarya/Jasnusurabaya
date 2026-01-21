@@ -17,7 +17,7 @@ interface AppContextType extends AppState {
   addMediaPost: (post: Omit<MediaPost, 'id' | 'createdAt'>) => void;
   deleteMediaPost: (id: number) => void;
   updateSiteConfig: (config: SiteConfig) => void;
-  updateProfilePage: (slug: string, content: string) => void;
+  updateProfilePage: (slug: string, title: string, content: string) => void;
   restoreData: (data: AppState) => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   removeToast: (id: number) => void;
@@ -353,22 +353,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateProfilePage = async (slug: string, content: string) => {
+  const updateProfilePage = async (slug: string, title: string, content: string) => {
     try {
        const existing = state.profilePages.find(p => p.slug === slug);
        let error;
        if (existing) {
-         const { error: err } = await supabase.from('profile_pages').update({ content }).eq('slug', slug);
+         const { error: err } = await supabase.from('profile_pages').update({ title, content }).eq('slug', slug);
          error = err;
        } else {
-         const titleMap: Record<string, string> = {
-            'sejarah': 'Sejarah Jamiyah',
-            'pengurus': 'Susunan Pengurus Pusat',
-            'korwil': 'Daftar Korwil'
-         };
          const { error: err } = await supabase.from('profile_pages').insert([{ 
              slug, 
-             title: titleMap[slug] || 'Profil', 
+             title: title || 'Profil', 
              content 
          }]);
          error = err;

@@ -8,7 +8,7 @@ import {
   Undo, Redo, Strikethrough, Quote, Link as LinkIcon, Video, Plus,
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
-  User as UserIcon, Youtube, Instagram, Trash2, PlayCircle
+  User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3
 } from 'lucide-react';
 import { MemberStatus, AppState } from '../types';
 import * as XLSX from 'xlsx';
@@ -35,6 +35,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Profile Editor State
   const [selectedProfileSlug, setSelectedProfileSlug] = useState('sejarah');
+  const [profileTitle, setProfileTitle] = useState('');
   const [profileContent, setProfileContent] = useState('');
 
   // Settings State
@@ -48,10 +49,19 @@ export const AdminDashboard: React.FC = () => {
     setConfigForm(siteConfig);
   }, [siteConfig]);
 
-  // Load initial content for profile editor
+  // Load initial content and title for profile editor
   useEffect(() => {
     const page = profilePages.find(p => p.slug === selectedProfileSlug);
     setProfileContent(page ? page.content : '');
+    
+    // Default titles fallback
+    const defaultTitles: Record<string, string> = {
+        'sejarah': 'Sejarah Jamiyah',
+        'pengurus': 'Susunan Pengurus Pusat',
+        'korwil': 'Daftar Koordinator Wilayah'
+    };
+    
+    setProfileTitle(page ? page.title : defaultTitles[selectedProfileSlug] || '');
     
     // Sync to editor div if exists
     if (editorRef.current) {
@@ -150,7 +160,7 @@ export const AdminDashboard: React.FC = () => {
   const handleSaveProfile = () => {
     if (editorRef.current) {
         const content = editorRef.current.innerHTML;
-        updateProfilePage(selectedProfileSlug, content);
+        updateProfilePage(selectedProfileSlug, profileTitle, content);
     }
   };
 
@@ -558,16 +568,16 @@ export const AdminDashboard: React.FC = () => {
             {activeTab === 'profile' && (
                <div className="space-y-6">
                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
-                    <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
-                        <h3 className="text-lg font-normal text-[#333]">Edit Halaman Profil</h3>
+                    <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <h3 className="text-lg font-normal text-[#333]">Edit Menu & Sub-Menu Profil</h3>
                         <div className="flex gap-2">
                             {['sejarah', 'pengurus', 'korwil'].map(slug => (
                                 <button
                                    key={slug}
                                    onClick={() => setSelectedProfileSlug(slug)}
-                                   className={`px-3 py-1 text-sm rounded-sm font-bold transition ${
+                                   className={`px-3 py-1 text-sm rounded-sm font-bold transition uppercase ${
                                       selectedProfileSlug === slug 
-                                      ? 'bg-[#3c8dbc] text-white' 
+                                      ? 'bg-[#3c8dbc] text-white shadow-md' 
                                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                    }`}
                                 >
@@ -577,6 +587,23 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                     </div>
                     <div className="p-4">
+                       <div className="mb-4">
+                          <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Judul Halaman (Tampil di Menu Website)</label>
+                          <div className="flex gap-2">
+                              <div className="bg-gray-100 p-2 rounded-l-sm border border-r-0 border-gray-300 text-gray-500">
+                                 <Edit3 size={18} />
+                              </div>
+                              <input 
+                                 type="text" 
+                                 value={profileTitle} 
+                                 onChange={(e) => setProfileTitle(e.target.value)}
+                                 className="w-full px-3 py-2 border border-gray-300 rounded-r-sm focus:border-[#3c8dbc] outline-none font-bold text-[#333]"
+                                 placeholder="Contoh: Sejarah Berdirinya JSN"
+                              />
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-1">* Judul ini akan muncul sebagai heading utama di halaman {selectedProfileSlug === 'sejarah' ? 'Sejarah' : selectedProfileSlug === 'pengurus' ? 'Susunan Pengurus' : 'Daftar Korwil'}.</p>
+                       </div>
+
                        <div className="border border-gray-300 rounded-sm">
                              <div className="bg-[#f0f0f0] border-b border-gray-300 p-2 flex flex-wrap gap-1">
                                 <button type="button" onClick={() => execCmd('bold')} className="p-1 hover:bg-gray-200 rounded" title="Bold"><Bold size={16} /></button>
@@ -603,7 +630,7 @@ export const AdminDashboard: React.FC = () => {
                                onClick={handleSaveProfile}
                                className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"
                             >
-                               <Save size={18} /> Simpan Perubahan
+                               <Save size={18} /> Simpan Perubahan Halaman
                             </button>
                        </div>
                     </div>
