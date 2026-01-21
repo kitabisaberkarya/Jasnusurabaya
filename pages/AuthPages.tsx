@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { RegistrationInput, UserRole } from '../types';
-import { Shield, User, Users } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useApp();
   const navigate = useNavigate();
 
@@ -17,25 +17,22 @@ export const Login: React.FC = () => {
     attemptLogin(identifier, password);
   };
 
-  const attemptLogin = (id: string, pass: string) => {
-    if (login(id, pass)) {
-      // Logic redirect ditangani di App.tsx atau di sini manual
-      const savedState = JSON.parse(localStorage.getItem('jsn_app_state') || '{}');
-      // Perlu refresh state dari localStorage terbaru atau ambil dari context jika memungkinkan,
-      // tapi login() di context sudah update state.
-      // Kita cek role simpel berdasarkan input (mocking logic)
-      if (id === 'admin@jsn.com') navigate('/admin');
-      else navigate('/member');
+  const attemptLogin = async (id: string, pass: string) => {
+    setLoading(true);
+    setError('');
+    const user = await login(id, pass);
+    
+    if (user) {
+      // Redirect berdasarkan role dari database
+      if (user.role === UserRole.ADMIN) {
+        navigate('/admin');
+      } else {
+        navigate('/member');
+      }
     } else {
       setError('NIA/Email atau Password salah.');
+      setLoading(false);
     }
-  };
-
-  const setDemo = (id: string, pass: string) => {
-    setIdentifier(id);
-    setPassword(pass);
-    // Optional: Auto login
-    // attemptLogin(id, pass);
   };
 
   return (
@@ -83,32 +80,11 @@ export const Login: React.FC = () => {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-primary-700 hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition shadow-lg shadow-primary-700/20"
+              disabled={loading}
+              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white ${loading ? 'bg-neutral-400' : 'bg-primary-700 hover:bg-primary-800'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition shadow-lg shadow-primary-700/20`}
             >
-              Masuk
+              {loading ? 'Memproses...' : 'Masuk'}
             </button>
-          </div>
-          
-          <div className="pt-6 border-t border-neutral-100">
-             <p className="text-center text-xs text-neutral-400 mb-3 uppercase tracking-wider font-semibold">Simulasi Akses Cepat</p>
-             <div className="grid grid-cols-2 gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setDemo('admin@jsn.com', 'admin')}
-                  className="flex flex-col items-center justify-center p-3 border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-primary-300 transition group"
-                >
-                   <Shield size={20} className="text-neutral-400 group-hover:text-primary-600 mb-1" />
-                   <span className="text-xs font-medium text-neutral-600 group-hover:text-primary-700">Admin</span>
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => setDemo('fulan@gmail.com', '123')}
-                  className="flex flex-col items-center justify-center p-3 border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-primary-300 transition group"
-                >
-                   <User size={20} className="text-neutral-400 group-hover:text-primary-600 mb-1" />
-                   <span className="text-xs font-medium text-neutral-600 group-hover:text-primary-700">Anggota 1</span>
-                </button>
-             </div>
           </div>
         </form>
       </motion.div>

@@ -10,10 +10,8 @@ const fadeIn = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
 };
 
-const LOGO_URL = "https://res.cloudinary.com/dt1nrarpq/image/upload/v1768810509/Logoo_stivmi.png";
-
 export const Home: React.FC = () => {
-  const { news } = useApp();
+  const { news, siteConfig } = useApp();
   
   return (
     <motion.div initial="hidden" animate="visible" variants={fadeIn}>
@@ -43,7 +41,7 @@ export const Home: React.FC = () => {
                <div className="absolute -inset-8 border border-white/10 rounded-full animate-[spin_15s_linear_infinite_reverse]"></div>
                
                <img 
-                 src={LOGO_URL} 
+                 src={siteConfig.logoUrl} 
                  alt="Logo Utama JSN" 
                  className="relative w-32 h-32 md:w-44 md:h-44 rounded-full shadow-2xl border-4 border-white/20 ring-4 ring-primary-900/50 object-cover backdrop-blur-sm"
                />
@@ -74,7 +72,7 @@ export const Home: React.FC = () => {
             transition={{ delay: 0.6 }}
             className="text-lg md:text-xl text-primary-100 max-w-2xl mx-auto mb-12 leading-relaxed font-light"
           >
-            Bergabunglah bersama ribuan jamaah Jamiyah Sholawat Nariyah Kota Surabaya dalam majelis dzikir, ilmu, dan ukhuwah.
+            Bergabunglah bersama ribuan jamaah {siteConfig.appName} {siteConfig.orgName} dalam majelis dzikir, ilmu, dan ukhuwah.
           </motion.p>
           
           <motion.div 
@@ -120,11 +118,11 @@ export const Home: React.FC = () => {
              <div>
                <h2 className="text-3xl md:text-5xl font-serif font-bold text-primary-900 mb-8 leading-tight">Membangun Ukhuwah <br/><span className="italic text-secondary-600">Islamiyah</span></h2>
                <p className="text-neutral-600 mb-8 leading-relaxed text-lg">
-                 Jamiyah Sholawat Nariyah Kota Surabaya didirikan sebagai wadah untuk mempererat tali persaudaraan sesama muslim melalui lantunan sholawat dan kajian keislaman yang menyejukkan hati.
+                 {siteConfig.appName} {siteConfig.orgName} didirikan sebagai wadah untuk mempererat tali persaudaraan sesama muslim melalui lantunan sholawat dan kajian keislaman yang menyejukkan hati.
                </p>
                <ul className="space-y-6 mb-10">
                  {[
-                   'Rutin melaksanakan pembacaan Sholawat Nariyah 4444x',
+                   `Rutin melaksanakan pembacaan ${siteConfig.appName} 4444x`,
                    'Kajian kitab kuning bersama para Kyai & Habaib',
                    'Santunan sosial dan pemberdayaan ekonomi umat'
                  ].map((item, i) => (

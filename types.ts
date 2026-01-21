@@ -72,6 +72,16 @@ export interface ToastMessage {
   type: 'success' | 'error' | 'info';
 }
 
+export interface SiteConfig {
+  appName: string;
+  orgName: string; // e.g., "Surabaya"
+  description: string;
+  address: string;
+  email: string;
+  phone: string;
+  logoUrl: string;
+}
+
 export interface AppState {
   users: User[];
   currentUser: User | null;
@@ -81,4 +91,5 @@ export interface AppState {
   attendanceSessions: AttendanceSession[];
   attendanceRecords: AttendanceRecord[];
   toasts: ToastMessage[];
+  siteConfig: SiteConfig;
 }

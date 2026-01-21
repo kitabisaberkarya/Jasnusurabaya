@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, logout, toasts, removeToast } = useApp();
+  const { currentUser, logout, toasts, removeToast, siteConfig } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,8 +18,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const isActive = (path: string) => location.pathname === path;
   const getLinkClass = (path: string) => isActive(path) ? 'text-secondary-600 font-semibold' : 'text-neutral-600 hover:text-primary-700';
   const getMobileIconClass = (path: string) => isActive(path) ? 'text-secondary-600' : 'text-neutral-400 group-hover:text-primary-600';
-
-  const LOGO_URL = "https://res.cloudinary.com/dt1nrarpq/image/upload/v1768810509/Logoo_stivmi.png";
 
   // Mobile Bottom Nav Item Component
   const MobileNavItem = ({ to, icon: Icon, label }: { to: string, icon: any, label: string }) => (
@@ -99,15 +97,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                <div className="relative md:block hidden">
                  <div className="absolute inset-0 bg-secondary-400 rounded-full blur opacity-20 group-hover:opacity-40 transition duration-500 animate-pulse"></div>
                  <img 
-                   src={LOGO_URL} 
-                   alt="Logo JSN" 
+                   src={siteConfig.logoUrl} 
+                   alt="Logo" 
                    className="relative w-12 h-12 md:w-16 md:h-16 rounded-full object-cover shadow-lg border-2 border-white ring-2 ring-primary-50 group-hover:scale-105 transition duration-300" 
                  />
                </div>
                {/* Mobile text-only branding since logo is at bottom */}
                <div className="block">
-                 <h1 className="text-xl md:text-2xl font-bold font-serif text-primary-900 leading-none tracking-tight">Jamiyah Sholawat</h1>
-                 <p className="text-[10px] md:text-xs text-secondary-600 tracking-[0.2em] font-medium mt-1">NARIYAH SURABAYA</p>
+                 <h1 className="text-xl md:text-2xl font-bold font-serif text-primary-900 leading-none tracking-tight">{siteConfig.appName}</h1>
+                 <p className="text-[10px] md:text-xs text-secondary-600 tracking-[0.2em] font-medium mt-1">{siteConfig.orgName}</p>
                </div>
             </Link>
 
@@ -177,7 +175,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                    className={`rounded-full p-1.5 shadow-[0_8px_25px_rgba(4,120,87,0.3)] transition-all duration-300 ${isActive('/') ? 'bg-gradient-to-tr from-secondary-500 to-secondary-600 scale-110' : 'bg-white'}`}
                  >
                    <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-white bg-primary-900 relative">
-                      <img src={LOGO_URL} alt="Home" className="w-full h-full object-cover" />
+                      <img src={siteConfig.logoUrl} alt="Home" className="w-full h-full object-cover" />
                       {/* Shine effect */}
                       <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-tr from-white/20 to-transparent opacity-50"></div>
                    </div>
@@ -218,17 +216,17 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <div>
               <div className="flex items-center gap-4 mb-6">
                 <img 
-                 src={LOGO_URL} 
-                 alt="Logo JSN" 
+                 src={siteConfig.logoUrl} 
+                 alt="Logo" 
                  className="w-16 h-16 rounded-full object-cover border-2 border-white/20 shadow-lg" 
                 />
                 <div>
-                   <h3 className="font-serif text-2xl font-bold text-white leading-none">Sholawat Nariyah</h3>
-                   <span className="text-xs text-secondary-400 tracking-widest uppercase">Surabaya</span>
+                   <h3 className="font-serif text-2xl font-bold text-white leading-none">{siteConfig.appName}</h3>
+                   <span className="text-xs text-secondary-400 tracking-widest uppercase">{siteConfig.orgName}</span>
                 </div>
               </div>
               <p className="text-primary-100 leading-relaxed text-sm">
-                Wadah silaturahmi dan spiritualitas umat Islam di Surabaya. Membumikan sholawat, meraih syafaat, dan keberkahan.
+                {siteConfig.description}
               </p>
             </div>
             <div>
@@ -244,19 +242,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <h4 className="font-serif text-lg font-semibold mb-6 text-secondary-500">Hubungi Kami</h4>
               <ul className="space-y-3 text-primary-100 text-sm">
                 <li className="flex items-start gap-3 opacity-90">
-                   <span className="mt-1">📍</span> Surabaya, Jawa Timur, Indonesia
+                   <span className="mt-1">📍</span> {siteConfig.address}
                 </li>
                 <li className="flex items-start gap-3 opacity-90">
-                   <span className="mt-1">📧</span> info@sholawatnariyah-sby.or.id
+                   <span className="mt-1">📧</span> {siteConfig.email}
                 </li>
                 <li className="flex items-start gap-3 opacity-90">
-                   <span className="mt-1">📞</span> +62 812-3456-7890
+                   <span className="mt-1">📞</span> {siteConfig.phone}
                 </li>
               </ul>
             </div>
           </div>
           <div className="border-t border-white/10 pt-8 text-center text-xs text-primary-300">
-            &copy; {new Date().getFullYear()} Jamiyah Sholawat Nariyah Surabaya. All rights reserved.
+            &copy; {new Date().getFullYear()} {siteConfig.appName} {siteConfig.orgName}. All rights reserved.
           </div>
         </div>
       </footer>

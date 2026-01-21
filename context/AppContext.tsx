@@ -1,74 +1,152 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord } from '../types';
+import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig } from '../types';
 import { MOCK_INITIAL_STATE } from '../constants';
+import { supabase } from '../lib/supabase';
 
 interface AppContextType extends AppState {
-  login: (identifier: string, password: string) => boolean;
+  login: (identifier: string, password: string) => Promise<User | null>;
   logout: () => void;
   register: (data: RegistrationInput) => void;
   approveMember: (registrationId: number) => void;
   rejectMember: (registrationId: number) => void;
   createSession: (name: string) => void;
   toggleSession: (sessionId: number) => void;
-  markAttendance: (sessionId: number, userId: number, photoUrl: string, location: string) => boolean;
+  markAttendance: (sessionId: number, userId: number, photoUrl: string, location: string) => Promise<boolean>;
   addNews: (news: Omit<NewsItem, 'id'>) => void;
+  updateSiteConfig: (config: SiteConfig) => void;
+  restoreData: (data: AppState) => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   removeToast: (id: number) => void;
+  isLoading: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Initialize state including toasts and attendanceRecords array
-  const [state, setState] = useState<AppState>({ ...MOCK_INITIAL_STATE, toasts: [], attendanceRecords: [] });
+  const [state, setState] = useState<AppState>(MOCK_INITIAL_STATE);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Simulate persistence via localStorage for demo continuity
+  // Initial Data Fetch from Supabase
   useEffect(() => {
-    const saved = localStorage.getItem('jsn_app_state');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Ensure complex objects are merged correctly
-      setState(prev => ({ 
-        ...prev, 
-        ...parsed, 
-        toasts: [],
-        attendanceRecords: parsed.attendanceRecords || [] 
-      }));
-    }
+    fetchData();
   }, []);
 
-  useEffect(() => {
-    // Don't save toasts to localStorage
-    const { toasts, ...stateToSave } = state;
-    localStorage.setItem('jsn_app_state', JSON.stringify(stateToSave));
-  }, [state]);
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [
+        { data: users }, 
+        { data: news }, 
+        { data: gallery }, 
+        { data: sessions }, 
+        { data: registrations },
+        { data: config },
+        { data: records }
+      ] = await Promise.all([
+        supabase.from('users').select('*'),
+        supabase.from('news').select('*').order('id', { ascending: false }),
+        supabase.from('gallery').select('*').order('id', { ascending: false }),
+        supabase.from('attendance_sessions').select('*').order('id', { ascending: false }),
+        supabase.from('registrations').select('*').order('id', { ascending: false }),
+        supabase.from('site_config').select('*').single(),
+        supabase.from('attendance_records').select('*').order('timestamp', { ascending: false })
+      ]);
+      
+      const mappedSessions = (sessions || []).map((s: any) => ({
+        ...s,
+        attendees: Array.isArray(s.attendees) ? s.attendees : []
+      }));
+
+      const mappedConfig = config ? {
+        appName: config.app_name,
+        orgName: config.org_name,
+        description: config.description,
+        address: config.address,
+        email: config.email,
+        phone: config.phone,
+        logoUrl: config.logo_url
+      } : MOCK_INITIAL_STATE.siteConfig;
+
+      const mappedNews = (news || []).map((n: any) => ({
+        ...n,
+        imageUrl: n.image_url
+      }));
+
+      setState(prev => ({
+        ...prev,
+        users: users || [],
+        news: mappedNews,
+        gallery: gallery || [],
+        attendanceSessions: mappedSessions,
+        registrations: registrations || [],
+        attendanceRecords: records || [],
+        siteConfig: mappedConfig as SiteConfig,
+      }));
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      showToast("Gagal mengambil data dari server", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const showToast = (message: string, type: 'success' | 'error' | 'info') => {
     const newToast: ToastMessage = { id: Date.now(), message, type };
     setState(prev => ({ ...prev, toasts: [...prev.toasts, newToast] }));
-    
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-      removeToast(newToast.id);
-    }, 4000);
+    setTimeout(() => removeToast(newToast.id), 4000);
   };
 
   const removeToast = (id: number) => {
     setState(prev => ({ ...prev, toasts: prev.toasts.filter(t => t.id !== id) }));
   };
 
-  const login = (identifier: string, password: string): boolean => {
-    // Identifier can be Email or NIA
-    const user = state.users.find(
-      u => (u.email === identifier || u.nia === identifier) && u.password === password
-    );
+  const login = async (identifier: string, password: string): Promise<User | null> => {
+    // 0. Clean inputs
+    const cleanId = identifier.trim();
+    const cleanPass = password.trim();
 
-    if (user) {
-      setState(prev => ({ ...prev, currentUser: user }));
-      showToast(`Ahlan wa sahlan, ${user.name}`, 'success');
-      return true;
+    // 1. FAIL-SAFE / HARDCODED MASTER ADMIN CHECK
+    // Ini memastikan admin bisa login meskipun database kosong atau error
+    // Email check case-insensitive, Password case-sensitive
+    if (cleanId.toLowerCase() === 'jasnu.nariyahsurabaya@gmail.com' && cleanPass === 'JasnuNariyahSurabaya1926') {
+      const masterAdmin: User = {
+        id: 999999, // ID spesial
+        name: 'Administrator JSN',
+        email: 'jasnu.nariyahsurabaya@gmail.com',
+        role: UserRole.ADMIN,
+        status: MemberStatus.ACTIVE,
+        nia: 'ADMIN-MASTER',
+        password: cleanPass,
+        wilayah: 'Surabaya Pusat',
+        joinedAt: new Date().toISOString()
+      };
+      
+      setState(prev => ({ ...prev, currentUser: masterAdmin }));
+      showToast(`Login Super Admin Berhasil`, 'success');
+      return masterAdmin;
     }
-    return false;
+
+    // 2. Normal Database Check
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .or(`email.eq.${cleanId},nia.eq.${cleanId}`)
+        .eq('password', cleanPass)
+        .single();
+
+      if (error || !data) {
+        return null;
+      }
+
+      setState(prev => ({ ...prev, currentUser: data }));
+      showToast(`Ahlan wa sahlan, ${data.name}`, 'success');
+      return data;
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
   };
 
   const logout = () => {
@@ -76,125 +154,206 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Anda telah keluar dari sistem', 'info');
   };
 
-  const register = (data: RegistrationInput) => {
-    const newRegistration = {
-      ...data,
-      id: Date.now(),
-      status: MemberStatus.PENDING,
-      date: new Date().toISOString().split('T')[0]
-    };
-    setState(prev => ({
-      ...prev,
-      registrations: [...prev.registrations, newRegistration]
-    }));
-    // Toast is handled in the component for redirect feedback
+  const register = async (data: RegistrationInput) => {
+    try {
+      const { error } = await supabase.from('registrations').insert([{
+        ...data,
+        status: MemberStatus.PENDING,
+        date: new Date().toISOString().split('T')[0]
+      }]);
+
+      if (error) throw error;
+      
+      const { data: newData } = await supabase.from('registrations').select('*').order('id', { ascending: false });
+      setState(prev => ({ ...prev, registrations: newData || [] }));
+      
+    } catch (error) {
+      console.error("Registration failed", error);
+      showToast("Gagal mendaftar. Silakan coba lagi.", "error");
+    }
   };
 
-  const approveMember = (regId: number) => {
+  const approveMember = async (regId: number) => {
     const candidate = state.registrations.find(r => r.id === regId);
     if (!candidate) return;
 
-    // Generate NIA: JSN-[YEAR]-[RANDOM]
     const year = new Date().getFullYear();
     const random = Math.floor(1000 + Math.random() * 9000);
     const nia = `JSN-${year}-${random}`;
 
-    const newUser: User = {
-      id: Date.now(),
-      name: candidate.name,
-      email: candidate.email,
-      role: UserRole.MEMBER,
-      status: MemberStatus.ACTIVE,
-      nia: nia,
-      password: candidate.password,
-      wilayah: candidate.wilayah,
-      phone: candidate.phone,
-      joinedAt: new Date().toISOString().split('T')[0]
-    };
+    try {
+      const { error: insertError } = await supabase.from('users').insert([{
+        name: candidate.name,
+        email: candidate.email,
+        role: UserRole.MEMBER,
+        status: MemberStatus.ACTIVE,
+        nia: nia,
+        password: candidate.password,
+        wilayah: candidate.wilayah,
+        phone: candidate.phone,
+        joined_at: new Date().toISOString().split('T')[0]
+      }]);
 
-    setState(prev => ({
-      ...prev,
-      users: [...prev.users, newUser],
-      registrations: prev.registrations.filter(r => r.id !== regId)
-    }));
-    showToast(`Anggota ${candidate.name} resmi diterima. NIA: ${nia}`, 'success');
+      if (insertError) throw insertError;
+      await supabase.from('registrations').delete().eq('id', regId);
+      
+      fetchData();
+      showToast(`Anggota ${candidate.name} resmi diterima. NIA: ${nia}`, 'success');
+
+    } catch (error) {
+      console.error(error);
+      showToast("Gagal memproses approval", "error");
+    }
   };
 
-  const rejectMember = (regId: number) => {
-    setState(prev => ({
-      ...prev,
-      registrations: prev.registrations.filter(r => r.id !== regId)
-    }));
-    showToast('Permohonan anggota ditolak', 'info');
+  const rejectMember = async (regId: number) => {
+    try {
+      await supabase.from('registrations').delete().eq('id', regId);
+      setState(prev => ({
+        ...prev,
+        registrations: prev.registrations.filter(r => r.id !== regId)
+      }));
+      showToast('Permohonan anggota ditolak', 'info');
+    } catch (error) {
+      showToast("Gagal menolak member", "error");
+    }
   };
 
-  const createSession = (name: string) => {
-    const newSession: AttendanceSession = {
-      id: Date.now(),
-      name,
-      date: new Date().toISOString().split('T')[0],
-      isOpen: true,
-      attendees: []
-    };
-    setState(prev => ({
-      ...prev,
-      attendanceSessions: [newSession, ...prev.attendanceSessions]
-    }));
-    showToast('Sesi absensi baru berhasil dibuat & dibuka', 'success');
+  const createSession = async (name: string) => {
+    try {
+      const { error } = await supabase.from('attendance_sessions').insert([{
+        name,
+        date: new Date().toISOString().split('T')[0],
+        is_open: true,
+        attendees: []
+      }]);
+
+      if (error) throw error;
+      
+      const { data } = await supabase.from('attendance_sessions').select('*').order('id', { ascending: false });
+      const mapped = (data || []).map((s:any) => ({...s, attendees: s.attendees || []}));
+      setState(prev => ({ ...prev, attendanceSessions: mapped }));
+      
+      showToast('Sesi absensi baru berhasil dibuat & dibuka', 'success');
+    } catch (error) {
+      showToast("Gagal membuat sesi", "error");
+    }
   };
 
-  const toggleSession = (sessionId: number) => {
-    setState(prev => {
-      const updatedSessions = prev.attendanceSessions.map(s =>
-        s.id === sessionId ? { ...s, isOpen: !s.isOpen } : s
-      );
-      return { ...prev, attendanceSessions: updatedSessions };
-    });
-  };
-
-  const markAttendance = (sessionId: number, userId: number, photoUrl: string, location: string): boolean => {
+  const toggleSession = async (sessionId: number) => {
     const session = state.attendanceSessions.find(s => s.id === sessionId);
-    const user = state.users.find(u => u.id === userId);
+    if (!session) return;
+
+    try {
+      await supabase.from('attendance_sessions').update({ is_open: !session.isOpen }).eq('id', sessionId);
+      
+      setState(prev => ({
+        ...prev,
+        attendanceSessions: prev.attendanceSessions.map(s =>
+          s.id === sessionId ? { ...s, isOpen: !s.isOpen } : s
+        )
+      }));
+    } catch (error) {
+      showToast("Gagal mengubah status sesi", "error");
+    }
+  };
+
+  const markAttendance = async (sessionId: number, userId: number, photoUrl: string, location: string): Promise<boolean> => {
+    const session = state.attendanceSessions.find(s => s.id === sessionId);
+    const user = state.users.find(u => u.id === userId) || (state.currentUser?.id === userId ? state.currentUser : null);
     
     if (!session || !session.isOpen || !user) return false;
     if (session.attendees.includes(userId)) return false;
 
-    const newRecord: AttendanceRecord = {
-      id: `ATT-${Date.now()}-${userId}`,
-      sessionId,
-      userId,
-      userName: user.name,
-      timestamp: new Date().toLocaleString('id-ID'),
-      photoUrl,
-      location
-    };
+    const recordId = `ATT-${Date.now()}-${userId}`;
 
-    setState(prev => ({
-      ...prev,
-      // Update session simple list
-      attendanceSessions: prev.attendanceSessions.map(s =>
-        s.id === sessionId ? { ...s, attendees: [...s.attendees, userId] } : s
-      ),
-      // Add detailed record
-      attendanceRecords: [...prev.attendanceRecords, newRecord]
-    }));
-    return true;
+    try {
+      const { error: recordError } = await supabase.from('attendance_records').insert([{
+        id: recordId,
+        session_id: sessionId,
+        user_id: userId,
+        user_name: user.name,
+        timestamp: new Date().toLocaleString('id-ID'),
+        photo_url: photoUrl,
+        location: location
+      }]);
+
+      if (recordError) throw recordError;
+
+      const newAttendees = [...session.attendees, userId];
+      await supabase.from('attendance_sessions').update({
+        attendees: newAttendees
+      }).eq('id', sessionId);
+
+      setState(prev => ({
+        ...prev,
+        attendanceSessions: prev.attendanceSessions.map(s =>
+          s.id === sessionId ? { ...s, attendees: newAttendees } : s
+        ),
+        attendanceRecords: [...prev.attendanceRecords, {
+          id: recordId,
+          sessionId,
+          userId,
+          userName: user.name,
+          timestamp: new Date().toLocaleString('id-ID'),
+          photoUrl,
+          location
+        }]
+      }));
+
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
   };
 
-  const addNews = (newsData: Omit<NewsItem, 'id'>) => {
-    const newItem: NewsItem = {
-      ...newsData,
-      id: Date.now()
-    };
-    setState(prev => ({
-      ...prev,
-      news: [newItem, ...prev.news]
-    }));
-    showToast('Berita berhasil dipublikasikan', 'success');
+  const addNews = async (newsData: Omit<NewsItem, 'id'>) => {
+    try {
+      const { error } = await supabase.from('news').insert([{
+        title: newsData.title,
+        excerpt: newsData.excerpt,
+        content: newsData.content,
+        date: newsData.date,
+        image_url: newsData.imageUrl
+      }]);
+
+      if (error) throw error;
+      
+      fetchData();
+      showToast('Berita berhasil dipublikasikan', 'success');
+    } catch (error) {
+      showToast("Gagal mempublish berita", "error");
+    }
+  };
+
+  const updateSiteConfig = async (config: SiteConfig) => {
+    try {
+      const { error } = await supabase.from('site_config').update({
+        app_name: config.appName,
+        org_name: config.orgName,
+        description: config.description,
+        address: config.address,
+        email: config.email,
+        phone: config.phone,
+        logo_url: config.logoUrl
+      }).gt('id', 0);
+
+      if (error) throw error;
+
+      setState(prev => ({ ...prev, siteConfig: config }));
+      showToast('Pengaturan website berhasil diperbarui', 'success');
+    } catch (error) {
+      showToast("Gagal menyimpan konfigurasi", "error");
+    }
+  };
+
+  const restoreData = (newState: AppState) => {
+    showToast('Restore database memerlukan akses admin panel Supabase.', 'info');
   };
 
   return (
-    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, createSession, toggleSession, markAttendance, addNews, showToast, removeToast }}>
+    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, createSession, toggleSession, markAttendance, addNews, updateSiteConfig, restoreData, showToast, removeToast, isLoading }}>
       {children}
     </AppContext.Provider>
   );
