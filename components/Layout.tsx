@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, LogOut, LayoutDashboard, CheckCircle, Info, Check, AlertCircle, Home, Newspaper, Image as ImageIcon, Database, UserCircle2, X } from 'lucide-react';
+import { User, LogOut, LayoutDashboard, CheckCircle, Info, Check, AlertCircle, Home, Newspaper, Image as ImageIcon, Database, UserCircle2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
@@ -9,6 +10,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { currentUser, logout, toasts, removeToast, siteConfig } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isProfileHovered, setIsProfileHovered] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -112,6 +114,29 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             {/* Desktop Menu (Hidden on Mobile/Tablet Portrait) */}
             <div className="hidden lg:flex space-x-8 items-center">
               <Link to="/" className={getLinkClass('/')}>Beranda</Link>
+              
+              {/* Profil Dropdown */}
+              <div 
+                className="relative group"
+                onMouseEnter={() => setIsProfileHovered(true)}
+                onMouseLeave={() => setIsProfileHovered(false)}
+              >
+                <button className={`flex items-center gap-1 ${location.pathname.startsWith('/profile') ? 'text-secondary-600 font-semibold' : 'text-neutral-600 hover:text-primary-700'}`}>
+                  Profil <ChevronDown size={14} className={`transform transition-transform duration-200 ${isProfileHovered ? 'rotate-180' : ''}`} />
+                </button>
+                <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-neutral-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-left z-50">
+                  <Link to="/profile/sejarah" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">
+                    Sejarah
+                  </Link>
+                  <Link to="/profile/pengurus" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">
+                    Susunan Pengurus Pusat
+                  </Link>
+                  <Link to="/profile/korwil" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">
+                    Koordinator Wilayah
+                  </Link>
+                </div>
+              </div>
+
               <Link to="/news" className={getLinkClass('/news')}>Berita</Link>
               <Link to="/gallery" className={getLinkClass('/gallery')}>Galeri</Link>
               <Link to="/database" className={getLinkClass('/database')}>Database</Link>
@@ -232,10 +257,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <div>
               <h4 className="font-serif text-lg font-semibold mb-6 text-secondary-500">Tautan Cepat</h4>
               <ul className="space-y-3 text-primary-100 text-sm">
+                <li><Link to="/profile/sejarah" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Sejarah JSN</Link></li>
+                <li><Link to="/profile/pengurus" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Susunan Pengurus</Link></li>
                 <li><Link to="/news" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Kabar Kegiatan</Link></li>
                 <li><Link to="/gallery" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Dokumentasi</Link></li>
                 <li><Link to="/database" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Cek Keanggotaan</Link></li>
-                <li><Link to="/login" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Login Anggota</Link></li>
               </ul>
             </div>
             <div>

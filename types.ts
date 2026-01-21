@@ -1,3 +1,4 @@
+
 export enum UserRole {
   ADMIN = 'admin',
   MEMBER = 'member'
@@ -48,6 +49,13 @@ export interface GalleryItem {
   caption: string;
 }
 
+export interface ProfilePage {
+  slug: string; // 'sejarah' | 'pengurus' | 'korwil'
+  title: string;
+  content: string;
+  updatedAt?: string;
+}
+
 export interface AttendanceSession {
   id: number;
   name: string;
@@ -88,6 +96,7 @@ export interface AppState {
   registrations: (RegistrationInput & { id: number; status: MemberStatus; date: string })[];
   news: NewsItem[];
   gallery: GalleryItem[];
+  profilePages: ProfilePage[];
   attendanceSessions: AttendanceSession[];
   attendanceRecords: AttendanceRecord[];
   toasts: ToastMessage[];

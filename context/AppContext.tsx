@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig } from '../types';
+import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage } from '../types';
 import { MOCK_INITIAL_STATE } from '../constants';
 import { supabase } from '../lib/supabase';
 
@@ -14,6 +15,7 @@ interface AppContextType extends AppState {
   markAttendance: (sessionId: number, userId: number, photoUrl: string, location: string) => Promise<boolean>;
   addNews: (news: Omit<NewsItem, 'id'>) => void;
   updateSiteConfig: (config: SiteConfig) => void;
+  updateProfilePage: (slug: string, content: string) => void;
   restoreData: (data: AppState) => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   removeToast: (id: number) => void;
@@ -41,7 +43,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         { data: sessions }, 
         { data: registrations },
         { data: config },
-        { data: records }
+        { data: records },
+        { data: profiles }
       ] = await Promise.all([
         supabase.from('users').select('*'),
         supabase.from('news').select('*').order('id', { ascending: false }),
@@ -49,7 +52,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabase.from('attendance_sessions').select('*').order('id', { ascending: false }),
         supabase.from('registrations').select('*').order('id', { ascending: false }),
         supabase.from('site_config').select('*').single(),
-        supabase.from('attendance_records').select('*').order('timestamp', { ascending: false })
+        supabase.from('attendance_records').select('*').order('timestamp', { ascending: false }),
+        supabase.from('profile_pages').select('*')
       ]);
       
       const mappedSessions = (sessions || []).map((s: any) => ({
@@ -77,6 +81,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         users: users || [],
         news: mappedNews,
         gallery: gallery || [],
+        profilePages: (profiles as ProfilePage[]) || [],
         attendanceSessions: mappedSessions,
         registrations: registrations || [],
         attendanceRecords: records || [],
@@ -107,8 +112,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleanPass = password.trim();
 
     // 1. FAIL-SAFE / HARDCODED MASTER ADMIN CHECK
-    // Ini memastikan admin bisa login meskipun database kosong atau error
-    // Email check case-insensitive, Password case-sensitive
     if (cleanId.toLowerCase() === 'jasnu.nariyahsurabaya@gmail.com' && cleanPass === 'JasnuNariyahSurabaya1926') {
       const masterAdmin: User = {
         id: 999999, // ID spesial
@@ -348,12 +351,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateProfilePage = async (slug: string, content: string) => {
+    try {
+       // Check if exists, if not insert, if yes update
+       const existing = state.profilePages.find(p => p.slug === slug);
+       
+       let error;
+       if (existing) {
+         const { error: err } = await supabase.from('profile_pages').update({ content }).eq('slug', slug);
+         error = err;
+       } else {
+         const titleMap: Record<string, string> = {
+            'sejarah': 'Sejarah Jamiyah',
+            'pengurus': 'Susunan Pengurus Pusat',
+            'korwil': 'Koordinator Wilayah'
+         };
+         const { error: err } = await supabase.from('profile_pages').insert([{ 
+             slug, 
+             title: titleMap[slug] || 'Profil', 
+             content 
+         }]);
+         error = err;
+       }
+
+       if (error) throw error;
+
+       fetchData(); // Refresh local state
+       showToast("Data profil berhasil disimpan", "success");
+
+    } catch(err) {
+       console.error(err);
+       showToast("Gagal menyimpan profil", "error");
+    }
+  };
+
   const restoreData = (newState: AppState) => {
     showToast('Restore database memerlukan akses admin panel Supabase.', 'info');
   };
 
   return (
-    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, createSession, toggleSession, markAttendance, addNews, updateSiteConfig, restoreData, showToast, removeToast, isLoading }}>
+    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, createSession, toggleSession, markAttendance, addNews, updateSiteConfig, updateProfilePage, restoreData, showToast, removeToast, isLoading }}>
       {children}
     </AppContext.Provider>
   );

@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { MemberStatus } from '../types';
 
@@ -299,6 +300,45 @@ export const Database: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
+    </motion.div>
+  );
+};
+
+export const ProfileView: React.FC = () => {
+  const { slug } = useParams<{ slug: string }>();
+  const { profilePages } = useApp();
+  
+  const currentPage = profilePages.find(p => p.slug === slug);
+  
+  // Default titles if not found in DB
+  const titleMap: Record<string, string> = {
+    'sejarah': 'Sejarah Jamiyah',
+    'pengurus': 'Susunan Pengurus Pusat',
+    'korwil': 'Koordinator Wilayah'
+  };
+
+  const displayTitle = currentPage?.title || titleMap[slug || ''] || 'Profil';
+
+  return (
+    <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="text-center mb-16">
+        <span className="text-secondary-600 font-bold tracking-wider uppercase text-sm">Profil Organisasi</span>
+        <h1 className="text-4xl md:text-5xl font-serif font-bold text-primary-900 mt-2">{displayTitle}</h1>
+      </div>
+
+      <div className="bg-white p-8 md:p-12 rounded-3xl shadow-lg border border-neutral-100 min-h-[400px]">
+        {currentPage ? (
+          <div 
+             className="prose prose-lg prose-emerald max-w-none text-neutral-700 leading-relaxed"
+             dangerouslySetInnerHTML={{ __html: currentPage.content }}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-64 text-neutral-400">
+             <User size={64} className="mb-4 opacity-20" />
+             <p>Konten profil belum tersedia.</p>
+          </div>
+        )}
       </div>
     </motion.div>
   );

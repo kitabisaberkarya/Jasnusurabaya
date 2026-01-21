@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -6,7 +7,8 @@ import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered,
   Undo, Redo, Strikethrough, Quote, Link as LinkIcon, Video, Plus,
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
-  FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle
+  FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
+  User as UserIcon
 } from 'lucide-react';
 import { MemberStatus, AppState } from '../types';
 import * as XLSX from 'xlsx';
@@ -15,10 +17,10 @@ export const AdminDashboard: React.FC = () => {
   const { 
     users, registrations, approveMember, rejectMember, attendanceSessions, attendanceRecords, 
     createSession, toggleSession, news, gallery, addNews, showToast, currentUser, logout, 
-    siteConfig, updateSiteConfig, restoreData, ...fullState 
+    siteConfig, updateSiteConfig, restoreData, profilePages, updateProfilePage, ...fullState 
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'attendance' | 'news' | 'recap' | 'settings' | 'backup'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'attendance' | 'news' | 'recap' | 'settings' | 'backup' | 'profile'>('overview');
   const [newSessionName, setNewSessionName] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
@@ -27,6 +29,10 @@ export const AdminDashboard: React.FC = () => {
   
   // News Form State
   const [newsForm, setNewsForm] = useState({ title: '', excerpt: '', content: '' });
+
+  // Profile Editor State
+  const [selectedProfileSlug, setSelectedProfileSlug] = useState('sejarah');
+  const [profileContent, setProfileContent] = useState('');
 
   // Settings State
   const [configForm, setConfigForm] = useState(siteConfig);
@@ -38,6 +44,17 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     setConfigForm(siteConfig);
   }, [siteConfig]);
+
+  // Load initial content for profile editor
+  useEffect(() => {
+    const page = profilePages.find(p => p.slug === selectedProfileSlug);
+    setProfileContent(page ? page.content : '');
+    
+    // Sync to editor div if exists
+    if (editorRef.current) {
+        editorRef.current.innerHTML = page ? page.content : '';
+    }
+  }, [selectedProfileSlug, profilePages, activeTab]);
   
   const editorRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -47,10 +64,12 @@ export const AdminDashboard: React.FC = () => {
   // Sync Editor content on mount or reset
   useEffect(() => {
     if (editorRef.current) {
-      if (newsForm.content === '') {
-        editorRef.current.innerHTML = '';
-      } else if (editorRef.current.innerHTML === '') {
-        editorRef.current.innerHTML = newsForm.content;
+      if (activeTab === 'news') {
+          if (newsForm.content === '') {
+            editorRef.current.innerHTML = '';
+          } else if (editorRef.current.innerHTML === '') {
+            editorRef.current.innerHTML = newsForm.content;
+          }
       }
     }
   }, [newsForm.content, activeTab]);
@@ -85,10 +104,22 @@ export const AdminDashboard: React.FC = () => {
     if (editorRef.current) editorRef.current.innerHTML = '';
   };
 
+  const handleSaveProfile = () => {
+    if (editorRef.current) {
+        const content = editorRef.current.innerHTML;
+        updateProfilePage(selectedProfileSlug, content);
+    }
+  };
+
   const execCmd = (command: string, value: string | undefined = undefined) => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
-      setNewsForm(prev => ({ ...prev, content: editorRef.current?.innerHTML || '' }));
+        const html = editorRef.current.innerHTML;
+        if (activeTab === 'news') {
+             setNewsForm(prev => ({ ...prev, content: html }));
+        } else if (activeTab === 'profile') {
+             setProfileContent(html);
+        }
     }
     // Return focus to editor
     editorRef.current?.focus();
@@ -108,7 +139,12 @@ export const AdminDashboard: React.FC = () => {
           editorRef.current?.focus();
           document.execCommand('insertImage', false, reader.result as string);
           if (editorRef.current) {
-            setNewsForm(prev => ({ ...prev, content: editorRef.current?.innerHTML || '' }));
+             const html = editorRef.current.innerHTML;
+             if (activeTab === 'news') {
+                  setNewsForm(prev => ({ ...prev, content: html }));
+             } else if (activeTab === 'profile') {
+                  setProfileContent(html);
+             }
           }
         }
       };
@@ -141,7 +177,12 @@ export const AdminDashboard: React.FC = () => {
            document.execCommand('insertHTML', false, videoHtml);
            
            if (editorRef.current) {
-            setNewsForm(prev => ({ ...prev, content: editorRef.current?.innerHTML || '' }));
+             const html = editorRef.current.innerHTML;
+             if (activeTab === 'news') {
+                  setNewsForm(prev => ({ ...prev, content: html }));
+             } else if (activeTab === 'profile') {
+                  setProfileContent(html);
+             }
           }
         }
       };
@@ -181,6 +222,7 @@ export const AdminDashboard: React.FC = () => {
       registrations,
       news,
       gallery,
+      profilePages,
       attendanceSessions,
       attendanceRecords,
       siteConfig,
@@ -290,12 +332,6 @@ export const AdminDashboard: React.FC = () => {
   const totalSessions = attendanceSessions.length;
   const totalNews = news.length;
 
-  // --- AdminLTE V2 Color Palette ---
-  // Blue Header: #3c8dbc
-  // Dark Blue Logo: #367fa9
-  // Sidebar Dark: #222d32
-  // Body BG: #ecf0f5
-  
   return (
     <div className="min-h-screen bg-[#ecf0f5] font-sans text-sm -m-4 sm:-m-6 lg:-m-8">
       {/* 1. Header Bar */}
@@ -360,6 +396,7 @@ export const AdminDashboard: React.FC = () => {
                {[
                  { id: 'overview', icon: BarChart2, label: 'Dashboard', badge: null },
                  { id: 'approval', icon: Users, label: 'Approval Anggota', badge: pendingCount, badgeColor: 'bg-[#00c0ef]' },
+                 { id: 'profile', icon: UserIcon, label: 'Manajemen Profil', badge: null },
                  { id: 'attendance', icon: Calendar, label: 'Absensi Majelis', badge: null },
                  { id: 'recap', icon: FileSpreadsheet, label: 'Rekapitulasi', badge: null },
                  { id: 'news', icon: FileText, label: 'Manajemen Berita', badge: null },
@@ -400,6 +437,7 @@ export const AdminDashboard: React.FC = () => {
                <h1 className="text-2xl font-normal text-[#333]">
                   {activeTab === 'overview' && 'Dashboard'}
                   {activeTab === 'approval' && 'Approval Anggota'}
+                  {activeTab === 'profile' && 'Manajemen Profil Organisasi'}
                   {activeTab === 'attendance' && 'Absensi Majelis'}
                   {activeTab === 'recap' && 'Rekapitulasi Laporan'}
                   {activeTab === 'news' && 'Manajemen Berita'}
@@ -464,20 +502,6 @@ export const AdminDashboard: React.FC = () => {
                        </div>
                     </div>
                  </div>
-                 
-                 {/* Monthly Recap Report Mockup */}
-                 <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-t-sm mb-6">
-                    <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
-                       <h3 className="text-lg font-normal text-[#333]">Monthly Recap Report</h3>
-                       <div className="flex gap-2 text-gray-400">
-                          <button>-</button>
-                          <button>x</button>
-                       </div>
-                    </div>
-                    <div className="p-4 h-[300px] flex items-center justify-center bg-gray-50">
-                       <p className="text-gray-400 italic">Chart Placeholder (Activity Graph)</p>
-                    </div>
-                 </div>
               </>
             )}
 
@@ -532,6 +556,69 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                      )}
                   </div>
+               </div>
+            )}
+
+            {/* --- PROFILE MANAGEMENT TAB --- */}
+            {activeTab === 'profile' && (
+               <div className="space-y-6">
+                 <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
+                    <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
+                        <h3 className="text-lg font-normal text-[#333]">Edit Halaman Profil</h3>
+                        <div className="flex gap-2">
+                            {['sejarah', 'pengurus', 'korwil'].map(slug => (
+                                <button
+                                   key={slug}
+                                   onClick={() => setSelectedProfileSlug(slug)}
+                                   className={`px-3 py-1 text-sm rounded-sm font-bold transition ${
+                                      selectedProfileSlug === slug 
+                                      ? 'bg-[#3c8dbc] text-white' 
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                   }`}
+                                >
+                                   {slug === 'sejarah' ? 'Sejarah' : slug === 'pengurus' ? 'Pengurus' : 'Korwil'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="p-4">
+                       <div className="border border-gray-300 rounded-sm">
+                             {/* Toolbar Reuse */}
+                             <div className="bg-[#f0f0f0] border-b border-gray-300 p-2 flex flex-wrap gap-1">
+                                <button type="button" onClick={() => execCmd('bold')} className="p-1 hover:bg-gray-200 rounded" title="Bold"><Bold size={16} /></button>
+                                <button type="button" onClick={() => execCmd('italic')} className="p-1 hover:bg-gray-200 rounded" title="Italic"><Italic size={16} /></button>
+                                <button type="button" onClick={() => execCmd('underline')} className="p-1 hover:bg-gray-200 rounded" title="Underline"><Underline size={16} /></button>
+                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                                <button type="button" onClick={() => execCmd('insertUnorderedList')} className="p-1 hover:bg-gray-200 rounded" title="Bullet List"><List size={16} /></button>
+                                <button type="button" onClick={() => execCmd('insertOrderedList')} className="p-1 hover:bg-gray-200 rounded" title="Numbered List"><ListOrdered size={16} /></button>
+                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                                <button type="button" onClick={() => execCmd('justifyLeft')} className="p-1 hover:bg-gray-200 rounded" title="Align Left"><AlignLeft size={16} /></button>
+                                <button type="button" onClick={() => execCmd('justifyCenter')} className="p-1 hover:bg-gray-200 rounded" title="Align Center"><AlignCenter size={16} /></button>
+                                <button type="button" onClick={() => execCmd('justifyRight')} className="p-1 hover:bg-gray-200 rounded" title="Align Right"><AlignRight size={16} /></button>
+                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                                <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Image"><ImageIcon size={16} /></button>
+                                
+                                <input type="file" ref={imageInputRef} onChange={handleEditorImageUpload} accept="image/*" className="hidden" />
+                             </div>
+                             
+                             <div 
+                                ref={editorRef}
+                                contentEditable
+                                className="min-h-[400px] p-4 outline-none prose max-w-none bg-white"
+                                onInput={(e) => setProfileContent(e.currentTarget.innerHTML)}
+                             ></div>
+                       </div>
+                       
+                       <div className="flex justify-end mt-4">
+                            <button 
+                               onClick={handleSaveProfile}
+                               className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"
+                            >
+                               <Save size={18} /> Simpan Perubahan
+                            </button>
+                       </div>
+                    </div>
+                 </div>
                </div>
             )}
 
