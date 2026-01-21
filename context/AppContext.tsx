@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage } from '../types';
+import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost } from '../types';
 import { MOCK_INITIAL_STATE } from '../constants';
 import { supabase } from '../lib/supabase';
 
@@ -14,6 +14,8 @@ interface AppContextType extends AppState {
   toggleSession: (sessionId: number) => void;
   markAttendance: (sessionId: number, userId: number, photoUrl: string, location: string) => Promise<boolean>;
   addNews: (news: Omit<NewsItem, 'id'>) => void;
+  addMediaPost: (post: Omit<MediaPost, 'id' | 'createdAt'>) => void;
+  deleteMediaPost: (id: number) => void;
   updateSiteConfig: (config: SiteConfig) => void;
   updateProfilePage: (slug: string, content: string) => void;
   restoreData: (data: AppState) => void;
@@ -40,6 +42,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         { data: users }, 
         { data: news }, 
         { data: gallery }, 
+        { data: media },
         { data: sessions }, 
         { data: registrations },
         { data: config },
@@ -49,6 +52,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabase.from('users').select('*'),
         supabase.from('news').select('*').order('id', { ascending: false }),
         supabase.from('gallery').select('*').order('id', { ascending: false }),
+        supabase.from('media_posts').select('*').order('id', { ascending: false }),
         supabase.from('attendance_sessions').select('*').order('id', { ascending: false }),
         supabase.from('registrations').select('*').order('id', { ascending: false }),
         supabase.from('site_config').select('*').single(),
@@ -76,11 +80,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         imageUrl: n.image_url
       }));
 
+      const mappedMedia = (media || []).map((m: any) => ({
+        ...m,
+        embedUrl: m.embed_url,
+        createdAt: m.created_at
+      }));
+
       setState(prev => ({
         ...prev,
         users: users || [],
         news: mappedNews,
         gallery: gallery || [],
+        mediaPosts: mappedMedia,
         profilePages: (profiles as ProfilePage[]) || [],
         attendanceSessions: mappedSessions,
         registrations: registrations || [],
@@ -107,14 +118,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const login = async (identifier: string, password: string): Promise<User | null> => {
-    // 0. Clean inputs
     const cleanId = identifier.trim();
     const cleanPass = password.trim();
 
-    // 1. FAIL-SAFE / HARDCODED MASTER ADMIN CHECK
     if (cleanId.toLowerCase() === 'jasnu.nariyahsurabaya@gmail.com' && cleanPass === 'JasnuNariyahSurabaya1926') {
       const masterAdmin: User = {
-        id: 999999, // ID spesial
+        id: 999999,
         name: 'Administrator JSN',
         email: 'jasnu.nariyahsurabaya@gmail.com',
         role: UserRole.ADMIN,
@@ -124,13 +133,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         wilayah: 'Surabaya Pusat',
         joinedAt: new Date().toISOString()
       };
-      
       setState(prev => ({ ...prev, currentUser: masterAdmin }));
       showToast(`Login Super Admin Berhasil`, 'success');
       return masterAdmin;
     }
 
-    // 2. Normal Database Check
     try {
       const { data, error } = await supabase
         .from('users')
@@ -139,9 +146,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .eq('password', cleanPass)
         .single();
 
-      if (error || !data) {
-        return null;
-      }
+      if (error || !data) return null;
 
       setState(prev => ({ ...prev, currentUser: data }));
       showToast(`Ahlan wa sahlan, ${data.name}`, 'success');
@@ -164,12 +169,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         status: MemberStatus.PENDING,
         date: new Date().toISOString().split('T')[0]
       }]);
-
       if (error) throw error;
       
       const { data: newData } = await supabase.from('registrations').select('*').order('id', { ascending: false });
       setState(prev => ({ ...prev, registrations: newData || [] }));
-      
     } catch (error) {
       console.error("Registration failed", error);
       showToast("Gagal mendaftar. Silakan coba lagi.", "error");
@@ -199,10 +202,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (insertError) throw insertError;
       await supabase.from('registrations').delete().eq('id', regId);
-      
       fetchData();
       showToast(`Anggota ${candidate.name} resmi diterima. NIA: ${nia}`, 'success');
-
     } catch (error) {
       console.error(error);
       showToast("Gagal memproses approval", "error");
@@ -212,10 +213,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const rejectMember = async (regId: number) => {
     try {
       await supabase.from('registrations').delete().eq('id', regId);
-      setState(prev => ({
-        ...prev,
-        registrations: prev.registrations.filter(r => r.id !== regId)
-      }));
+      setState(prev => ({ ...prev, registrations: prev.registrations.filter(r => r.id !== regId) }));
       showToast('Permohonan anggota ditolak', 'info');
     } catch (error) {
       showToast("Gagal menolak member", "error");
@@ -230,13 +228,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         is_open: true,
         attendees: []
       }]);
-
       if (error) throw error;
-      
       const { data } = await supabase.from('attendance_sessions').select('*').order('id', { ascending: false });
       const mapped = (data || []).map((s:any) => ({...s, attendees: s.attendees || []}));
       setState(prev => ({ ...prev, attendanceSessions: mapped }));
-      
       showToast('Sesi absensi baru berhasil dibuat & dibuka', 'success');
     } catch (error) {
       showToast("Gagal membuat sesi", "error");
@@ -246,15 +241,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const toggleSession = async (sessionId: number) => {
     const session = state.attendanceSessions.find(s => s.id === sessionId);
     if (!session) return;
-
     try {
       await supabase.from('attendance_sessions').update({ is_open: !session.isOpen }).eq('id', sessionId);
-      
       setState(prev => ({
         ...prev,
-        attendanceSessions: prev.attendanceSessions.map(s =>
-          s.id === sessionId ? { ...s, isOpen: !s.isOpen } : s
-        )
+        attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, isOpen: !s.isOpen } : s)
       }));
     } catch (error) {
       showToast("Gagal mengubah status sesi", "error");
@@ -280,30 +271,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         photo_url: photoUrl,
         location: location
       }]);
-
       if (recordError) throw recordError;
 
       const newAttendees = [...session.attendees, userId];
-      await supabase.from('attendance_sessions').update({
-        attendees: newAttendees
-      }).eq('id', sessionId);
+      await supabase.from('attendance_sessions').update({ attendees: newAttendees }).eq('id', sessionId);
 
       setState(prev => ({
         ...prev,
-        attendanceSessions: prev.attendanceSessions.map(s =>
-          s.id === sessionId ? { ...s, attendees: newAttendees } : s
-        ),
+        attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, attendees: newAttendees } : s),
         attendanceRecords: [...prev.attendanceRecords, {
-          id: recordId,
-          sessionId,
-          userId,
-          userName: user.name,
-          timestamp: new Date().toLocaleString('id-ID'),
-          photoUrl,
-          location
+          id: recordId, sessionId, userId, userName: user.name, timestamp: new Date().toLocaleString('id-ID'), photoUrl, location
         }]
       }));
-
       return true;
     } catch (error) {
       console.error(error);
@@ -320,13 +299,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         date: newsData.date,
         image_url: newsData.imageUrl
       }]);
-
       if (error) throw error;
-      
       fetchData();
       showToast('Berita berhasil dipublikasikan', 'success');
     } catch (error) {
       showToast("Gagal mempublish berita", "error");
+    }
+  };
+
+  const addMediaPost = async (post: Omit<MediaPost, 'id' | 'createdAt'>) => {
+    try {
+      const { error } = await supabase.from('media_posts').insert([{
+        type: post.type,
+        url: post.url,
+        embed_url: post.embedUrl,
+        caption: post.caption
+      }]);
+      if (error) throw error;
+      fetchData();
+      showToast('Media berhasil ditambahkan', 'success');
+    } catch (error) {
+      showToast("Gagal menambahkan media", "error");
+    }
+  };
+
+  const deleteMediaPost = async (id: number) => {
+    try {
+      const { error } = await supabase.from('media_posts').delete().eq('id', id);
+      if (error) throw error;
+      setState(prev => ({...prev, mediaPosts: prev.mediaPosts.filter(m => m.id !== id)}));
+      showToast('Media berhasil dihapus', 'success');
+    } catch (error) {
+      showToast("Gagal menghapus media", "error");
     }
   };
 
@@ -341,9 +345,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         phone: config.phone,
         logo_url: config.logoUrl
       }).gt('id', 0);
-
       if (error) throw error;
-
       setState(prev => ({ ...prev, siteConfig: config }));
       showToast('Pengaturan website berhasil diperbarui', 'success');
     } catch (error) {
@@ -353,9 +355,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateProfilePage = async (slug: string, content: string) => {
     try {
-       // Check if exists, if not insert, if yes update
        const existing = state.profilePages.find(p => p.slug === slug);
-       
        let error;
        if (existing) {
          const { error: err } = await supabase.from('profile_pages').update({ content }).eq('slug', slug);
@@ -364,7 +364,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
          const titleMap: Record<string, string> = {
             'sejarah': 'Sejarah Jamiyah',
             'pengurus': 'Susunan Pengurus Pusat',
-            'korwil': 'Koordinator Wilayah'
+            'korwil': 'Daftar Korwil'
          };
          const { error: err } = await supabase.from('profile_pages').insert([{ 
              slug, 
@@ -373,12 +373,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
          }]);
          error = err;
        }
-
        if (error) throw error;
-
-       fetchData(); // Refresh local state
+       fetchData();
        showToast("Data profil berhasil disimpan", "success");
-
     } catch(err) {
        console.error(err);
        showToast("Gagal menyimpan profil", "error");
@@ -390,7 +387,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, createSession, toggleSession, markAttendance, addNews, updateSiteConfig, updateProfilePage, restoreData, showToast, removeToast, isLoading }}>
+    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, createSession, toggleSession, markAttendance, addNews, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, restoreData, showToast, removeToast, isLoading }}>
       {children}
     </AppContext.Provider>
   );

@@ -49,6 +49,15 @@ export interface GalleryItem {
   caption: string;
 }
 
+export interface MediaPost {
+  id: number;
+  type: 'youtube' | 'instagram';
+  url: string;
+  embedUrl: string;
+  caption: string;
+  createdAt: string;
+}
+
 export interface ProfilePage {
   slug: string; // 'sejarah' | 'pengurus' | 'korwil'
   title: string;
@@ -96,6 +105,7 @@ export interface AppState {
   registrations: (RegistrationInput & { id: number; status: MemberStatus; date: string })[];
   news: NewsItem[];
   gallery: GalleryItem[];
+  mediaPosts: MediaPost[];
   profilePages: ProfilePage[];
   attendanceSessions: AttendanceSession[];
   attendanceRecords: AttendanceRecord[];

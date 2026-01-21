@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User } from 'lucide-react';
+import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { MemberStatus } from '../types';
@@ -231,6 +231,63 @@ export const Gallery: React.FC = () => {
   );
 };
 
+export const MediaPage: React.FC = () => {
+  const { mediaPosts } = useApp();
+  
+  return (
+    <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="text-center mb-16">
+        <span className="text-secondary-600 font-bold tracking-wider uppercase text-sm">Arsip Digital</span>
+        <h1 className="text-4xl md:text-5xl font-serif font-bold text-primary-900 mt-2">Media & Video</h1>
+        <p className="text-neutral-500 max-w-2xl mx-auto text-lg mt-4">Kumpulan video dokumentasi kegiatan majelis dari YouTube dan Instagram.</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+         {mediaPosts.length > 0 ? mediaPosts.map(post => (
+            <div key={post.id} className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden hover:shadow-lg transition-all duration-300">
+               {post.type === 'youtube' ? (
+                  <div className="relative pt-[56.25%] bg-black">
+                     <iframe 
+                       src={post.embedUrl} 
+                       title={post.caption || "YouTube video"}
+                       className="absolute top-0 left-0 w-full h-full"
+                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                       allowFullScreen
+                     ></iframe>
+                  </div>
+               ) : (
+                  <div className="relative pt-[120%] bg-neutral-50">
+                     <iframe 
+                       src={post.embedUrl} 
+                       className="absolute top-0 left-0 w-full h-full"
+                       frameBorder="0" 
+                       scrolling="no" 
+                       allowTransparency={true}
+                     ></iframe>
+                  </div>
+               )}
+               <div className="p-6">
+                  <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-neutral-400">
+                     {post.type === 'youtube' ? <Youtube size={14} className="text-red-600" /> : <Instagram size={14} className="text-pink-600" />}
+                     <span>{post.type}</span>
+                  </div>
+                  <h3 className="font-bold text-lg text-neutral-800 line-clamp-2">{post.caption || "Dokumentasi Kegiatan"}</h3>
+                  <div className="mt-4 pt-4 border-t border-neutral-100 text-xs text-neutral-400">
+                     Diunggah pada {post.createdAt}
+                  </div>
+               </div>
+            </div>
+         )) : (
+            <div className="col-span-full py-20 text-center text-neutral-400 bg-neutral-50 rounded-3xl border border-dashed border-neutral-200">
+               <PlayCircle size={48} className="mx-auto mb-4 opacity-20" />
+               <p>Belum ada media yang ditambahkan.</p>
+            </div>
+         )}
+      </div>
+    </motion.div>
+  );
+};
+
 export const Database: React.FC = () => {
   const { users } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
@@ -315,7 +372,7 @@ export const ProfileView: React.FC = () => {
   const titleMap: Record<string, string> = {
     'sejarah': 'Sejarah Jamiyah',
     'pengurus': 'Susunan Pengurus Pusat',
-    'korwil': 'Koordinator Wilayah'
+    'korwil': 'Daftar Koordinator Wilayah (Korwil)'
   };
 
   const displayTitle = currentPage?.title || titleMap[slug || ''] || 'Profil';

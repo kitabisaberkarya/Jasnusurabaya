@@ -8,7 +8,7 @@ import {
   Undo, Redo, Strikethrough, Quote, Link as LinkIcon, Video, Plus,
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
-  User as UserIcon
+  User as UserIcon, Youtube, Instagram, Trash2, PlayCircle
 } from 'lucide-react';
 import { MemberStatus, AppState } from '../types';
 import * as XLSX from 'xlsx';
@@ -16,11 +16,11 @@ import * as XLSX from 'xlsx';
 export const AdminDashboard: React.FC = () => {
   const { 
     users, registrations, approveMember, rejectMember, attendanceSessions, attendanceRecords, 
-    createSession, toggleSession, news, gallery, addNews, showToast, currentUser, logout, 
+    createSession, toggleSession, news, gallery, mediaPosts, addNews, addMediaPost, deleteMediaPost, showToast, currentUser, logout, 
     siteConfig, updateSiteConfig, restoreData, profilePages, updateProfilePage, ...fullState 
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'attendance' | 'news' | 'recap' | 'settings' | 'backup' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'attendance' | 'news' | 'media' | 'recap' | 'settings' | 'backup' | 'profile'>('overview');
   const [newSessionName, setNewSessionName] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
@@ -29,6 +29,9 @@ export const AdminDashboard: React.FC = () => {
   
   // News Form State
   const [newsForm, setNewsForm] = useState({ title: '', excerpt: '', content: '' });
+
+  // Media Form State
+  const [mediaForm, setMediaForm] = useState({ type: 'youtube' as 'youtube' | 'instagram', url: '', caption: '' });
 
   // Profile Editor State
   const [selectedProfileSlug, setSelectedProfileSlug] = useState('sejarah');
@@ -84,9 +87,7 @@ export const AdminDashboard: React.FC = () => {
 
   const handleAddNews = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Auto-detect thumbnail from content
-    let thumbnail = "https://picsum.photos/800/600"; // Default fallback
+    let thumbnail = "https://picsum.photos/800/600";
     if (editorRef.current) {
       const firstImg = editorRef.current.querySelector('img');
       if (firstImg) {
@@ -102,6 +103,42 @@ export const AdminDashboard: React.FC = () => {
     
     setNewsForm({ title: '', excerpt: '', content: '' });
     if (editorRef.current) editorRef.current.innerHTML = '';
+  };
+
+  const handleAddMedia = (e: React.FormEvent) => {
+    e.preventDefault();
+    let embedUrl = "";
+
+    if (mediaForm.type === 'youtube') {
+       // Extract Video ID
+       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+       const match = mediaForm.url.match(regExp);
+       if (match && match[2].length === 11) {
+          embedUrl = `https://www.youtube.com/embed/${match[2]}`;
+       } else {
+          showToast("URL YouTube tidak valid", "error");
+          return;
+       }
+    } else {
+       // Instagram Embed
+       // Naive: Append embed to post URL if it ends with / or add /embed
+       // Regex to check valid IG URL
+       if (mediaForm.url.includes("instagram.com/p/")) {
+           const cleanUrl = mediaForm.url.split('?')[0];
+           embedUrl = cleanUrl.endsWith('/') ? `${cleanUrl}embed` : `${cleanUrl}/embed`;
+       } else {
+           showToast("URL Instagram tidak valid (Gunakan Link Postingan)", "error");
+           return;
+       }
+    }
+
+    addMediaPost({
+       type: mediaForm.type,
+       url: mediaForm.url,
+       embedUrl: embedUrl,
+       caption: mediaForm.caption
+    });
+    setMediaForm({ type: 'youtube', url: '', caption: '' });
   };
 
   const handleSaveProfile = () => {
@@ -121,11 +158,9 @@ export const AdminDashboard: React.FC = () => {
              setProfileContent(html);
         }
     }
-    // Return focus to editor
     editorRef.current?.focus();
   };
 
-  // --- Image Upload Logic for Editor ---
   const handleEditorImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -153,7 +188,6 @@ export const AdminDashboard: React.FC = () => {
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
-  // --- Video Upload Logic for Editor ---
   const handleEditorVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -191,7 +225,6 @@ export const AdminDashboard: React.FC = () => {
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
-  // --- Logo Upload Logic ---
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -214,20 +247,19 @@ export const AdminDashboard: React.FC = () => {
     updateSiteConfig(configForm);
   };
 
-  // --- Backup & Restore Logic ---
   const handleBackup = () => {
-    // Collect all state needed for restoration
     const backupData: AppState = {
       users,
       registrations,
       news,
       gallery,
+      mediaPosts,
       profilePages,
       attendanceSessions,
       attendanceRecords,
       siteConfig,
-      currentUser: null, // Don't backup active session
-      toasts: [] // Don't backup UI state
+      currentUser: null, 
+      toasts: [] 
     };
 
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
@@ -236,7 +268,7 @@ export const AdminDashboard: React.FC = () => {
     
     const date = new Date().toISOString().slice(0, 10);
     downloadAnchorNode.setAttribute("download", `JSN_Backup_${date}.json`);
-    document.body.appendChild(downloadAnchorNode); // required for firefox
+    document.body.appendChild(downloadAnchorNode); 
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
     showToast("Backup data berhasil diunduh!", "success");
@@ -265,19 +297,16 @@ export const AdminDashboard: React.FC = () => {
         }
       };
     }
-    // Reset input
     if (fileInputRef.current) {
        fileInputRef.current.value = "";
     }
   };
 
-  // --- Download Excel Logic ---
   const downloadReport = () => {
     const data: any[] = [];
     const timestamp = new Date().toISOString().slice(0,10);
 
     if (recapType === 'attendance') {
-      // Columns: Tanggal, Kegiatan, Nama Anggota, NIA, Wilayah
       attendanceSessions.forEach(session => {
         session.attendees.forEach(userId => {
           const user = users.find(u => u.id === userId);
@@ -293,7 +322,6 @@ export const AdminDashboard: React.FC = () => {
         });
       });
     } else {
-      // Columns: NIA, Nama Lengkap, Kontak, Wilayah, Status
       users.filter(u => u.role !== 'admin').forEach(user => {
          data.push({
            "NIA": user.nia || '-',
@@ -310,23 +338,15 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
-    // Generate Worksheet
     const ws = XLSX.utils.json_to_sheet(data);
-
-    // Set Column Widths (Approximate)
     const wscols = Object.keys(data[0]).map(() => ({ wch: 25 }));
     ws['!cols'] = wscols;
-
-    // Generate Workbook
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, recapType === 'attendance' ? "Absensi" : "Anggota");
-
-    // Download File
     XLSX.writeFile(wb, `Laporan_${recapType === 'attendance' ? 'Absensi' : 'Anggota'}_${timestamp}.xlsx`);
     showToast("Laporan berhasil diunduh (XLSX)", "success");
   };
 
-  // Stats
   const activeMembersCount = users.filter(u => u.status === MemberStatus.ACTIVE && u.role !== 'admin').length;
   const pendingCount = registrations.length;
   const totalSessions = attendanceSessions.length;
@@ -336,17 +356,13 @@ export const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-[#ecf0f5] font-sans text-sm -m-4 sm:-m-6 lg:-m-8">
       {/* 1. Header Bar */}
       <header className="fixed top-0 left-0 right-0 h-[50px] bg-[#3c8dbc] z-50 flex">
-        {/* Logo Area */}
         <div className={`h-full bg-[#367fa9] text-white flex items-center justify-center font-bold text-lg transition-all duration-300 ${sidebarOpen ? 'w-[230px]' : 'w-[50px]'}`}>
            {sidebarOpen ? 'JSN ADMIN' : 'JSN'}
         </div>
-        
-        {/* Navbar */}
         <nav className="flex-1 flex justify-between items-center px-4">
            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white hover:bg-black/10 p-2 rounded transition">
               <Menu size={20} />
            </button>
-
            <div className="flex items-center gap-4">
               <div className="relative text-white/80 hover:text-white cursor-pointer hidden sm:block">
                  <Bell size={18} />
@@ -365,7 +381,6 @@ export const AdminDashboard: React.FC = () => {
 
       {/* 2. Sidebar Navigation */}
       <aside className={`fixed top-[50px] bottom-0 left-0 bg-[#222d32] text-[#b8c7ce] transition-all duration-300 z-40 overflow-y-auto ${sidebarOpen ? 'w-[230px]' : 'w-[50px]'}`}>
-         {/* User Panel */}
          {sidebarOpen && (
            <div className="p-4 flex items-center gap-3 mb-4">
               <img src="https://ui-avatars.com/api/?name=Admin&background=random" className="w-12 h-12 rounded-full border-2 border-white/10" alt="User" />
@@ -377,26 +392,14 @@ export const AdminDashboard: React.FC = () => {
               </div>
            </div>
          )}
-
-         {/* Search Form */}
-         {sidebarOpen && (
-           <div className="px-4 mb-4">
-              <div className="bg-[#374850] rounded flex items-center overflow-hidden border border-transparent focus-within:border-gray-500">
-                 <input type="text" placeholder="Search..." className="bg-transparent border-none text-white text-xs px-3 py-2 w-full outline-none placeholder-gray-400" />
-                 <button className="px-2 text-gray-400"><Search size={14} /></button>
-              </div>
-           </div>
-         )}
-
-         {/* Menu Items */}
          <div className="py-2">
             {sidebarOpen && <p className="px-4 text-[10px] uppercase font-bold text-[#4b646f] mb-2 tracking-wider">Main Navigation</p>}
-            
             <ul className="space-y-0.5">
                {[
                  { id: 'overview', icon: BarChart2, label: 'Dashboard', badge: null },
                  { id: 'approval', icon: Users, label: 'Approval Anggota', badge: pendingCount, badgeColor: 'bg-[#00c0ef]' },
                  { id: 'profile', icon: UserIcon, label: 'Manajemen Profil', badge: null },
+                 { id: 'media', icon: PlayCircle, label: 'Manajemen Media', badge: null },
                  { id: 'attendance', icon: Calendar, label: 'Absensi Majelis', badge: null },
                  { id: 'recap', icon: FileSpreadsheet, label: 'Rekapitulasi', badge: null },
                  { id: 'news', icon: FileText, label: 'Manajemen Berita', badge: null },
@@ -431,13 +434,13 @@ export const AdminDashboard: React.FC = () => {
       {/* 3. Main Content Wrapper */}
       <main className={`pt-[50px] transition-all duration-300 min-h-screen flex flex-col ${sidebarOpen ? 'ml-[230px]' : 'ml-[50px]'}`}>
          
-         {/* Breadcrumb Header */}
          <div className="px-6 py-4 flex justify-between items-center bg-transparent">
             <div>
                <h1 className="text-2xl font-normal text-[#333]">
                   {activeTab === 'overview' && 'Dashboard'}
                   {activeTab === 'approval' && 'Approval Anggota'}
                   {activeTab === 'profile' && 'Manajemen Profil Organisasi'}
+                  {activeTab === 'media' && 'Manajemen Media & Video'}
                   {activeTab === 'attendance' && 'Absensi Majelis'}
                   {activeTab === 'recap' && 'Rekapitulasi Laporan'}
                   {activeTab === 'news' && 'Manajemen Berita'}
@@ -446,19 +449,13 @@ export const AdminDashboard: React.FC = () => {
                   <span className="text-xs text-gray-500 ml-2">Version 2.0</span>
                </h1>
             </div>
-            <div className="text-xs text-[#777] flex items-center gap-1">
-               <Settings size={12} /> Home <ChevronRight size={10} /> {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-            </div>
          </div>
 
-         {/* Content Body */}
          <div className="px-6 pb-6 flex-grow">
             
-            {/* --- DASHBOARD WIDGETS (AdminLTE Style) --- */}
             {activeTab === 'overview' && (
               <>
                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                    {/* Widget 1: CPU Traffic Style (Blue) */}
                     <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
                        <div className="w-[90px] h-full bg-[#00c0ef] flex items-center justify-center text-white">
                           <Settings size={40} />
@@ -468,8 +465,6 @@ export const AdminDashboard: React.FC = () => {
                           <span className="block text-lg font-bold text-[#333]">{activeMembersCount}</span>
                        </div>
                     </div>
-
-                    {/* Widget 2: Likes Style (Red) */}
                     <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
                        <div className="w-[90px] h-full bg-[#dd4b39] flex items-center justify-center text-white">
                           <AlertCircle size={40} />
@@ -479,8 +474,6 @@ export const AdminDashboard: React.FC = () => {
                           <span className="block text-lg font-bold text-[#333]">{pendingCount}</span>
                        </div>
                     </div>
-
-                    {/* Widget 3: Sales Style (Green) */}
                     <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
                        <div className="w-[90px] h-full bg-[#00a65a] flex items-center justify-center text-white">
                           <Calendar size={40} />
@@ -490,8 +483,6 @@ export const AdminDashboard: React.FC = () => {
                           <span className="block text-lg font-bold text-[#333]">{totalSessions}</span>
                        </div>
                     </div>
-
-                    {/* Widget 4: New Members Style (Yellow) */}
                     <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
                        <div className="w-[90px] h-full bg-[#f39c12] flex items-center justify-center text-white">
                           <Users size={40} />
@@ -505,7 +496,6 @@ export const AdminDashboard: React.FC = () => {
               </>
             )}
 
-            {/* --- APPROVAL TAB --- */}
             {activeTab === 'approval' && (
                <div className="bg-white border-t-[3px] border-[#f39c12] shadow-sm rounded-sm">
                   <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
@@ -559,7 +549,6 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {/* --- PROFILE MANAGEMENT TAB --- */}
             {activeTab === 'profile' && (
                <div className="space-y-6">
                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
@@ -576,14 +565,13 @@ export const AdminDashboard: React.FC = () => {
                                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                    }`}
                                 >
-                                   {slug === 'sejarah' ? 'Sejarah' : slug === 'pengurus' ? 'Pengurus' : 'Korwil'}
+                                   {slug === 'sejarah' ? 'Sejarah' : slug === 'pengurus' ? 'Pengurus' : 'Daftar Korwil'}
                                 </button>
                             ))}
                         </div>
                     </div>
                     <div className="p-4">
                        <div className="border border-gray-300 rounded-sm">
-                             {/* Toolbar Reuse */}
                              <div className="bg-[#f0f0f0] border-b border-gray-300 p-2 flex flex-wrap gap-1">
                                 <button type="button" onClick={() => execCmd('bold')} className="p-1 hover:bg-gray-200 rounded" title="Bold"><Bold size={16} /></button>
                                 <button type="button" onClick={() => execCmd('italic')} className="p-1 hover:bg-gray-200 rounded" title="Italic"><Italic size={16} /></button>
@@ -592,12 +580,7 @@ export const AdminDashboard: React.FC = () => {
                                 <button type="button" onClick={() => execCmd('insertUnorderedList')} className="p-1 hover:bg-gray-200 rounded" title="Bullet List"><List size={16} /></button>
                                 <button type="button" onClick={() => execCmd('insertOrderedList')} className="p-1 hover:bg-gray-200 rounded" title="Numbered List"><ListOrdered size={16} /></button>
                                 <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button type="button" onClick={() => execCmd('justifyLeft')} className="p-1 hover:bg-gray-200 rounded" title="Align Left"><AlignLeft size={16} /></button>
-                                <button type="button" onClick={() => execCmd('justifyCenter')} className="p-1 hover:bg-gray-200 rounded" title="Align Center"><AlignCenter size={16} /></button>
-                                <button type="button" onClick={() => execCmd('justifyRight')} className="p-1 hover:bg-gray-200 rounded" title="Align Right"><AlignRight size={16} /></button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
                                 <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Image"><ImageIcon size={16} /></button>
-                                
                                 <input type="file" ref={imageInputRef} onChange={handleEditorImageUpload} accept="image/*" className="hidden" />
                              </div>
                              
@@ -622,6 +605,105 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
+            {activeTab === 'media' && (
+               <div className="space-y-6">
+                 {/* Form Add Media */}
+                 <div className="bg-white border-t-[3px] border-[#dd4b39] shadow-sm rounded-sm">
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                       <h3 className="text-lg font-normal text-[#333]">Tambah Video Baru</h3>
+                    </div>
+                    <div className="p-4">
+                       <form onSubmit={handleAddMedia} className="space-y-4">
+                          <div className="flex gap-4">
+                             <div className="w-1/4">
+                                <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Platform</label>
+                                <select 
+                                   className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none"
+                                   value={mediaForm.type}
+                                   onChange={e => setMediaForm({...mediaForm, type: e.target.value as any})}
+                                >
+                                   <option value="youtube">YouTube</option>
+                                   <option value="instagram">Instagram</option>
+                                </select>
+                             </div>
+                             <div className="w-3/4">
+                                <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Link Video (URL)</label>
+                                <input 
+                                   type="text" 
+                                   placeholder="https://www.youtube.com/watch?v=..."
+                                   className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none"
+                                   required
+                                   value={mediaForm.url}
+                                   onChange={e => setMediaForm({...mediaForm, url: e.target.value})}
+                                />
+                             </div>
+                          </div>
+                          <div>
+                             <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Judul / Keterangan</label>
+                             <input 
+                                type="text" 
+                                placeholder="Dokumentasi Majelis..." 
+                                className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none"
+                                required
+                                value={mediaForm.caption}
+                                onChange={e => setMediaForm({...mediaForm, caption: e.target.value})}
+                             />
+                          </div>
+                          <div className="flex justify-end">
+                             <button type="submit" className="bg-[#dd4b39] hover:bg-[#c23321] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2">
+                                <Plus size={16} /> Tambah Media
+                             </button>
+                          </div>
+                       </form>
+                    </div>
+                 </div>
+
+                 {/* List Media */}
+                 <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                       <h3 className="text-lg font-normal text-[#333]">Daftar Media</h3>
+                    </div>
+                    <div className="p-0">
+                       {mediaPosts.map(post => (
+                         <div key={post.id} className="p-4 border-b last:border-0 hover:bg-gray-50 flex gap-4 items-center">
+                            <div className="w-32 h-20 bg-gray-100 flex items-center justify-center rounded overflow-hidden relative">
+                               {post.type === 'youtube' ? (
+                                  <img src={`https://img.youtube.com/vi/${post.embedUrl.split('/').pop()}/mqdefault.jpg`} className="w-full h-full object-cover" />
+                               ) : (
+                                  <Instagram className="text-pink-600" size={32} />
+                               )}
+                               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                  <PlayCircle className="text-white drop-shadow-md" />
+                               </div>
+                            </div>
+                            <div className="flex-grow">
+                               <div className="flex items-center gap-2 mb-1">
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${post.type === 'youtube' ? 'bg-red-600' : 'bg-pink-600'}`}>
+                                     {post.type.toUpperCase()}
+                                  </span>
+                                  <span className="text-xs text-gray-500">{post.createdAt}</span>
+                               </div>
+                               <h4 className="font-bold text-gray-800">{post.caption}</h4>
+                               <a href={post.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline truncate block max-w-md">{post.url}</a>
+                            </div>
+                            <button 
+                               onClick={() => deleteMediaPost(post.id)}
+                               className="p-2 text-red-500 hover:bg-red-50 rounded transition"
+                               title="Hapus Media"
+                            >
+                               <Trash2 size={18} />
+                            </button>
+                         </div>
+                       ))}
+                       {mediaPosts.length === 0 && (
+                          <div className="p-8 text-center text-gray-400">Belum ada data media.</div>
+                       )}
+                    </div>
+                 </div>
+               </div>
+            )}
+
+            {/* Other tabs remain unchanged... (attendance, news, recap, settings, backup) */}
             {/* --- ATTENDANCE TAB --- */}
             {activeTab === 'attendance' && (
                <div className="space-y-6">
@@ -689,32 +771,98 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {/* --- RECAP TAB --- */}
+            {activeTab === 'news' && (
+               <div className="space-y-6">
+                 {/* Write News Box */}
+                 <div className="bg-white border-t-[3px] border-[#dd4b39] shadow-sm rounded-sm">
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                       <h3 className="text-lg font-normal text-[#333]">Tulis Berita Baru</h3>
+                    </div>
+                    <div className="p-4">
+                       <form onSubmit={handleAddNews} className="space-y-4">
+                          <input 
+                            type="text" 
+                            placeholder="Judul Berita" 
+                            className="w-full px-4 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none transition text-lg"
+                            required
+                            value={newsForm.title}
+                            onChange={e => setNewsForm({...newsForm, title: e.target.value})}
+                          />
+                          <div className="border border-gray-300 rounded-sm">
+                             <div className="bg-[#f0f0f0] border-b border-gray-300 p-2 flex flex-wrap gap-1">
+                                <button type="button" onClick={() => execCmd('bold')} className="p-1 hover:bg-gray-200 rounded" title="Bold"><Bold size={16} /></button>
+                                <button type="button" onClick={() => execCmd('italic')} className="p-1 hover:bg-gray-200 rounded" title="Italic"><Italic size={16} /></button>
+                                <button type="button" onClick={() => execCmd('underline')} className="p-1 hover:bg-gray-200 rounded" title="Underline"><Underline size={16} /></button>
+                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                                <button type="button" onClick={() => execCmd('insertUnorderedList')} className="p-1 hover:bg-gray-200 rounded" title="Bullet List"><List size={16} /></button>
+                                <button type="button" onClick={() => execCmd('insertOrderedList')} className="p-1 hover:bg-gray-200 rounded" title="Numbered List"><ListOrdered size={16} /></button>
+                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                                <button type="button" onClick={() => execCmd('justifyLeft')} className="p-1 hover:bg-gray-200 rounded" title="Align Left"><AlignLeft size={16} /></button>
+                                <button type="button" onClick={() => execCmd('justifyCenter')} className="p-1 hover:bg-gray-200 rounded" title="Align Center"><AlignCenter size={16} /></button>
+                                <button type="button" onClick={() => execCmd('justifyRight')} className="p-1 hover:bg-gray-200 rounded" title="Align Right"><AlignRight size={16} /></button>
+                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                                <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Image"><ImageIcon size={16} /></button>
+                                <button type="button" onClick={() => videoInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Video"><Video size={16} /></button>
+                                <button type="button" onClick={() => {const url = prompt("URL:"); if(url) execCmd('createLink', url);}} className="p-1 hover:bg-gray-200 rounded" title="Link"><LinkIcon size={16} /></button>
+                                <input type="file" ref={imageInputRef} onChange={handleEditorImageUpload} accept="image/*" className="hidden" />
+                                <input type="file" ref={videoInputRef} onChange={handleEditorVideoUpload} accept="video/*" className="hidden" />
+                             </div>
+                             <div 
+                                ref={editorRef}
+                                contentEditable
+                                className="min-h-[300px] p-4 outline-none prose max-w-none bg-white"
+                                onInput={(e) => setNewsForm({...newsForm, content: e.currentTarget.innerHTML})}
+                             ></div>
+                          </div>
+                          <textarea 
+                             placeholder="Ringkasan Singkat (Excerpt)" 
+                             className="w-full px-4 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-20 text-sm"
+                             required
+                             value={newsForm.excerpt}
+                             onChange={e => setNewsForm({...newsForm, excerpt: e.target.value})}
+                          ></textarea>
+                          <div className="flex justify-end">
+                             <button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-6 py-2 rounded-sm font-bold shadow-sm">
+                                Publish Berita
+                             </button>
+                          </div>
+                       </form>
+                    </div>
+                 </div>
+                 {/* List News Box */}
+                 <div className="bg-white border-t-[3px] border-[#d2d6de] shadow-sm rounded-sm">
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                       <h3 className="text-lg font-normal text-[#333]">Daftar Berita</h3>
+                    </div>
+                    <div className="p-0">
+                       {news.map(n => (
+                         <div key={n.id} className="p-4 border-b last:border-0 hover:bg-gray-50 flex gap-4">
+                            <img src={n.imageUrl} className="w-20 h-20 object-cover border border-gray-200" alt="thumb" />
+                            <div>
+                               <h4 className="font-bold text-[#3c8dbc] text-md">{n.title}</h4>
+                               <p className="text-sm text-gray-600 mt-1 line-clamp-2">{n.excerpt}</p>
+                               <p className="text-xs text-gray-400 mt-2 flex items-center gap-1"><Calendar size={10} /> {n.date}</p>
+                            </div>
+                         </div>
+                       ))}
+                    </div>
+                 </div>
+               </div>
+            )}
+
+            {/* Recap, Settings, Backup remain same */}
             {activeTab === 'recap' && (
                <div className="bg-white border-t-[3px] border-[#605ca8] shadow-sm rounded-sm">
                   <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center flex-wrap gap-2">
                      <h3 className="text-lg font-normal text-[#333]">Rekapitulasi Laporan</h3>
                      <div className="flex gap-2">
                         <div className="flex rounded-sm overflow-hidden border border-gray-300">
-                           <button 
-                              onClick={() => setRecapType('attendance')}
-                              className={`px-3 py-1 text-sm ${recapType === 'attendance' ? 'bg-[#605ca8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                           >
-                              Absensi
-                           </button>
-                           <button 
-                              onClick={() => setRecapType('members')}
-                              className={`px-3 py-1 text-sm ${recapType === 'members' ? 'bg-[#605ca8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                           >
-                              Anggota
-                           </button>
+                           <button onClick={() => setRecapType('attendance')} className={`px-3 py-1 text-sm ${recapType === 'attendance' ? 'bg-[#605ca8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>Absensi</button>
+                           <button onClick={() => setRecapType('members')} className={`px-3 py-1 text-sm ${recapType === 'members' ? 'bg-[#605ca8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>Anggota</button>
                         </div>
-                        <button onClick={downloadReport} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-3 py-1 rounded-sm text-sm font-bold shadow-sm flex items-center gap-1">
-                           <Download size={14} /> Excel (.xlsx)
-                        </button>
+                        <button onClick={downloadReport} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-3 py-1 rounded-sm text-sm font-bold shadow-sm flex items-center gap-1"><Download size={14} /> Excel (.xlsx)</button>
                      </div>
                   </div>
-                  
                   <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                          <thead className="bg-[#f9fafc] text-[#333]">
@@ -762,17 +910,10 @@ export const AdminDashboard: React.FC = () => {
                                      <td className="px-4 py-2 font-mono text-xs font-bold">{user.nia || '-'}</td>
                                      <td className="px-4 py-2 font-bold">{user.name}</td>
                                      <td className="px-4 py-2">
-                                        <div className="flex flex-col text-xs">
-                                           <span>{user.email}</span>
-                                           <span className="text-gray-500">{user.phone}</span>
-                                        </div>
+                                        <div className="flex flex-col text-xs"><span>{user.email}</span><span className="text-gray-500">{user.phone}</span></div>
                                      </td>
                                      <td className="px-4 py-2">{user.wilayah}</td>
-                                     <td className="px-4 py-2">
-                                        <span className={`px-2 py-0.5 rounded text-xs font-bold text-white ${user.status === MemberStatus.ACTIVE ? 'bg-[#00a65a]' : 'bg-[#f39c12]'}`}>
-                                           {user.status === MemberStatus.ACTIVE ? 'Aktif' : 'Pending'}
-                                        </span>
-                                     </td>
+                                     <td className="px-4 py-2"><span className={`px-2 py-0.5 rounded text-xs font-bold text-white ${user.status === MemberStatus.ACTIVE ? 'bg-[#00a65a]' : 'bg-[#f39c12]'}`}>{user.status === MemberStatus.ACTIVE ? 'Aktif' : 'Pending'}</span></td>
                                   </tr>
                                ))
                             )}
@@ -782,285 +923,61 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {/* --- NEWS TAB --- */}
-            {activeTab === 'news' && (
-               <div className="space-y-6">
-                 {/* Write News Box */}
-                 <div className="bg-white border-t-[3px] border-[#dd4b39] shadow-sm rounded-sm">
-                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                       <h3 className="text-lg font-normal text-[#333]">Tulis Berita Baru</h3>
-                    </div>
-                    <div className="p-4">
-                       <form onSubmit={handleAddNews} className="space-y-4">
-                          <input 
-                            type="text" 
-                            placeholder="Judul Berita" 
-                            className="w-full px-4 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none transition text-lg"
-                            required
-                            value={newsForm.title}
-                            onChange={e => setNewsForm({...newsForm, title: e.target.value})}
-                          />
-                          
-                          {/* WYSIWYG TOOLBAR */}
-                          <div className="border border-gray-300 rounded-sm">
-                             <div className="bg-[#f0f0f0] border-b border-gray-300 p-2 flex flex-wrap gap-1">
-                                <button type="button" onClick={() => execCmd('bold')} className="p-1 hover:bg-gray-200 rounded" title="Bold"><Bold size={16} /></button>
-                                <button type="button" onClick={() => execCmd('italic')} className="p-1 hover:bg-gray-200 rounded" title="Italic"><Italic size={16} /></button>
-                                <button type="button" onClick={() => execCmd('underline')} className="p-1 hover:bg-gray-200 rounded" title="Underline"><Underline size={16} /></button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button type="button" onClick={() => execCmd('insertUnorderedList')} className="p-1 hover:bg-gray-200 rounded" title="Bullet List"><List size={16} /></button>
-                                <button type="button" onClick={() => execCmd('insertOrderedList')} className="p-1 hover:bg-gray-200 rounded" title="Numbered List"><ListOrdered size={16} /></button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button type="button" onClick={() => execCmd('justifyLeft')} className="p-1 hover:bg-gray-200 rounded" title="Align Left"><AlignLeft size={16} /></button>
-                                <button type="button" onClick={() => execCmd('justifyCenter')} className="p-1 hover:bg-gray-200 rounded" title="Align Center"><AlignCenter size={16} /></button>
-                                <button type="button" onClick={() => execCmd('justifyRight')} className="p-1 hover:bg-gray-200 rounded" title="Align Right"><AlignRight size={16} /></button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Image"><ImageIcon size={16} /></button>
-                                <button type="button" onClick={() => videoInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Video"><Video size={16} /></button>
-                                <button type="button" onClick={() => {const url = prompt("URL:"); if(url) execCmd('createLink', url);}} className="p-1 hover:bg-gray-200 rounded" title="Link"><LinkIcon size={16} /></button>
-                                
-                                <input type="file" ref={imageInputRef} onChange={handleEditorImageUpload} accept="image/*" className="hidden" />
-                                <input type="file" ref={videoInputRef} onChange={handleEditorVideoUpload} accept="video/*" className="hidden" />
-                             </div>
-                             <div 
-                                ref={editorRef}
-                                contentEditable
-                                className="min-h-[300px] p-4 outline-none prose max-w-none bg-white"
-                                onInput={(e) => setNewsForm({...newsForm, content: e.currentTarget.innerHTML})}
-                             ></div>
-                          </div>
-
-                          <textarea 
-                             placeholder="Ringkasan Singkat (Excerpt)" 
-                             className="w-full px-4 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-20 text-sm"
-                             required
-                             value={newsForm.excerpt}
-                             onChange={e => setNewsForm({...newsForm, excerpt: e.target.value})}
-                          ></textarea>
-
-                          <div className="flex justify-end">
-                             <button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-6 py-2 rounded-sm font-bold shadow-sm">
-                                Publish Berita
-                             </button>
-                          </div>
-                       </form>
-                    </div>
-                 </div>
-
-                 {/* List News Box */}
-                 <div className="bg-white border-t-[3px] border-[#d2d6de] shadow-sm rounded-sm">
-                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                       <h3 className="text-lg font-normal text-[#333]">Daftar Berita</h3>
-                    </div>
-                    <div className="p-0">
-                       {news.map(n => (
-                         <div key={n.id} className="p-4 border-b last:border-0 hover:bg-gray-50 flex gap-4">
-                            <img src={n.imageUrl} className="w-20 h-20 object-cover border border-gray-200" alt="thumb" />
-                            <div>
-                               <h4 className="font-bold text-[#3c8dbc] text-md">{n.title}</h4>
-                               <p className="text-sm text-gray-600 mt-1 line-clamp-2">{n.excerpt}</p>
-                               <p className="text-xs text-gray-400 mt-2 flex items-center gap-1"><Calendar size={10} /> {n.date}</p>
-                            </div>
-                         </div>
-                       ))}
-                    </div>
-                 </div>
-               </div>
-            )}
-
-            {/* --- SETTINGS TAB --- */}
             {activeTab === 'settings' && (
               <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
-                 <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                    <h3 className="text-lg font-normal text-[#333]">Identitas Website</h3>
-                 </div>
+                 <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Identitas Website</h3></div>
                  <div className="p-6">
                     <form onSubmit={handleSaveConfig} className="grid grid-cols-1 md:grid-cols-2 gap-8">
                        <div className="space-y-4">
-                          <div>
-                             <label className="block text-sm font-bold text-gray-700 mb-1">Nama Aplikasi</label>
-                             <input 
-                               type="text" 
-                               value={configForm.appName}
-                               onChange={(e) => setConfigForm({...configForm, appName: e.target.value})}
-                               className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
-                             />
-                          </div>
-                          <div>
-                             <label className="block text-sm font-bold text-gray-700 mb-1">Nama Organisasi / Sub-Title</label>
-                             <input 
-                               type="text" 
-                               value={configForm.orgName}
-                               onChange={(e) => setConfigForm({...configForm, orgName: e.target.value})}
-                               className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
-                             />
-                          </div>
-                          <div>
-                             <label className="block text-sm font-bold text-gray-700 mb-1">Deskripsi Singkat</label>
-                             <textarea 
-                               value={configForm.description}
-                               onChange={(e) => setConfigForm({...configForm, description: e.target.value})}
-                               className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-24 resize-none"
-                             />
-                          </div>
-                          <div>
-                             <label className="block text-sm font-bold text-gray-700 mb-1">Alamat Lengkap</label>
-                             <input 
-                               type="text" 
-                               value={configForm.address}
-                               onChange={(e) => setConfigForm({...configForm, address: e.target.value})}
-                               className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
-                             />
-                          </div>
+                          <div><label className="block text-sm font-bold text-gray-700 mb-1">Nama Aplikasi</label><input type="text" value={configForm.appName} onChange={(e) => setConfigForm({...configForm, appName: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" /></div>
+                          <div><label className="block text-sm font-bold text-gray-700 mb-1">Nama Organisasi / Sub-Title</label><input type="text" value={configForm.orgName} onChange={(e) => setConfigForm({...configForm, orgName: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" /></div>
+                          <div><label className="block text-sm font-bold text-gray-700 mb-1">Deskripsi Singkat</label><textarea value={configForm.description} onChange={(e) => setConfigForm({...configForm, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-24 resize-none" /></div>
+                          <div><label className="block text-sm font-bold text-gray-700 mb-1">Alamat Lengkap</label><input type="text" value={configForm.address} onChange={(e) => setConfigForm({...configForm, address: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" /></div>
                           <div className="grid grid-cols-2 gap-4">
-                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Email</label>
-                                <input 
-                                  type="email" 
-                                  value={configForm.email}
-                                  onChange={(e) => setConfigForm({...configForm, email: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
-                                />
-                             </div>
-                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">No. Telepon</label>
-                                <input 
-                                  type="text" 
-                                  value={configForm.phone}
-                                  onChange={(e) => setConfigForm({...configForm, phone: e.target.value})}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
-                                />
-                             </div>
+                             <div><label className="block text-sm font-bold text-gray-700 mb-1">Email</label><input type="email" value={configForm.email} onChange={(e) => setConfigForm({...configForm, email: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" /></div>
+                             <div><label className="block text-sm font-bold text-gray-700 mb-1">No. Telepon</label><input type="text" value={configForm.phone} onChange={(e) => setConfigForm({...configForm, phone: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" /></div>
                           </div>
                        </div>
-                       
                        <div className="space-y-4">
                           <label className="block text-sm font-bold text-gray-700 mb-1">Logo Website</label>
                           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition">
-                             {configForm.logoUrl ? (
-                                <img src={configForm.logoUrl} alt="Logo Preview" className="h-32 object-contain mb-4" />
-                             ) : (
-                                <div className="h-32 w-32 bg-gray-200 rounded-full flex items-center justify-center mb-4">
-                                   <ImageIcon className="text-gray-400" size={40} />
-                                </div>
-                             )}
-                             <button 
-                               type="button" 
-                               onClick={() => logoInputRef.current?.click()}
-                               className="px-4 py-2 bg-white border border-gray-300 rounded-sm text-sm font-medium hover:bg-gray-50 flex items-center gap-2"
-                             >
-                                <Upload size={16} /> Upload Logo Baru
-                             </button>
-                             <input 
-                               type="file" 
-                               ref={logoInputRef} 
-                               onChange={handleLogoUpload} 
-                               accept="image/*" 
-                               className="hidden" 
-                             />
+                             {configForm.logoUrl ? <img src={configForm.logoUrl} alt="Logo Preview" className="h-32 object-contain mb-4" /> : <div className="h-32 w-32 bg-gray-200 rounded-full flex items-center justify-center mb-4"><ImageIcon className="text-gray-400" size={40} /></div>}
+                             <button type="button" onClick={() => logoInputRef.current?.click()} className="px-4 py-2 bg-white border border-gray-300 rounded-sm text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><Upload size={16} /> Upload Logo Baru</button>
+                             <input type="file" ref={logoInputRef} onChange={handleLogoUpload} accept="image/*" className="hidden" />
                              <p className="text-xs text-gray-500 mt-2">Format PNG/JPG, Maksimal 2MB</p>
                           </div>
                        </div>
-
-                       <div className="md:col-span-2 pt-4 border-t border-gray-200 flex justify-end">
-                          <button type="submit" className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2.5 rounded-sm font-bold shadow-sm flex items-center gap-2">
-                             <Save size={18} /> Simpan Pengaturan
-                          </button>
-                       </div>
+                       <div className="md:col-span-2 pt-4 border-t border-gray-200 flex justify-end"><button type="submit" className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2.5 rounded-sm font-bold shadow-sm flex items-center gap-2"><Save size={18} /> Simpan Pengaturan</button></div>
                     </form>
                  </div>
               </div>
             )}
 
-            {/* --- BACKUP & RESTORE TAB --- */}
             {activeTab === 'backup' && (
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Backup Card */}
                   <div className="bg-white border-t-[3px] border-[#00a65a] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                        <h3 className="text-lg font-normal text-[#333]">Backup Database</h3>
-                     </div>
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Backup Database</h3></div>
                      <div className="p-6">
-                        <div className="flex items-center gap-4 mb-4">
-                           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-                              <Database size={32} />
-                           </div>
-                           <div>
-                              <h4 className="font-bold text-gray-700">Unduh Data Sistem</h4>
-                              <p className="text-sm text-gray-500">
-                                 Simpan seluruh data (anggota, absensi, berita, pengaturan) ke dalam file JSON aman.
-                              </p>
-                           </div>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded text-xs text-gray-500 mb-6 border border-gray-200">
-                           <ul className="list-disc pl-4 space-y-1">
-                              <li>Data Anggota ({users.length} records)</li>
-                              <li>Riwayat Absensi ({attendanceRecords.length} records)</li>
-                              <li>Berita & Artikel ({news.length} items)</li>
-                              <li>Konfigurasi Website</li>
-                           </ul>
-                        </div>
-                        <button 
-                           onClick={handleBackup}
-                           className="w-full bg-[#00a65a] hover:bg-[#008d4c] text-white py-2.5 rounded-sm font-bold shadow-sm flex items-center justify-center gap-2"
-                        >
-                           <Download size={18} /> Download Backup (.json)
-                        </button>
+                        <div className="flex items-center gap-4 mb-4"><div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600"><Database size={32} /></div><div><h4 className="font-bold text-gray-700">Unduh Data Sistem</h4><p className="text-sm text-gray-500">Simpan seluruh data ke dalam file JSON aman.</p></div></div>
+                        <button onClick={handleBackup} className="w-full bg-[#00a65a] hover:bg-[#008d4c] text-white py-2.5 rounded-sm font-bold shadow-sm flex items-center justify-center gap-2"><Download size={18} /> Download Backup (.json)</button>
                      </div>
                   </div>
-
-                  {/* Restore Card */}
                   <div className="bg-white border-t-[3px] border-[#dd4b39] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                        <h3 className="text-lg font-normal text-[#333]">Restore Database</h3>
-                     </div>
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Restore Database</h3></div>
                      <div className="p-6">
-                        <div className="flex items-center gap-4 mb-4">
-                           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600">
-                              <RefreshCcw size={32} />
-                           </div>
-                           <div>
-                              <h4 className="font-bold text-gray-700">Pulihkan Data Sistem</h4>
-                              <p className="text-sm text-gray-500">
-                                 Upload file backup JSON untuk mengembalikan data sistem ke kondisi sebelumnya.
-                              </p>
-                           </div>
-                        </div>
-                        
-                        <div className="bg-red-50 p-3 rounded text-xs text-red-700 mb-6 border border-red-200 flex items-start gap-2">
-                           <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                           <p>
-                              <strong>PERINGATAN:</strong> Tindakan ini akan <u>menghapus seluruh data saat ini</u> dan menggantinya dengan data dari file backup. Pastikan Anda telah membackup data terbaru sebelum melakukan restore.
-                           </p>
-                        </div>
-
-                        <input 
-                           type="file" 
-                           accept=".json" 
-                           ref={fileInputRef}
-                           onChange={handleFileChange}
-                           className="hidden"
-                        />
-                        
-                        <button 
-                           onClick={handleRestoreClick}
-                           className="w-full bg-[#dd4b39] hover:bg-[#d73925] text-white py-2.5 rounded-sm font-bold shadow-sm flex items-center justify-center gap-2"
-                        >
-                           <Upload size={18} /> Upload File Restore
-                        </button>
+                        <div className="flex items-center gap-4 mb-4"><div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600"><RefreshCcw size={32} /></div><div><h4 className="font-bold text-gray-700">Pulihkan Data Sistem</h4><p className="text-sm text-gray-500">Upload file backup JSON untuk mengembalikan data sistem.</p></div></div>
+                        <div className="bg-red-50 p-3 rounded text-xs text-red-700 mb-6 border border-red-200 flex items-start gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /><p><strong>PERINGATAN:</strong> Tindakan ini akan <u>menghapus seluruh data saat ini</u>.</p></div>
+                        <input type="file" accept=".json" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                        <button onClick={handleRestoreClick} className="w-full bg-[#dd4b39] hover:bg-[#d73925] text-white py-2.5 rounded-sm font-bold shadow-sm flex items-center justify-center gap-2"><Upload size={18} /> Upload File Restore</button>
                      </div>
                   </div>
                </div>
             )}
-
          </div>
       </main>
       
-      {/* Footer similar to AdminLTE */}
       <footer className={`bg-white border-t border-[#d2d6de] px-6 py-4 text-xs text-[#444] transition-all duration-300 ${sidebarOpen ? 'ml-[230px]' : 'ml-[50px]'}`}>
-         <div className="float-right hidden sm:inline">
-            <b>Version</b> 2.0
-         </div>
+         <div className="float-right hidden sm:inline"><b>Version</b> 2.0</div>
          <strong>Copyright &copy; {new Date().getFullYear()} <a href="#" className="text-[#3c8dbc]">{siteConfig.appName}</a>.</strong> All rights reserved.
       </footer>
     </div>

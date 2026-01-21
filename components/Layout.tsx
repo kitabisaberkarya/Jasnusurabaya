@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, LogOut, LayoutDashboard, CheckCircle, Info, Check, AlertCircle, Home, Newspaper, Image as ImageIcon, Database, UserCircle2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, LogOut, LayoutDashboard, CheckCircle, Info, Check, AlertCircle, Home, Newspaper, Image as ImageIcon, Database, UserCircle2, X, ChevronDown, ChevronUp, PlayCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
@@ -129,15 +129,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     Sejarah
                   </Link>
                   <Link to="/profile/pengurus" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">
-                    Susunan Pengurus Pusat
+                    Susunan Pengurus
                   </Link>
                   <Link to="/profile/korwil" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">
-                    Koordinator Wilayah
+                    Daftar Korwil
                   </Link>
                 </div>
               </div>
 
               <Link to="/news" className={getLinkClass('/news')}>Berita</Link>
+              <Link to="/media" className={getLinkClass('/media')}>Media</Link>
               <Link to="/gallery" className={getLinkClass('/gallery')}>Galeri</Link>
               <Link to="/database" className={getLinkClass('/database')}>Database</Link>
               
@@ -189,7 +190,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             {/* Left Group */}
             <div className="flex-1 flex justify-around">
                <MobileNavItem to="/news" icon={Newspaper} label="Berita" />
-               <MobileNavItem to="/gallery" icon={ImageIcon} label="Galeri" />
+               <MobileNavItem to="/media" icon={PlayCircle} label="Media" />
             </div>
 
             {/* CENTER FLOATING LOGO (HOME) */}
@@ -259,7 +260,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <ul className="space-y-3 text-primary-100 text-sm">
                 <li><Link to="/profile/sejarah" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Sejarah JSN</Link></li>
                 <li><Link to="/profile/pengurus" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Susunan Pengurus</Link></li>
-                <li><Link to="/news" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Kabar Kegiatan</Link></li>
+                <li><Link to="/media" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Video & Media</Link></li>
                 <li><Link to="/gallery" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Dokumentasi</Link></li>
                 <li><Link to="/database" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Cek Keanggotaan</Link></li>
               </ul>

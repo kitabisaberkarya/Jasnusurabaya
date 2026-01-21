@@ -1,8 +1,10 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { RegistrationInput, UserRole } from '../types';
+import { KORWIL_LIST } from '../constants';
 
 export const Login: React.FC = () => {
   const [identifier, setIdentifier] = useState('');
@@ -23,7 +25,6 @@ export const Login: React.FC = () => {
     const user = await login(id, pass);
     
     if (user) {
-      // Redirect berdasarkan role dari database
       if (user.role === UserRole.ADMIN) {
         navigate('/admin');
       } else {
@@ -158,14 +159,12 @@ export const Register: React.FC = () => {
                 <input type="text" name="address" required className="w-full rounded-lg border-neutral-300 border px-3 py-2 focus:ring-primary-500 focus:border-primary-500" onChange={handleChange} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Wilayah / Kecamatan</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">Wilayah / Korwil</label>
                 <select name="wilayah" required className="w-full rounded-lg border-neutral-300 border px-3 py-2 focus:ring-primary-500 focus:border-primary-500" onChange={handleChange}>
-                  <option value="">Pilih Wilayah</option>
-                  <option value="Surabaya Pusat">Surabaya Pusat</option>
-                  <option value="Surabaya Timur">Surabaya Timur</option>
-                  <option value="Surabaya Barat">Surabaya Barat</option>
-                  <option value="Surabaya Utara">Surabaya Utara</option>
-                  <option value="Surabaya Selatan">Surabaya Selatan</option>
+                  <option value="">Pilih Korwil (Kecamatan)</option>
+                  {KORWIL_LIST.map((korwil) => (
+                    <option key={korwil} value={korwil}>{korwil}</option>
+                  ))}
                 </select>
               </div>
               <div>
