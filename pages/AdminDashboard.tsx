@@ -598,7 +598,7 @@ export const AdminDashboard: React.FC = () => {
                                  value={profileTitle} 
                                  onChange={(e) => setProfileTitle(e.target.value)}
                                  className="w-full px-3 py-2 border border-gray-300 rounded-r-sm focus:border-[#3c8dbc] outline-none font-bold text-[#333]"
-                                 placeholder="Contoh: Sejarah Berdirinya JSN"
+                                 placeholder="Contoh: Sejarah Berdirinya JASNU"
                               />
                           </div>
                           <p className="text-[10px] text-gray-400 mt-1">* Judul ini akan muncul sebagai heading utama di halaman {selectedProfileSlug === 'sejarah' ? 'Sejarah' : selectedProfileSlug === 'pengurus' ? 'Susunan Pengurus' : 'Daftar Korwil'}.</p>

@@ -258,7 +258,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <div>
               <h4 className="font-serif text-lg font-semibold mb-6 text-secondary-500">Tautan Cepat</h4>
               <ul className="space-y-3 text-primary-100 text-sm">
-                <li><Link to="/profile/sejarah" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Sejarah JSN</Link></li>
+                <li><Link to="/profile/sejarah" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Sejarah JASNU</Link></li>
                 <li><Link to="/profile/pengurus" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Susunan Pengurus</Link></li>
                 <li><Link to="/media" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Video & Media</Link></li>
                 <li><Link to="/gallery" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Dokumentasi</Link></li>

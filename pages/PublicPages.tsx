@@ -62,18 +62,18 @@ export const Home: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95 }} 
             animate={{ opacity: 1, scale: 1 }} 
             transition={{ delay: 0.4 }}
-            className="text-4xl md:text-6xl lg:text-7xl font-bold font-serif mb-6 leading-tight drop-shadow-lg"
+            className="text-3xl md:text-5xl lg:text-6xl font-bold font-serif mb-6 leading-tight drop-shadow-lg uppercase"
           >
-            Menyemai Cinta,<br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-300 to-secondary-500">Meraih Syafaat.</span>
+            BERKHIDMAT UNTUK UMAT,<br/> BERBAKTI KEPADA NEGERI,<br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-300 to-secondary-500">NKRI HARGA MATI</span>
           </motion.h1>
           
           <motion.p 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="text-lg md:text-xl text-primary-100 max-w-2xl mx-auto mb-12 leading-relaxed font-light"
+            className="text-lg md:text-xl text-primary-100 max-w-3xl mx-auto mb-12 leading-relaxed font-light"
           >
-            Bergabunglah bersama ribuan jamaah {siteConfig.appName} {siteConfig.orgName} dalam majelis dzikir, ilmu, dan ukhuwah.
+            Bergabunglah bersama ribuan jamaah Jamiyah Sholawat Nariyah JASNU KOTA SURABAYA dalam majelis Sholawat Nariyah, dzikir, ilmu, dan ukhuwah.
           </motion.p>
           
           <motion.div 
