@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost, AppContextType, GalleryItem } from '../types';
+import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost, AppContextType, GalleryItem, Korwil } from '../types';
 import { MOCK_INITIAL_STATE } from '../constants';
 import { supabase } from '../lib/supabase';
 
@@ -35,7 +35,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         { data: registrations },
         { data: config },
         { data: records },
-        { data: profiles }
+        { data: profiles },
+        { data: korwils }
       ] = await Promise.all([
         supabase.from('users').select('*'),
         supabase.from('news').select('*').order('id', { ascending: false }),
@@ -45,7 +46,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabase.from('registrations').select('*').order('id', { ascending: false }),
         supabase.from('site_config').select('*').single(),
         supabase.from('attendance_records').select('*').order('timestamp', { ascending: false }),
-        supabase.from('profile_pages').select('*')
+        supabase.from('profile_pages').select('*'),
+        supabase.from('korwils').select('*').order('name', { ascending: true })
       ]);
       
       const mappedSessions = (sessions || []).map((s: any) => ({
@@ -85,6 +87,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         registrations: registrations || [],
         attendanceRecords: records || [],
         siteConfig: mappedConfig as SiteConfig,
+        korwils: (korwils as Korwil[]) || []
       }));
 
     } catch (error) {
@@ -456,12 +459,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const addKorwil = async (name: string) => {
+    try {
+      const { error } = await supabase.from('korwils').insert([{ name }]);
+      if (error) throw error;
+      fetchData();
+      showToast("Korwil berhasil ditambahkan", "success");
+    } catch (error) {
+      showToast("Gagal menambahkan korwil", "error");
+    }
+  };
+
+  const deleteKorwil = async (id: number) => {
+    try {
+      const { error } = await supabase.from('korwils').delete().eq('id', id);
+      if (error) throw error;
+      setState(prev => ({ ...prev, korwils: prev.korwils.filter(k => k.id !== id) }));
+      showToast("Korwil berhasil dihapus", "success");
+    } catch (error) {
+      showToast("Gagal menghapus korwil", "error");
+    }
+  };
+
   const restoreData = (newState: AppState) => {
     showToast('Restore database memerlukan akses admin panel Supabase.', 'info');
   };
 
   return (
-    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, deleteMember, resetMemberPassword, createSession, toggleSession, markAttendance, addNews, updateNews, deleteNews, addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, restoreData, showToast, removeToast, isLoading }}>
+    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, deleteMember, resetMemberPassword, createSession, toggleSession, markAttendance, addNews, updateNews, deleteNews, addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, addKorwil, deleteKorwil, restoreData, showToast, removeToast, isLoading }}>
       {children}
     </AppContext.Provider>
   );

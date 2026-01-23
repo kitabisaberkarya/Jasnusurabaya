@@ -18,7 +18,9 @@ export const AdminDashboard: React.FC = () => {
     createSession, toggleSession, news, gallery, mediaPosts, addNews, updateNews, deleteNews, 
     addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, 
     showToast, currentUser, logout, 
-    siteConfig, updateSiteConfig, restoreData, profilePages, updateProfilePage, ...fullState 
+    siteConfig, updateSiteConfig, restoreData, profilePages, updateProfilePage, 
+    korwils, addKorwil, deleteKorwil, 
+    ...fullState 
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'members' | 'attendance' | 'news' | 'gallery' | 'media' | 'recap' | 'settings' | 'backup' | 'profile'>('overview');
@@ -49,6 +51,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Settings State
   const [configForm, setConfigForm] = useState(siteConfig);
+  const [newKorwilName, setNewKorwilName] = useState('');
 
   // Backup/Restore State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -268,6 +271,20 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleAddKorwil = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newKorwilName.trim()) {
+      addKorwil(newKorwilName.trim());
+      setNewKorwilName('');
+    }
+  };
+
+  const handleDeleteKorwil = (id: number, name: string) => {
+    if (window.confirm(`Hapus wilayah '${name}'?`)) {
+      deleteKorwil(id);
+    }
+  };
+
   const execCmd = (command: string, value: string | undefined = undefined) => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
@@ -430,6 +447,7 @@ export const AdminDashboard: React.FC = () => {
       attendanceSessions,
       attendanceRecords,
       siteConfig,
+      korwils,
       currentUser: null, 
       toasts: [] 
     };
@@ -681,7 +699,156 @@ export const AdminDashboard: React.FC = () => {
                  </div>
               </>
             )}
+            
+            {/* ... Other Tabs Code ... */}
+            
+            {activeTab === 'settings' && (
+               <div className="space-y-6">
+                  {/* General Config */}
+                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                        <h3 className="text-lg font-normal text-[#333]">Pengaturan Aplikasi</h3>
+                     </div>
+                     <div className="p-4">
+                        <form onSubmit={handleSaveConfig} className="space-y-4">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Aplikasi</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
+                                    value={configForm.appName}
+                                    onChange={(e) => setConfigForm({...configForm, appName: e.target.value})}
+                                 />
+                              </div>
+                              <div>
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Organisasi</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
+                                    value={configForm.orgName}
+                                    onChange={(e) => setConfigForm({...configForm, orgName: e.target.value})}
+                                 />
+                              </div>
+                              <div className="md:col-span-2">
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Deskripsi Singkat</label>
+                                 <textarea 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-20"
+                                    value={configForm.description}
+                                    onChange={(e) => setConfigForm({...configForm, description: e.target.value})}
+                                 ></textarea>
+                              </div>
+                              <div>
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Email Kontak</label>
+                                 <input 
+                                    type="email" 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
+                                    value={configForm.email}
+                                    onChange={(e) => setConfigForm({...configForm, email: e.target.value})}
+                                 />
+                              </div>
+                              <div>
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nomor Telepon</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
+                                    value={configForm.phone}
+                                    onChange={(e) => setConfigForm({...configForm, phone: e.target.value})}
+                                 />
+                              </div>
+                              <div className="md:col-span-2">
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Alamat Lengkap</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
+                                    value={configForm.address}
+                                    onChange={(e) => setConfigForm({...configForm, address: e.target.value})}
+                                 />
+                              </div>
+                              <div className="md:col-span-2">
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Upload Logo Baru</label>
+                                 <div className="flex items-center gap-4">
+                                    <img src={configForm.logoUrl} alt="Preview" className="w-16 h-16 object-cover rounded-full border border-gray-200" />
+                                    <input 
+                                       type="file" 
+                                       accept="image/*"
+                                       ref={logoInputRef}
+                                       onChange={handleLogoUpload}
+                                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#3c8dbc] file:text-white hover:file:bg-[#367fa9]"
+                                    />
+                                 </div>
+                              </div>
+                           </div>
+                           <div className="flex justify-end pt-4 border-t border-gray-100">
+                              <button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2">
+                                 <Save size={16} /> Simpan Pengaturan
+                              </button>
+                           </div>
+                        </form>
+                     </div>
+                  </div>
 
+                  {/* Master Data Korwil */}
+                  <div className="bg-white border-t-[3px] border-[#00a65a] shadow-sm rounded-sm">
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                        <h3 className="text-lg font-normal text-[#333]">Manajemen Data Master (Korwil)</h3>
+                     </div>
+                     <div className="p-4">
+                        <div className="flex flex-col md:flex-row gap-6">
+                          {/* List Korwil */}
+                          <div className="flex-1">
+                             <h4 className="font-bold text-gray-600 mb-3 text-xs uppercase">Daftar Wilayah (Korwil)</h4>
+                             <div className="border border-gray-200 rounded-sm h-60 overflow-y-auto bg-gray-50">
+                                {korwils.length > 0 ? (
+                                  <ul className="divide-y divide-gray-200">
+                                    {korwils.map(korwil => (
+                                      <li key={korwil.id} className="px-4 py-2 flex justify-between items-center hover:bg-white transition">
+                                         <span className="text-sm text-gray-700">{korwil.name}</span>
+                                         <button 
+                                           onClick={() => handleDeleteKorwil(korwil.id, korwil.name)}
+                                           className="text-red-500 hover:text-red-700 p-1"
+                                         >
+                                           <Trash2 size={14} />
+                                         </button>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <div className="p-4 text-center text-gray-400 text-sm">Belum ada data wilayah.</div>
+                                )}
+                             </div>
+                          </div>
+                          
+                          {/* Add Form */}
+                          <div className="md:w-1/3">
+                             <h4 className="font-bold text-gray-600 mb-3 text-xs uppercase">Tambah Wilayah Baru</h4>
+                             <form onSubmit={handleAddKorwil} className="space-y-3">
+                                <div>
+                                   <label className="block text-xs font-bold text-gray-500 mb-1">Nama Wilayah / Kecamatan</label>
+                                   <input 
+                                      type="text" 
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#00a65a] outline-none"
+                                      placeholder="Contoh: Rungkut"
+                                      value={newKorwilName}
+                                      onChange={(e) => setNewKorwilName(e.target.value)}
+                                      required
+                                   />
+                                </div>
+                                <button type="submit" className="w-full bg-[#00a65a] hover:bg-[#008d4c] text-white px-4 py-2 rounded-sm font-bold shadow-sm flex items-center justify-center gap-2">
+                                   <Plus size={16} /> Tambah Wilayah
+                                </button>
+                             </form>
+                             <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-xs text-blue-800">
+                                <p><strong>Catatan:</strong> Data wilayah ini akan muncul di form pendaftaran anggota baru secara otomatis.</p>
+                             </div>
+                          </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            )}
+            
+            {/* ... Remaining Tabs ... */}
             {activeTab === 'approval' && (
                <div className="bg-white border-t-[3px] border-[#f39c12] shadow-sm rounded-sm">
                   <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
@@ -735,8 +902,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                </div>
             )}
-
-            {/* --- NEW TAB: DATA ANGGOTA --- */}
+            
             {activeTab === 'members' && (
                <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
                   <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -816,6 +982,7 @@ export const AdminDashboard: React.FC = () => {
 
             {activeTab === 'profile' && (
                <div className="space-y-6">
+                 {/* ... Profile Tab Content ... */}
                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h3 className="text-lg font-normal text-[#333]">Edit Menu & Sub-Menu Profil</h3>
@@ -889,9 +1056,10 @@ export const AdminDashboard: React.FC = () => {
                  </div>
                </div>
             )}
-
+            
             {activeTab === 'media' && (
                <div className="space-y-6">
+                 {/* ... Media Tab Content ... */}
                  {/* Form Add Media */}
                  <div className="bg-white border-t-[3px] border-[#dd4b39] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
@@ -988,9 +1156,9 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {/* --- GALLERY MANAGEMENT TAB --- */}
             {activeTab === 'gallery' && (
                <div className="space-y-6">
+                 {/* ... Gallery Tab Content ... */}
                  {/* Form Add Gallery */}
                  <div className="bg-white border-t-[3px] border-[#605ca8] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
@@ -1079,10 +1247,10 @@ export const AdminDashboard: React.FC = () => {
                  </div>
                </div>
             )}
-
-            {/* --- ATTENDANCE TAB --- */}
+            
             {activeTab === 'attendance' && (
                <div className="space-y-6">
+                  {/* ... Attendance Tab Content ... */}
                   {/* Form Box */}
                   <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm p-4">
                      <h3 className="text-lg font-normal text-[#333] mb-4">Buat Sesi Absensi Baru</h3>
@@ -1146,9 +1314,10 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                </div>
             )}
-
+            
             {activeTab === 'news' && (
                <div className="space-y-6">
+                 {/* ... News Tab Content ... */}
                  {/* Write News Box */}
                  <div ref={formRef} className={`bg-white border-t-[3px] ${editingNewsId ? 'border-[#f39c12]' : 'border-[#dd4b39]'} shadow-sm rounded-sm`}>
                     <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
@@ -1217,7 +1386,7 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                  </div>
 
-                 {/* List News - Sekarang dengan tombol Edit dan Delete */}
+                 {/* List News */}
                  <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
                        <h3 className="text-lg font-normal text-[#333]">Daftar Berita</h3>
@@ -1277,9 +1446,10 @@ export const AdminDashboard: React.FC = () => {
                  </div>
                </div>
             )}
-
+            
             {activeTab === 'recap' && (
                <div className="space-y-6">
+                  {/* ... Recap Tab Content ... */}
                   <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
                      <div className="px-4 py-3 border-b border-[#f4f4f4]">
                         <h3 className="text-lg font-normal text-[#333]">Laporan Rekapitulasi</h3>
@@ -1320,96 +1490,10 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                </div>
             )}
-
-            {activeTab === 'settings' && (
-               <div className="space-y-6">
-                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                        <h3 className="text-lg font-normal text-[#333]">Pengaturan Aplikasi</h3>
-                     </div>
-                     <div className="p-4">
-                        <form onSubmit={handleSaveConfig} className="space-y-4">
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Aplikasi</label>
-                                 <input 
-                                    type="text" 
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
-                                    value={configForm.appName}
-                                    onChange={(e) => setConfigForm({...configForm, appName: e.target.value})}
-                                 />
-                              </div>
-                              <div>
-                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Organisasi</label>
-                                 <input 
-                                    type="text" 
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
-                                    value={configForm.orgName}
-                                    onChange={(e) => setConfigForm({...configForm, orgName: e.target.value})}
-                                 />
-                              </div>
-                              <div className="md:col-span-2">
-                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Deskripsi Singkat</label>
-                                 <textarea 
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-20"
-                                    value={configForm.description}
-                                    onChange={(e) => setConfigForm({...configForm, description: e.target.value})}
-                                 ></textarea>
-                              </div>
-                              <div>
-                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Email Kontak</label>
-                                 <input 
-                                    type="email" 
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
-                                    value={configForm.email}
-                                    onChange={(e) => setConfigForm({...configForm, email: e.target.value})}
-                                 />
-                              </div>
-                              <div>
-                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nomor Telepon</label>
-                                 <input 
-                                    type="text" 
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
-                                    value={configForm.phone}
-                                    onChange={(e) => setConfigForm({...configForm, phone: e.target.value})}
-                                 />
-                              </div>
-                              <div className="md:col-span-2">
-                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Alamat Lengkap</label>
-                                 <input 
-                                    type="text" 
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
-                                    value={configForm.address}
-                                    onChange={(e) => setConfigForm({...configForm, address: e.target.value})}
-                                 />
-                              </div>
-                              <div className="md:col-span-2">
-                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Upload Logo Baru</label>
-                                 <div className="flex items-center gap-4">
-                                    <img src={configForm.logoUrl} alt="Preview" className="w-16 h-16 object-cover rounded-full border border-gray-200" />
-                                    <input 
-                                       type="file" 
-                                       accept="image/*"
-                                       ref={logoInputRef}
-                                       onChange={handleLogoUpload}
-                                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#3c8dbc] file:text-white hover:file:bg-[#367fa9]"
-                                    />
-                                 </div>
-                              </div>
-                           </div>
-                           <div className="flex justify-end pt-4 border-t border-gray-100">
-                              <button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2">
-                                 <Save size={16} /> Simpan Pengaturan
-                              </button>
-                           </div>
-                        </form>
-                     </div>
-                  </div>
-               </div>
-            )}
-
+            
             {activeTab === 'backup' && (
                <div className="space-y-6">
+                  {/* ... Backup Tab Content ... */}
                   <div className="bg-white border-t-[3px] border-[#f39c12] shadow-sm rounded-sm">
                      <div className="px-4 py-3 border-b border-[#f4f4f4]">
                         <h3 className="text-lg font-normal text-[#333]">Backup & Restore Database</h3>

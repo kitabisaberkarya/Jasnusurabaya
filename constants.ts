@@ -20,7 +20,8 @@ export const MOCK_INITIAL_STATE: AppState = {
   profilePages: [],
   attendanceSessions: [],
   attendanceRecords: [],
-  toasts: []
+  toasts: [],
+  korwils: []
 };
 
 export const KORWIL_LIST = [

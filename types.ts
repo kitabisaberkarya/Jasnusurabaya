@@ -100,6 +100,11 @@ export interface SiteConfig {
   logoUrl: string;
 }
 
+export interface Korwil {
+  id: number;
+  name: string;
+}
+
 export interface AppState {
   users: User[];
   currentUser: User | null;
@@ -112,6 +117,7 @@ export interface AppState {
   attendanceRecords: AttendanceRecord[];
   toasts: ToastMessage[];
   siteConfig: SiteConfig;
+  korwils: Korwil[];
 }
 
 export interface AppContextType extends AppState {
@@ -134,6 +140,8 @@ export interface AppContextType extends AppState {
   deleteMediaPost: (id: number) => void;
   updateSiteConfig: (config: SiteConfig) => void;
   updateProfilePage: (slug: string, title: string, content: string) => void;
+  addKorwil: (name: string) => void;
+  deleteKorwil: (id: number) => void;
   restoreData: (data: AppState) => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   removeToast: (id: number) => void;

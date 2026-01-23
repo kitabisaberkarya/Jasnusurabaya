@@ -94,7 +94,7 @@ export const Login: React.FC = () => {
 };
 
 export const Register: React.FC = () => {
-  const { register } = useApp();
+  const { register, korwils } = useApp();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<RegistrationInput>({
     name: '', nik: '', email: '', phone: '', address: '', wilayah: '', password: ''
@@ -113,6 +113,9 @@ export const Register: React.FC = () => {
       navigate('/');
     }, 3000);
   };
+
+  // Use korwils from DB if available, otherwise fallback to static list
+  const displayKorwils = korwils.length > 0 ? korwils : KORWIL_LIST.map((k, i) => ({ id: i, name: k }));
 
   if (submitted) {
     return (
@@ -162,8 +165,8 @@ export const Register: React.FC = () => {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Wilayah / Korwil</label>
                 <select name="wilayah" required className="w-full rounded-lg border-neutral-300 border px-3 py-2 focus:ring-primary-500 focus:border-primary-500" onChange={handleChange}>
                   <option value="">Pilih Korwil (Kecamatan)</option>
-                  {KORWIL_LIST.map((korwil) => (
-                    <option key={korwil} value={korwil}>{korwil}</option>
+                  {displayKorwils.map((korwil) => (
+                    <option key={korwil.name} value={korwil.name}>{korwil.name}</option>
                   ))}
                 </select>
               </div>
