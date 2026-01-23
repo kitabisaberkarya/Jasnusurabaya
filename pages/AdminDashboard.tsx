@@ -484,7 +484,7 @@ export const AdminDashboard: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#ecf0f5] font-sans text-sm -m-4 sm:-m-6 lg:-m-8">
+    <div className="min-h-screen bg-[#ecf0f5] font-sans text-sm">
       {/* 1. Header Bar */}
       <header className="fixed top-0 left-0 right-0 h-[50px] bg-[#3c8dbc] z-50 flex">
         <div className={`h-full bg-[#367fa9] text-white flex items-center justify-center font-bold text-lg transition-all duration-300 ${sidebarOpen ? 'w-[230px]' : 'w-[50px]'}`}>

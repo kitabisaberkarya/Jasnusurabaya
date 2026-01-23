@@ -12,6 +12,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const location = useLocation();
   const [isProfileHovered, setIsProfileHovered] = useState(false);
 
+  // Check if current route is Admin Dashboard
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -39,11 +42,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     </Link>
   );
 
-  return (
-    <div className="min-h-screen flex flex-col font-sans text-neutral-900 bg-neutral-50 relative pb-24 md:pb-0">
-      
-      {/* Toast Container - Modern 2026 Style */}
-      <div className="fixed top-24 right-4 md:right-8 z-[100] flex flex-col gap-3 pointer-events-none">
+  // Reusable Toast Component
+  const ToastContainer = () => (
+    <div className="fixed top-24 right-4 md:right-8 z-[100] flex flex-col gap-3 pointer-events-none">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div
@@ -88,6 +89,24 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           ))}
         </AnimatePresence>
       </div>
+  );
+
+  // IF ADMIN ROUTE: Render ONLY content + toasts (No Navbar/Footer)
+  if (isAdminRoute) {
+    return (
+      <>
+        <ToastContainer />
+        {children}
+      </>
+    );
+  }
+
+  // DEFAULT PUBLIC LAYOUT
+  return (
+    <div className="min-h-screen flex flex-col font-sans text-neutral-900 bg-neutral-50 relative pb-24 md:pb-0">
+      
+      {/* Toast Container - Modern 2026 Style */}
+      <ToastContainer />
 
       {/* Navbar (Desktop & Tablet Top View - Simplified for Mobile) */}
       <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-neutral-200/50 shadow-sm transition-all duration-300 supports-[backdrop-filter]:bg-white/60">
