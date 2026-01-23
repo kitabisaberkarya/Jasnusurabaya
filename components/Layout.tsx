@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, LogOut, LayoutDashboard, CheckCircle, Info, Check, AlertCircle, Home, Newspaper, Image as ImageIcon, Database, UserCircle2, X, ChevronDown, ChevronUp, PlayCircle } from 'lucide-react';
+import { User, LogOut, LayoutDashboard, CheckCircle, Info, Check, AlertCircle, Home, Newspaper, Image as ImageIcon, Database, UserCircle2, X, ChevronDown, ChevronUp, PlayCircle, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
@@ -214,7 +214,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
             {/* Right Group */}
             <div className="flex-1 flex justify-around">
-               <MobileNavItem to="/database" icon={Database} label="Data" />
+               <MobileNavItem to="/profile/sejarah" icon={BookOpen} label="Profil" />
                
                {/* Account / Login Logic */}
                {currentUser ? (

@@ -128,6 +128,8 @@ export interface AppContextType extends AppState {
   addNews: (news: Omit<NewsItem, 'id'>) => void;
   updateNews: (id: number, news: Partial<NewsItem>) => void;
   deleteNews: (id: number) => void;
+  addGalleryItem: (item: Omit<GalleryItem, 'id'>) => void;
+  deleteGalleryItem: (id: number) => void;
   addMediaPost: (post: Omit<MediaPost, 'id' | 'createdAt'>) => void;
   deleteMediaPost: (id: number) => void;
   updateSiteConfig: (config: SiteConfig) => void;

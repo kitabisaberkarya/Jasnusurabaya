@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost, AppContextType } from '../types';
+import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost, AppContextType, GalleryItem } from '../types';
 import { MOCK_INITIAL_STATE } from '../constants';
 import { supabase } from '../lib/supabase';
 
@@ -357,6 +357,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Gallery Functions
+  const addGalleryItem = async (item: Omit<GalleryItem, 'id'>) => {
+    try {
+      const { error } = await supabase.from('gallery').insert([{
+        type: item.type,
+        url: item.url,
+        caption: item.caption
+      }]);
+      if (error) throw error;
+      fetchData(); // Refresh to get the new ID and items
+      showToast('Foto berhasil ditambahkan ke galeri', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast("Gagal menambahkan foto ke galeri", "error");
+    }
+  };
+
+  const deleteGalleryItem = async (id: number) => {
+    try {
+      const { error } = await supabase.from('gallery').delete().eq('id', id);
+      if (error) throw error;
+      setState(prev => ({ ...prev, gallery: prev.gallery.filter(g => g.id !== id) }));
+      showToast('Foto berhasil dihapus', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast("Gagal menghapus foto", "error");
+    }
+  };
+
   const addMediaPost = async (post: Omit<MediaPost, 'id' | 'createdAt'>) => {
     try {
       const { error } = await supabase.from('media_posts').insert([{
@@ -432,7 +461,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, deleteMember, resetMemberPassword, createSession, toggleSession, markAttendance, addNews, updateNews, deleteNews, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, restoreData, showToast, removeToast, isLoading }}>
+    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, deleteMember, resetMemberPassword, createSession, toggleSession, markAttendance, addNews, updateNews, deleteNews, addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, restoreData, showToast, removeToast, isLoading }}>
       {children}
     </AppContext.Provider>
   );

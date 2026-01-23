@@ -16,11 +16,13 @@ import * as XLSX from 'xlsx';
 export const AdminDashboard: React.FC = () => {
   const { 
     users, registrations, approveMember, rejectMember, deleteMember, resetMemberPassword, attendanceSessions, attendanceRecords, 
-    createSession, toggleSession, news, gallery, mediaPosts, addNews, updateNews, deleteNews, addMediaPost, deleteMediaPost, showToast, currentUser, logout, 
+    createSession, toggleSession, news, gallery, mediaPosts, addNews, updateNews, deleteNews, 
+    addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, 
+    showToast, currentUser, logout, 
     siteConfig, updateSiteConfig, restoreData, profilePages, updateProfilePage, ...fullState 
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'members' | 'attendance' | 'news' | 'media' | 'recap' | 'settings' | 'backup' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'members' | 'attendance' | 'news' | 'gallery' | 'media' | 'recap' | 'settings' | 'backup' | 'profile'>('overview');
   const [newSessionName, setNewSessionName] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
@@ -33,6 +35,10 @@ export const AdminDashboard: React.FC = () => {
   // News Form State
   const [newsForm, setNewsForm] = useState({ title: '', excerpt: '', content: '' });
   const [editingNewsId, setEditingNewsId] = useState<number | null>(null);
+
+  // Gallery Form State
+  const [galleryForm, setGalleryForm] = useState({ imageUrl: '', caption: '' });
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // Media Form State
   const [mediaForm, setMediaForm] = useState({ type: 'youtube' as 'youtube' | 'instagram', url: '', caption: '' });
@@ -165,6 +171,39 @@ export const AdminDashboard: React.FC = () => {
       if (editingNewsId === id) {
         handleCancelEditNews();
       }
+    }
+  };
+
+  // Gallery Handlers
+  const handleGallerySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!galleryForm.imageUrl) {
+      showToast("Silakan pilih gambar terlebih dahulu", "error");
+      return;
+    }
+    addGalleryItem({
+      type: 'image',
+      url: galleryForm.imageUrl,
+      caption: galleryForm.caption
+    });
+    setGalleryForm({ imageUrl: '', caption: '' });
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
+  };
+
+  const handleGalleryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        showToast("Ukuran gambar terlalu besar (Maks 2MB)", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+           setGalleryForm(prev => ({ ...prev, imageUrl: reader.result as string }));
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -490,9 +529,10 @@ export const AdminDashboard: React.FC = () => {
                {[
                  { id: 'overview', icon: BarChart2, label: 'Dashboard', badge: null },
                  { id: 'approval', icon: UserCheck, label: 'Approval Anggota', badge: pendingCount, badgeColor: 'bg-[#00c0ef]' },
-                 { id: 'members', icon: Users, label: 'Data Anggota', badge: null }, // New Menu
+                 { id: 'members', icon: Users, label: 'Data Anggota', badge: null }, 
                  { id: 'profile', icon: UserIcon, label: 'Manajemen Profil', badge: null },
                  { id: 'media', icon: PlayCircle, label: 'Manajemen Media', badge: null },
+                 { id: 'gallery', icon: ImageIcon, label: 'Manajemen Galeri', badge: null }, // NEW ITEM
                  { id: 'attendance', icon: Calendar, label: 'Absensi Majelis', badge: null },
                  { id: 'recap', icon: FileSpreadsheet, label: 'Rekapitulasi', badge: null },
                  { id: 'news', icon: FileText, label: 'Manajemen Berita', badge: null },
@@ -535,6 +575,7 @@ export const AdminDashboard: React.FC = () => {
                   {activeTab === 'members' && 'Data Anggota'}
                   {activeTab === 'profile' && 'Manajemen Profil Organisasi'}
                   {activeTab === 'media' && 'Manajemen Media & Video'}
+                  {activeTab === 'gallery' && 'Manajemen Galeri Foto'}
                   {activeTab === 'attendance' && 'Absensi Majelis'}
                   {activeTab === 'recap' && 'Rekapitulasi Laporan'}
                   {activeTab === 'news' && 'Manajemen Berita'}
@@ -887,6 +928,98 @@ export const AdminDashboard: React.FC = () => {
                        ))}
                        {mediaPosts.length === 0 && (
                           <div className="p-8 text-center text-gray-400">Belum ada data media.</div>
+                       )}
+                    </div>
+                 </div>
+               </div>
+            )}
+
+            {/* --- GALLERY MANAGEMENT TAB --- */}
+            {activeTab === 'gallery' && (
+               <div className="space-y-6">
+                 {/* Form Add Gallery */}
+                 <div className="bg-white border-t-[3px] border-[#605ca8] shadow-sm rounded-sm">
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                       <h3 className="text-lg font-normal text-[#333]">Upload Foto Galeri</h3>
+                    </div>
+                    <div className="p-4">
+                       <form onSubmit={handleGallerySubmit} className="space-y-4">
+                          <div className="flex flex-col md:flex-row gap-4">
+                             <div className="w-full md:w-1/3">
+                                <label className="block text-xs uppercase font-bold text-gray-500 mb-1">File Gambar</label>
+                                <div className="border-2 border-dashed border-gray-300 rounded-sm p-4 text-center hover:bg-gray-50 transition cursor-pointer relative" onClick={() => galleryInputRef.current?.click()}>
+                                   {galleryForm.imageUrl ? (
+                                      <img src={galleryForm.imageUrl} alt="Preview" className="max-h-40 mx-auto object-contain" />
+                                   ) : (
+                                      <div className="py-8 text-gray-400">
+                                         <ImageIcon size={32} className="mx-auto mb-2" />
+                                         <span className="text-xs">Klik untuk pilih foto</span>
+                                      </div>
+                                   )}
+                                   <input 
+                                      type="file" 
+                                      ref={galleryInputRef} 
+                                      onChange={handleGalleryImageUpload} 
+                                      accept="image/*" 
+                                      className="hidden" 
+                                   />
+                                </div>
+                             </div>
+                             <div className="w-full md:w-2/3 flex flex-col justify-between">
+                                <div>
+                                   <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Judul / Caption</label>
+                                   <input 
+                                      type="text" 
+                                      placeholder="Kegiatan majelis di..." 
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#605ca8] outline-none"
+                                      required
+                                      value={galleryForm.caption}
+                                      onChange={e => setGalleryForm({...galleryForm, caption: e.target.value})}
+                                   />
+                                </div>
+                                <div className="flex justify-end mt-4">
+                                   <button type="submit" className="bg-[#605ca8] hover:bg-[#4b478d] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2">
+                                      <Upload size={16} /> Upload Foto
+                                   </button>
+                                </div>
+                             </div>
+                          </div>
+                       </form>
+                    </div>
+                 </div>
+
+                 {/* List Gallery */}
+                 <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                       <h3 className="text-lg font-normal text-[#333]">Daftar Galeri</h3>
+                    </div>
+                    <div className="p-4">
+                       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                          {gallery.map(item => (
+                             <div key={item.id} className="group relative border border-gray-200 rounded-sm overflow-hidden shadow-sm hover:shadow-md transition">
+                                <div className="aspect-square bg-gray-100 overflow-hidden">
+                                   <img src={item.url} alt={item.caption} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" />
+                                </div>
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                                   <button 
+                                      onClick={() => deleteGalleryItem(item.id)}
+                                      className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 shadow-lg"
+                                      title="Hapus Foto"
+                                   >
+                                      <Trash2 size={16} />
+                                   </button>
+                                </div>
+                                <div className="p-2 text-xs text-gray-600 truncate bg-white border-t border-gray-100">
+                                   {item.caption}
+                                </div>
+                             </div>
+                          ))}
+                       </div>
+                       {gallery.length === 0 && (
+                          <div className="p-10 text-center text-gray-400 border-2 border-dashed border-gray-200 rounded">
+                             <ImageIcon size={48} className="mx-auto mb-2 opacity-20" />
+                             Belum ada foto di galeri.
+                          </div>
                        )}
                     </div>
                  </div>
