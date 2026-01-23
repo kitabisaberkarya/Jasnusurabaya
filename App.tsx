@@ -3,7 +3,7 @@ import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { Layout } from './components/Layout';
-import { Home, News, Gallery, Database, ProfileView, MediaPage } from './pages/PublicPages';
+import { Home, News, NewsDetail, Gallery, Database, ProfileView, MediaPage } from './pages/PublicPages';
 import { Login, Register } from './pages/AuthPages';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { MemberArea } from './pages/MemberArea';
@@ -30,6 +30,7 @@ const AppContent: React.FC = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/news" element={<News />} />
+        <Route path="/news/:id" element={<NewsDetail />} />
         <Route path="/gallery" element={<Gallery />} />
         <Route path="/media" element={<MediaPage />} />
         <Route path="/database" element={<Database />} />

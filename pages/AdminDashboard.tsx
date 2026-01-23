@@ -8,27 +8,31 @@ import {
   Undo, Redo, Strikethrough, Quote, Link as LinkIcon, Video, Plus,
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
-  User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3
+  User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone
 } from 'lucide-react';
-import { MemberStatus, AppState } from '../types';
+import { MemberStatus, AppState, NewsItem } from '../types';
 import * as XLSX from 'xlsx';
 
 export const AdminDashboard: React.FC = () => {
   const { 
-    users, registrations, approveMember, rejectMember, attendanceSessions, attendanceRecords, 
-    createSession, toggleSession, news, gallery, mediaPosts, addNews, addMediaPost, deleteMediaPost, showToast, currentUser, logout, 
+    users, registrations, approveMember, rejectMember, deleteMember, resetMemberPassword, attendanceSessions, attendanceRecords, 
+    createSession, toggleSession, news, gallery, mediaPosts, addNews, updateNews, deleteNews, addMediaPost, deleteMediaPost, showToast, currentUser, logout, 
     siteConfig, updateSiteConfig, restoreData, profilePages, updateProfilePage, ...fullState 
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'attendance' | 'news' | 'media' | 'recap' | 'settings' | 'backup' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'members' | 'attendance' | 'news' | 'media' | 'recap' | 'settings' | 'backup' | 'profile'>('overview');
   const [newSessionName, setNewSessionName] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
   // Recap State
   const [recapType, setRecapType] = useState<'attendance' | 'members'>('attendance');
   
+  // Member Management State
+  const [memberSearch, setMemberSearch] = useState('');
+
   // News Form State
   const [newsForm, setNewsForm] = useState({ title: '', excerpt: '', content: '' });
+  const [editingNewsId, setEditingNewsId] = useState<number | null>(null);
 
   // Media Form State
   const [mediaForm, setMediaForm] = useState({ type: 'youtube' as 'youtube' | 'instagram', url: '', caption: '' });
@@ -58,7 +62,8 @@ export const AdminDashboard: React.FC = () => {
     const defaultTitles: Record<string, string> = {
         'sejarah': 'Sejarah Jamiyah',
         'pengurus': 'Susunan Pengurus Pusat',
-        'korwil': 'Daftar Koordinator Wilayah'
+        'korwil': 'Daftar Koordinator Wilayah',
+        'amaliyah': 'Amaliyah & Wirid Rutin'
     };
     
     setProfileTitle(page ? page.title : defaultTitles[selectedProfileSlug] || '');
@@ -73,6 +78,9 @@ export const AdminDashboard: React.FC = () => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  
+  // Scroll to top of form
+  const formRef = useRef<HTMLDivElement>(null);
 
   // Sync Editor content on mount or reset
   useEffect(() => {
@@ -81,6 +89,7 @@ export const AdminDashboard: React.FC = () => {
           if (newsForm.content === '') {
             editorRef.current.innerHTML = '';
           } else if (editorRef.current.innerHTML === '') {
+            // Only set if we have content and editor is empty (prevent overwrite loop)
             editorRef.current.innerHTML = newsForm.content;
           }
       }
@@ -95,7 +104,7 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleAddNews = (e: React.FormEvent) => {
+  const handleNewsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     let thumbnail = "https://picsum.photos/800/600";
     if (editorRef.current) {
@@ -105,14 +114,71 @@ export const AdminDashboard: React.FC = () => {
       }
     }
 
-    addNews({
-      ...newsForm,
-      imageUrl: thumbnail,
-      date: new Date().toISOString().split('T')[0]
-    });
+    if (editingNewsId !== null) {
+      // Update existing news
+      updateNews(editingNewsId, {
+        title: newsForm.title,
+        excerpt: newsForm.excerpt,
+        content: newsForm.content,
+        imageUrl: thumbnail
+      });
+      setEditingNewsId(null);
+    } else {
+      // Add new news
+      addNews({
+        ...newsForm,
+        imageUrl: thumbnail,
+        date: new Date().toISOString().split('T')[0]
+      });
+    }
     
+    // Reset form
+    setNewsForm({ title: '', excerpt: '', content: '' });
+    setEditingNewsId(null);
+    if (editorRef.current) editorRef.current.innerHTML = '';
+  };
+
+  const handleEditNews = (newsItem: NewsItem) => {
+    setEditingNewsId(newsItem.id);
+    setNewsForm({
+      title: newsItem.title,
+      excerpt: newsItem.excerpt,
+      content: newsItem.content
+    });
+    // Manually update editor content
+    if (editorRef.current) {
+       editorRef.current.innerHTML = newsItem.content;
+    }
+    // Scroll to form
+    formRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleCancelEditNews = () => {
+    setEditingNewsId(null);
     setNewsForm({ title: '', excerpt: '', content: '' });
     if (editorRef.current) editorRef.current.innerHTML = '';
+  };
+
+  const handleDeleteNews = (id: number) => {
+    if (window.confirm("Apakah Anda yakin ingin menghapus berita ini?")) {
+      deleteNews(id);
+      if (editingNewsId === id) {
+        handleCancelEditNews();
+      }
+    }
+  };
+
+  // Member Management Handlers
+  const handleDeleteMember = (id: number, name: string) => {
+    if (window.confirm(`PERHATIAN: Apakah Anda yakin ingin menghapus anggota ${name}? Data kehadiran dan akun akan dihapus permanen.`)) {
+      deleteMember(id);
+    }
+  };
+
+  const handleResetPassword = (id: number, name: string) => {
+    if (window.confirm(`Reset password untuk ${name} menjadi '12345678'?`)) {
+      resetMemberPassword(id);
+    }
   };
 
   const handleAddMedia = (e: React.FormEvent) => {
@@ -342,9 +408,12 @@ export const AdminDashboard: React.FC = () => {
          data.push({
            "NIA": user.nia || '-',
            "Nama Lengkap": user.name,
-           "Kontak": `${user.email} / ${user.phone || '-'}`,
+           "Email": user.email,
+           "No HP": user.phone || '-',
+           "Alamat": user.address || '-',
            "Wilayah": user.wilayah || '-',
-           "Status": user.status === MemberStatus.ACTIVE ? 'Aktif' : 'Pending'
+           "Status": user.status === MemberStatus.ACTIVE ? 'Aktif' : 'Pending',
+           "Bergabung": user.joinedAt || '-'
          });
       });
     }
@@ -367,6 +436,13 @@ export const AdminDashboard: React.FC = () => {
   const pendingCount = registrations.length;
   const totalSessions = attendanceSessions.length;
   const totalNews = news.length;
+
+  const filteredMembers = users.filter(u => 
+      u.role === MemberStatus.ACTIVE as any || (u.role as any) === 'member'
+  ).filter(u => 
+      u.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+      (u.nia && u.nia.toLowerCase().includes(memberSearch.toLowerCase()))
+  );
 
   return (
     <div className="min-h-screen bg-[#ecf0f5] font-sans text-sm -m-4 sm:-m-6 lg:-m-8">
@@ -413,7 +489,8 @@ export const AdminDashboard: React.FC = () => {
             <ul className="space-y-0.5">
                {[
                  { id: 'overview', icon: BarChart2, label: 'Dashboard', badge: null },
-                 { id: 'approval', icon: Users, label: 'Approval Anggota', badge: pendingCount, badgeColor: 'bg-[#00c0ef]' },
+                 { id: 'approval', icon: UserCheck, label: 'Approval Anggota', badge: pendingCount, badgeColor: 'bg-[#00c0ef]' },
+                 { id: 'members', icon: Users, label: 'Data Anggota', badge: null }, // New Menu
                  { id: 'profile', icon: UserIcon, label: 'Manajemen Profil', badge: null },
                  { id: 'media', icon: PlayCircle, label: 'Manajemen Media', badge: null },
                  { id: 'attendance', icon: Calendar, label: 'Absensi Majelis', badge: null },
@@ -455,6 +532,7 @@ export const AdminDashboard: React.FC = () => {
                <h1 className="text-2xl font-normal text-[#333]">
                   {activeTab === 'overview' && 'Dashboard'}
                   {activeTab === 'approval' && 'Approval Anggota'}
+                  {activeTab === 'members' && 'Data Anggota'}
                   {activeTab === 'profile' && 'Manajemen Profil Organisasi'}
                   {activeTab === 'media' && 'Manajemen Media & Video'}
                   {activeTab === 'attendance' && 'Absensi Majelis'}
@@ -539,6 +617,7 @@ export const AdminDashboard: React.FC = () => {
                                        <td className="px-4 py-3">
                                           <div className="font-bold text-[#333]">{reg.name}</div>
                                           <div className="text-xs text-gray-500">NIK: {reg.nik}</div>
+                                          <div className="text-xs text-gray-500 mt-1 flex items-center gap-1"><MapPin size={10} /> {reg.address}</div>
                                        </td>
                                        <td className="px-4 py-3 text-sm">
                                           <div>{reg.email}</div>
@@ -565,13 +644,91 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
+            {/* --- NEW TAB: DATA ANGGOTA --- */}
+            {activeTab === 'members' && (
+               <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
+                  <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-center gap-4">
+                     <h3 className="text-lg font-normal text-[#333]">Data Anggota Aktif</h3>
+                     <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <input 
+                           type="text" 
+                           placeholder="Cari Nama / NIA..." 
+                           className="px-3 py-1.5 border border-gray-300 rounded-sm text-sm focus:outline-none focus:border-[#3c8dbc] w-full sm:w-64"
+                           value={memberSearch}
+                           onChange={(e) => setMemberSearch(e.target.value)}
+                        />
+                        <button className="bg-gray-100 p-2 rounded-sm border border-gray-300 text-gray-600">
+                           <Search size={16} />
+                        </button>
+                     </div>
+                  </div>
+                  <div className="p-0">
+                     {filteredMembers.length === 0 ? (
+                        <div className="p-10 text-center text-gray-500">
+                           Data anggota tidak ditemukan.
+                        </div>
+                     ) : (
+                        <div className="overflow-x-auto">
+                           <table className="w-full text-left border-collapse">
+                              <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
+                                 <tr>
+                                    <th className="px-4 py-3 border-b w-10">No</th>
+                                    <th className="px-4 py-3 border-b">Identitas Anggota</th>
+                                    <th className="px-4 py-3 border-b">Kontak & Alamat</th>
+                                    <th className="px-4 py-3 border-b">Wilayah</th>
+                                    <th className="px-4 py-3 border-b text-right w-40">Aksi</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {filteredMembers.map((member, idx) => (
+                                    <tr key={member.id} className="hover:bg-gray-50 border-b last:border-0">
+                                       <td className="px-4 py-3 text-gray-500 text-center">{idx + 1}</td>
+                                       <td className="px-4 py-3">
+                                          <div className="font-bold text-[#333]">{member.name}</div>
+                                          <div className="text-xs text-[#3c8dbc] font-mono bg-blue-50 inline-block px-1 rounded mt-1">NIA: {member.nia}</div>
+                                       </td>
+                                       <td className="px-4 py-3 text-sm">
+                                          <div className="flex items-center gap-1 text-gray-600"><Phone size={12} /> {member.phone || '-'}</div>
+                                          <div className="text-xs text-gray-500 mt-1 max-w-xs">{member.address || '-'}</div>
+                                       </td>
+                                       <td className="px-4 py-3 text-sm">
+                                          <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs border border-gray-200">{member.wilayah}</span>
+                                       </td>
+                                       <td className="px-4 py-3 text-right">
+                                          <div className="flex justify-end gap-2">
+                                             <button 
+                                                onClick={() => handleResetPassword(member.id, member.name)} 
+                                                className="bg-gray-100 hover:bg-gray-200 text-gray-600 p-1.5 rounded-sm border border-gray-300 transition"
+                                                title="Reset Password (12345678)"
+                                             >
+                                                <Key size={14} />
+                                             </button>
+                                             <button 
+                                                onClick={() => handleDeleteMember(member.id, member.name)} 
+                                                className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-sm border border-red-200 transition"
+                                                title="Hapus Anggota Permanen"
+                                             >
+                                                <Trash2 size={14} />
+                                             </button>
+                                          </div>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     )}
+                  </div>
+               </div>
+            )}
+
             {activeTab === 'profile' && (
                <div className="space-y-6">
                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h3 className="text-lg font-normal text-[#333]">Edit Menu & Sub-Menu Profil</h3>
                         <div className="flex gap-2">
-                            {['sejarah', 'pengurus', 'korwil'].map(slug => (
+                            {['sejarah', 'pengurus', 'korwil', 'amaliyah'].map(slug => (
                                 <button
                                    key={slug}
                                    onClick={() => setSelectedProfileSlug(slug)}
@@ -581,7 +738,7 @@ export const AdminDashboard: React.FC = () => {
                                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                    }`}
                                 >
-                                   {slug === 'sejarah' ? 'Sejarah' : slug === 'pengurus' ? 'Pengurus' : 'Daftar Korwil'}
+                                   {slug === 'sejarah' ? 'Sejarah' : slug === 'pengurus' ? 'Pengurus' : slug === 'korwil' ? 'Daftar Korwil' : 'Amaliyah'}
                                 </button>
                             ))}
                         </div>
@@ -601,7 +758,7 @@ export const AdminDashboard: React.FC = () => {
                                  placeholder="Contoh: Sejarah Berdirinya JASNU"
                               />
                           </div>
-                          <p className="text-[10px] text-gray-400 mt-1">* Judul ini akan muncul sebagai heading utama di halaman {selectedProfileSlug === 'sejarah' ? 'Sejarah' : selectedProfileSlug === 'pengurus' ? 'Susunan Pengurus' : 'Daftar Korwil'}.</p>
+                          <p className="text-[10px] text-gray-400 mt-1">* Judul ini akan muncul sebagai heading utama di halaman {selectedProfileSlug === 'sejarah' ? 'Sejarah' : selectedProfileSlug === 'pengurus' ? 'Susunan Pengurus' : selectedProfileSlug === 'korwil' ? 'Daftar Korwil' : 'Amaliyah'}.</p>
                        </div>
 
                        <div className="border border-gray-300 rounded-sm">
@@ -715,7 +872,7 @@ export const AdminDashboard: React.FC = () => {
                                      {post.type.toUpperCase()}
                                   </span>
                                   <span className="text-xs text-gray-500">{post.createdAt}</span>
-                               </div>
+                                </div>
                                <h4 className="font-bold text-gray-800">{post.caption}</h4>
                                <a href={post.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline truncate block max-w-md">{post.url}</a>
                             </div>
@@ -736,7 +893,6 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {/* Other tabs remain unchanged... (attendance, news, recap, settings, backup) */}
             {/* --- ATTENDANCE TAB --- */}
             {activeTab === 'attendance' && (
                <div className="space-y-6">
@@ -807,12 +963,17 @@ export const AdminDashboard: React.FC = () => {
             {activeTab === 'news' && (
                <div className="space-y-6">
                  {/* Write News Box */}
-                 <div className="bg-white border-t-[3px] border-[#dd4b39] shadow-sm rounded-sm">
-                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                       <h3 className="text-lg font-normal text-[#333]">Tulis Berita Baru</h3>
+                 <div ref={formRef} className={`bg-white border-t-[3px] ${editingNewsId ? 'border-[#f39c12]' : 'border-[#dd4b39]'} shadow-sm rounded-sm`}>
+                    <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
+                       <h3 className="text-lg font-normal text-[#333]">{editingNewsId ? 'Edit Berita' : 'Tulis Berita Baru'}</h3>
+                       {editingNewsId && (
+                           <button onClick={handleCancelEditNews} className="text-gray-500 hover:text-gray-700 text-xs flex items-center gap-1">
+                               <X size={14} /> Batal Edit
+                           </button>
+                       )}
                     </div>
                     <div className="p-4">
-                       <form onSubmit={handleAddNews} className="space-y-4">
+                       <form onSubmit={handleNewsSubmit} className="space-y-4">
                           <input 
                             type="text" 
                             placeholder="Judul Berita" 
@@ -854,164 +1015,255 @@ export const AdminDashboard: React.FC = () => {
                              value={newsForm.excerpt}
                              onChange={e => setNewsForm({...newsForm, excerpt: e.target.value})}
                           ></textarea>
-                          <div className="flex justify-end">
-                             <button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-6 py-2 rounded-sm font-bold shadow-sm">
-                                Publish Berita
+                          <div className="flex justify-end gap-2">
+                             {editingNewsId && (
+                                <button type="button" onClick={handleCancelEditNews} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-sm font-bold shadow-sm">
+                                   Batal
+                                </button>
+                             )}
+                             <button type="submit" className={`${editingNewsId ? 'bg-[#f39c12] hover:bg-[#e08e0b]' : 'bg-[#3c8dbc] hover:bg-[#367fa9]'} text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2`}>
+                                {editingNewsId ? <><Save size={16} /> Simpan Perubahan</> : 'Publish Berita'}
                              </button>
                           </div>
                        </form>
                     </div>
                  </div>
-                 {/* List News Box */}
-                 <div className="bg-white border-t-[3px] border-[#d2d6de] shadow-sm rounded-sm">
+
+                 {/* List News - Sekarang dengan tombol Edit dan Delete */}
+                 <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
                        <h3 className="text-lg font-normal text-[#333]">Daftar Berita</h3>
                     </div>
                     <div className="p-0">
-                       {news.map(n => (
-                         <div key={n.id} className="p-4 border-b last:border-0 hover:bg-gray-50 flex gap-4">
-                            <img src={n.imageUrl} className="w-20 h-20 object-cover border border-gray-200" alt="thumb" />
-                            <div>
-                               <h4 className="font-bold text-[#3c8dbc] text-md">{n.title}</h4>
-                               <p className="text-sm text-gray-600 mt-1 line-clamp-2">{n.excerpt}</p>
-                               <p className="text-xs text-gray-400 mt-2 flex items-center gap-1"><Calendar size={10} /> {n.date}</p>
-                            </div>
-                         </div>
-                       ))}
+                       <table className="w-full text-left">
+                          <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
+                             <tr>
+                                <th className="px-4 py-3 border-b">Berita</th>
+                                <th className="px-4 py-3 border-b w-48">Tanggal</th>
+                                <th className="px-4 py-3 border-b text-right w-32">Aksi</th>
+                             </tr>
+                          </thead>
+                          <tbody>
+                             {news.map(item => (
+                                <tr key={item.id} className="hover:bg-gray-50 border-b last:border-0 group">
+                                   <td className="px-4 py-3">
+                                      <div className="flex gap-4">
+                                         <img src={item.imageUrl} alt="" className="w-16 h-16 object-cover rounded shadow-sm" />
+                                         <div>
+                                            <h4 className="font-bold text-[#333] line-clamp-1">{item.title}</h4>
+                                            <p className="text-xs text-gray-500 line-clamp-2 mt-1">{item.excerpt}</p>
+                                         </div>
+                                      </div>
+                                   </td>
+                                   <td className="px-4 py-3 text-sm text-gray-600">
+                                      <div className="flex items-center gap-2">
+                                         <Calendar size={14} /> {item.date}
+                                      </div>
+                                   </td>
+                                   <td className="px-4 py-3 text-right">
+                                      <div className="flex justify-end gap-2">
+                                         <button 
+                                            onClick={() => handleEditNews(item)}
+                                            className="bg-[#f39c12] hover:bg-[#db8b0b] text-white p-2 rounded-sm shadow-sm transition"
+                                            title="Edit Berita"
+                                         >
+                                            <Edit3 size={16} />
+                                         </button>
+                                         <button 
+                                            onClick={() => handleDeleteNews(item.id)}
+                                            className="bg-[#dd4b39] hover:bg-[#c23321] text-white p-2 rounded-sm shadow-sm transition"
+                                            title="Hapus Berita"
+                                         >
+                                            <Trash2 size={16} />
+                                         </button>
+                                      </div>
+                                   </td>
+                                </tr>
+                             ))}
+                          </tbody>
+                       </table>
+                       {news.length === 0 && (
+                          <div className="p-8 text-center text-gray-400">Belum ada berita yang dipublish.</div>
+                       )}
                     </div>
                  </div>
                </div>
             )}
 
             {activeTab === 'recap' && (
-               <div className="bg-white border-t-[3px] border-[#605ca8] shadow-sm rounded-sm">
-                  <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center flex-wrap gap-2">
-                     <h3 className="text-lg font-normal text-[#333]">Rekapitulasi Laporan</h3>
-                     <div className="flex gap-2">
-                        <div className="flex rounded-sm overflow-hidden border border-gray-300">
-                           <button onClick={() => setRecapType('attendance')} className={`px-3 py-1 text-sm ${recapType === 'attendance' ? 'bg-[#605ca8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>Absensi</button>
-                           <button onClick={() => setRecapType('members')} className={`px-3 py-1 text-sm ${recapType === 'members' ? 'bg-[#605ca8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>Anggota</button>
-                        </div>
-                        <button onClick={downloadReport} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-3 py-1 rounded-sm text-sm font-bold shadow-sm flex items-center gap-1"><Download size={14} /> Excel (.xlsx)</button>
+               <div className="space-y-6">
+                  <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                        <h3 className="text-lg font-normal text-[#333]">Laporan Rekapitulasi</h3>
                      </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                         <thead className="bg-[#f9fafc] text-[#333]">
-                            <tr>
-                               {recapType === 'attendance' ? (
-                                  <>
-                                     <th className="px-4 py-3 border-b font-bold text-sm">Tanggal</th>
-                                     <th className="px-4 py-3 border-b font-bold text-sm">Kegiatan</th>
-                                     <th className="px-4 py-3 border-b font-bold text-sm">Nama Anggota</th>
-                                     <th className="px-4 py-3 border-b font-bold text-sm">NIA</th>
-                                     <th className="px-4 py-3 border-b font-bold text-sm">Wilayah</th>
-                                  </>
-                               ) : (
-                                  <>
-                                     <th className="px-4 py-3 border-b font-bold text-sm">NIA</th>
-                                     <th className="px-4 py-3 border-b font-bold text-sm">Nama Lengkap</th>
-                                     <th className="px-4 py-3 border-b font-bold text-sm">Kontak</th>
-                                     <th className="px-4 py-3 border-b font-bold text-sm">Wilayah</th>
-                                     <th className="px-4 py-3 border-b font-bold text-sm">Status</th>
-                                  </>
-                               )}
-                            </tr>
-                         </thead>
-                         <tbody>
-                            {recapType === 'attendance' ? (
-                               attendanceSessions.flatMap(session => 
-                                  session.attendees.map(userId => {
-                                     const user = users.find(u => u.id === userId);
-                                     return { session, user };
-                                  })
-                               ).map((item, idx) => (
-                                  item.user ? (
-                                     <tr key={`${item.session.id}-${item.user.id}-${idx}`} className="hover:bg-gray-50 border-b last:border-0 text-sm text-[#333]">
-                                        <td className="px-4 py-2">{item.session.date}</td>
-                                        <td className="px-4 py-2">{item.session.name}</td>
-                                        <td className="px-4 py-2 font-bold">{item.user.name}</td>
-                                        <td className="px-4 py-2 font-mono text-xs">{item.user.nia}</td>
-                                        <td className="px-4 py-2">{item.user.wilayah}</td>
-                                     </tr>
-                                  ) : null
-                               ))
-                            ) : (
-                               users.filter(u => u.role !== 'admin').map((user) => (
-                                  <tr key={user.id} className="hover:bg-gray-50 border-b last:border-0 text-sm text-[#333]">
-                                     <td className="px-4 py-2 font-mono text-xs font-bold">{user.nia || '-'}</td>
-                                     <td className="px-4 py-2 font-bold">{user.name}</td>
-                                     <td className="px-4 py-2">
-                                        <div className="flex flex-col text-xs"><span>{user.email}</span><span className="text-gray-500">{user.phone}</span></div>
-                                     </td>
-                                     <td className="px-4 py-2">{user.wilayah}</td>
-                                     <td className="px-4 py-2"><span className={`px-2 py-0.5 rounded text-xs font-bold text-white ${user.status === MemberStatus.ACTIVE ? 'bg-[#00a65a]' : 'bg-[#f39c12]'}`}>{user.status === MemberStatus.ACTIVE ? 'Aktif' : 'Pending'}</span></td>
-                                  </tr>
-                               ))
-                            )}
-                         </tbody>
-                      </table>
+                     <div className="p-4">
+                        <div className="flex items-center gap-4 mb-4">
+                           <div className="flex-1">
+                              <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Jenis Laporan</label>
+                              <select 
+                                 className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#00c0ef] outline-none"
+                                 value={recapType}
+                                 onChange={(e) => setRecapType(e.target.value as any)}
+                              >
+                                 <option value="attendance">Absensi Kehadiran</option>
+                                 <option value="members">Data Anggota</option>
+                              </select>
+                           </div>
+                           <div className="flex-none self-end">
+                              <button 
+                                 onClick={downloadReport}
+                                 className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"
+                              >
+                                 <FileSpreadsheet size={16} /> Download Excel
+                              </button>
+                           </div>
+                        </div>
+                        <div className="bg-[#f9fafc] p-4 rounded border border-gray-200 text-sm text-gray-600">
+                           <p className="flex items-center gap-2 mb-2">
+                              <AlertTriangle size={16} className="text-[#f39c12]" /> 
+                              <strong>Info:</strong>
+                           </p>
+                           {recapType === 'attendance' 
+                              ? "Laporan ini berisi rekap kehadiran anggota per sesi kegiatan. Kolom mencakup: Tanggal, Nama Kegiatan, Nama Anggota, NIA, dan Wilayah."
+                              : "Laporan ini berisi database lengkap seluruh anggota yang terdaftar (Aktif & Pending). Kolom mencakup: NIA, Nama, Kontak, Alamat, Wilayah, dan Status."
+                           }
+                        </div>
+                     </div>
                   </div>
                </div>
             )}
 
             {activeTab === 'settings' && (
-              <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
-                 <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Identitas Website</h3></div>
-                 <div className="p-6">
-                    <form onSubmit={handleSaveConfig} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                       <div className="space-y-4">
-                          <div><label className="block text-sm font-bold text-gray-700 mb-1">Nama Aplikasi</label><input type="text" value={configForm.appName} onChange={(e) => setConfigForm({...configForm, appName: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" /></div>
-                          <div><label className="block text-sm font-bold text-gray-700 mb-1">Nama Organisasi / Sub-Title</label><input type="text" value={configForm.orgName} onChange={(e) => setConfigForm({...configForm, orgName: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" /></div>
-                          <div><label className="block text-sm font-bold text-gray-700 mb-1">Deskripsi Singkat</label><textarea value={configForm.description} onChange={(e) => setConfigForm({...configForm, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-24 resize-none" /></div>
-                          <div><label className="block text-sm font-bold text-gray-700 mb-1">Alamat Lengkap</label><input type="text" value={configForm.address} onChange={(e) => setConfigForm({...configForm, address: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" /></div>
-                          <div className="grid grid-cols-2 gap-4">
-                             <div><label className="block text-sm font-bold text-gray-700 mb-1">Email</label><input type="email" value={configForm.email} onChange={(e) => setConfigForm({...configForm, email: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" /></div>
-                             <div><label className="block text-sm font-bold text-gray-700 mb-1">No. Telepon</label><input type="text" value={configForm.phone} onChange={(e) => setConfigForm({...configForm, phone: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" /></div>
-                          </div>
-                       </div>
-                       <div className="space-y-4">
-                          <label className="block text-sm font-bold text-gray-700 mb-1">Logo Website</label>
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition">
-                             {configForm.logoUrl ? <img src={configForm.logoUrl} alt="Logo Preview" className="h-32 object-contain mb-4" /> : <div className="h-32 w-32 bg-gray-200 rounded-full flex items-center justify-center mb-4"><ImageIcon className="text-gray-400" size={40} /></div>}
-                             <button type="button" onClick={() => logoInputRef.current?.click()} className="px-4 py-2 bg-white border border-gray-300 rounded-sm text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><Upload size={16} /> Upload Logo Baru</button>
-                             <input type="file" ref={logoInputRef} onChange={handleLogoUpload} accept="image/*" className="hidden" />
-                             <p className="text-xs text-gray-500 mt-2">Format PNG/JPG, Maksimal 2MB</p>
-                          </div>
-                       </div>
-                       <div className="md:col-span-2 pt-4 border-t border-gray-200 flex justify-end"><button type="submit" className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2.5 rounded-sm font-bold shadow-sm flex items-center gap-2"><Save size={18} /> Simpan Pengaturan</button></div>
-                    </form>
-                 </div>
-              </div>
-            )}
-
-            {activeTab === 'backup' && (
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white border-t-[3px] border-[#00a65a] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Backup Database</h3></div>
-                     <div className="p-6">
-                        <div className="flex items-center gap-4 mb-4"><div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600"><Database size={32} /></div><div><h4 className="font-bold text-gray-700">Unduh Data Sistem</h4><p className="text-sm text-gray-500">Simpan seluruh data ke dalam file JSON aman.</p></div></div>
-                        <button onClick={handleBackup} className="w-full bg-[#00a65a] hover:bg-[#008d4c] text-white py-2.5 rounded-sm font-bold shadow-sm flex items-center justify-center gap-2"><Download size={18} /> Download Backup (.json)</button>
+               <div className="space-y-6">
+                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                        <h3 className="text-lg font-normal text-[#333]">Pengaturan Aplikasi</h3>
                      </div>
-                  </div>
-                  <div className="bg-white border-t-[3px] border-[#dd4b39] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Restore Database</h3></div>
-                     <div className="p-6">
-                        <div className="flex items-center gap-4 mb-4"><div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600"><RefreshCcw size={32} /></div><div><h4 className="font-bold text-gray-700">Pulihkan Data Sistem</h4><p className="text-sm text-gray-500">Upload file backup JSON untuk mengembalikan data sistem.</p></div></div>
-                        <div className="bg-red-50 p-3 rounded text-xs text-red-700 mb-6 border border-red-200 flex items-start gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /><p><strong>PERINGATAN:</strong> Tindakan ini akan <u>menghapus seluruh data saat ini</u>.</p></div>
-                        <input type="file" accept=".json" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-                        <button onClick={handleRestoreClick} className="w-full bg-[#dd4b39] hover:bg-[#d73925] text-white py-2.5 rounded-sm font-bold shadow-sm flex items-center justify-center gap-2"><Upload size={18} /> Upload File Restore</button>
+                     <div className="p-4">
+                        <form onSubmit={handleSaveConfig} className="space-y-4">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Aplikasi</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
+                                    value={configForm.appName}
+                                    onChange={(e) => setConfigForm({...configForm, appName: e.target.value})}
+                                 />
+                              </div>
+                              <div>
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Organisasi</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
+                                    value={configForm.orgName}
+                                    onChange={(e) => setConfigForm({...configForm, orgName: e.target.value})}
+                                 />
+                              </div>
+                              <div className="md:col-span-2">
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Deskripsi Singkat</label>
+                                 <textarea 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-20"
+                                    value={configForm.description}
+                                    onChange={(e) => setConfigForm({...configForm, description: e.target.value})}
+                                 ></textarea>
+                              </div>
+                              <div>
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Email Kontak</label>
+                                 <input 
+                                    type="email" 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
+                                    value={configForm.email}
+                                    onChange={(e) => setConfigForm({...configForm, email: e.target.value})}
+                                 />
+                              </div>
+                              <div>
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nomor Telepon</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
+                                    value={configForm.phone}
+                                    onChange={(e) => setConfigForm({...configForm, phone: e.target.value})}
+                                 />
+                              </div>
+                              <div className="md:col-span-2">
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Alamat Lengkap</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none"
+                                    value={configForm.address}
+                                    onChange={(e) => setConfigForm({...configForm, address: e.target.value})}
+                                 />
+                              </div>
+                              <div className="md:col-span-2">
+                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Upload Logo Baru</label>
+                                 <div className="flex items-center gap-4">
+                                    <img src={configForm.logoUrl} alt="Preview" className="w-16 h-16 object-cover rounded-full border border-gray-200" />
+                                    <input 
+                                       type="file" 
+                                       accept="image/*"
+                                       ref={logoInputRef}
+                                       onChange={handleLogoUpload}
+                                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#3c8dbc] file:text-white hover:file:bg-[#367fa9]"
+                                    />
+                                 </div>
+                              </div>
+                           </div>
+                           <div className="flex justify-end pt-4 border-t border-gray-100">
+                              <button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2">
+                                 <Save size={16} /> Simpan Pengaturan
+                              </button>
+                           </div>
+                        </form>
                      </div>
                   </div>
                </div>
             )}
+
+            {activeTab === 'backup' && (
+               <div className="space-y-6">
+                  <div className="bg-white border-t-[3px] border-[#f39c12] shadow-sm rounded-sm">
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                        <h3 className="text-lg font-normal text-[#333]">Backup & Restore Database</h3>
+                     </div>
+                     <div className="p-8">
+                        <div className="grid md:grid-cols-2 gap-8">
+                           <div className="border border-gray-200 rounded p-6 text-center hover:shadow-lg transition">
+                              <div className="w-16 h-16 bg-[#00a65a] rounded-full flex items-center justify-center mx-auto mb-4 text-white">
+                                 <Download size={32} />
+                              </div>
+                              <h4 className="font-bold text-lg mb-2">Backup Data</h4>
+                              <p className="text-gray-500 text-sm mb-6">Unduh seluruh data aplikasi (Anggota, Berita, Absensi) dalam format JSON.</p>
+                              <button onClick={handleBackup} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm inline-flex items-center gap-2">
+                                 Download Backup
+                              </button>
+                           </div>
+
+                           <div className="border border-gray-200 rounded p-6 text-center hover:shadow-lg transition">
+                              <div className="w-16 h-16 bg-[#dd4b39] rounded-full flex items-center justify-center mx-auto mb-4 text-white">
+                                 <Upload size={32} />
+                              </div>
+                              <h4 className="font-bold text-lg mb-2">Restore Data</h4>
+                              <p className="text-gray-500 text-sm mb-6">Kembalikan data dari file backup JSON. <span className="text-red-500 font-bold">Perhatian: Data saat ini akan ditimpa!</span></p>
+                              <input 
+                                 type="file" 
+                                 ref={fileInputRef} 
+                                 onChange={handleFileChange} 
+                                 accept=".json" 
+                                 className="hidden" 
+                              />
+                              <button onClick={handleRestoreClick} className="bg-[#dd4b39] hover:bg-[#c23321] text-white px-6 py-2 rounded-sm font-bold shadow-sm inline-flex items-center gap-2">
+                                 Upload File Backup
+                              </button>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            )}
+
          </div>
       </main>
-      
-      <footer className={`bg-white border-t border-[#d2d6de] px-6 py-4 text-xs text-[#444] transition-all duration-300 ${sidebarOpen ? 'ml-[230px]' : 'ml-[50px]'}`}>
-         <div className="float-right hidden sm:inline"><b>Version</b> 2.0</div>
-         <strong>Copyright &copy; {new Date().getFullYear()} <a href="#" className="text-[#3c8dbc]">{siteConfig.appName}</a>.</strong> All rights reserved.
-      </footer>
     </div>
   );
 };

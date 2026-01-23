@@ -20,6 +20,7 @@ export interface User {
   password?: string;
   wilayah?: string;
   phone?: string;
+  address?: string; // Added field
   joinedAt: string;
 }
 
@@ -111,4 +112,28 @@ export interface AppState {
   attendanceRecords: AttendanceRecord[];
   toasts: ToastMessage[];
   siteConfig: SiteConfig;
+}
+
+export interface AppContextType extends AppState {
+  login: (identifier: string, password: string) => Promise<User | null>;
+  logout: () => void;
+  register: (data: RegistrationInput) => void;
+  approveMember: (registrationId: number) => void;
+  rejectMember: (registrationId: number) => void;
+  deleteMember: (userId: number) => void;
+  resetMemberPassword: (userId: number) => void;
+  createSession: (name: string) => void;
+  toggleSession: (sessionId: number) => void;
+  markAttendance: (sessionId: number, userId: number, photoUrl: string, location: string) => Promise<boolean>;
+  addNews: (news: Omit<NewsItem, 'id'>) => void;
+  updateNews: (id: number, news: Partial<NewsItem>) => void;
+  deleteNews: (id: number) => void;
+  addMediaPost: (post: Omit<MediaPost, 'id' | 'createdAt'>) => void;
+  deleteMediaPost: (id: number) => void;
+  updateSiteConfig: (config: SiteConfig) => void;
+  updateProfilePage: (slug: string, title: string, content: string) => void;
+  restoreData: (data: AppState) => void;
+  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  removeToast: (id: number) => void;
+  isLoading: boolean;
 }

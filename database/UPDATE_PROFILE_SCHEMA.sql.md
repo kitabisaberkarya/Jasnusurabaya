@@ -1,19 +1,20 @@
+
 ```sql
 -- =================================================================
--- UPDATE SCHEMA - FITUR PROFIL (SEJARAH, PENGURUS, KORWIL)
+-- UPDATE SCHEMA - FITUR PROFIL (SEJARAH, PENGURUS, KORWIL, AMALIYAH)
 -- Description: Menambahkan tabel untuk halaman statis profil
 -- =================================================================
 
 -- 1. Tabel Profile Pages
 create table if not exists public.profile_pages (
-  slug text primary key, -- 'sejarah', 'pengurus', 'korwil'
+  slug text primary key, -- 'sejarah', 'pengurus', 'korwil', 'amaliyah'
   title text not null,
   content text, -- HTML Content
   updated_at text default to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
 );
 
 -- 2. Seeding Data Awal (Default Content)
--- Menggunakan ON CONFLICT DO UPDATE agar konten korwil ter-update jika script dijalankan ulang
+-- Menggunakan ON CONFLICT DO UPDATE agar konten korwil/amaliyah ter-update jika script dijalankan ulang
 insert into public.profile_pages (slug, title, content)
 values 
 ('sejarah', 'Sejarah Jamiyah', '<h2>Sejarah Berdirinya JSN</h2><p>Isi sejarah singkat organisasi disini...</p>'),
@@ -41,7 +42,14 @@ values
   <li>Tambaksari</li>
   <li>Panjang Jiwo</li>
   <li>Bakung</li>
-</ol>')
+</ol>'),
+('amaliyah', 'Amaliyah & Wirid Rutin JSN', '<h2>Amaliyah Rutin</h2>
+<p>Berikut adalah susunan wirid dan sholawat yang dibaca rutin:</p>
+<ul>
+  <li>Pembacaan Sholawat Nariyah 4444x</li>
+  <li>Rotib Al-Haddad</li>
+  <li>Tahlil & Yasin</li>
+</ul>')
 on conflict (slug) do update 
 set content = excluded.content, title = excluded.title;
 

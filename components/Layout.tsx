@@ -134,6 +134,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   <Link to="/profile/korwil" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">
                     Daftar Korwil
                   </Link>
+                   <Link to="/profile/amaliyah" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition border-t border-neutral-100 mt-1">
+                    Amaliyah Rutin
+                  </Link>
                 </div>
               </div>
 
@@ -260,6 +263,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <ul className="space-y-3 text-primary-100 text-sm">
                 <li><Link to="/profile/sejarah" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Sejarah JASNU</Link></li>
                 <li><Link to="/profile/pengurus" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Susunan Pengurus</Link></li>
+                <li><Link to="/profile/amaliyah" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Amaliyah Rutin</Link></li>
                 <li><Link to="/media" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Video & Media</Link></li>
                 <li><Link to="/gallery" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Dokumentasi</Link></li>
                 <li><Link to="/database" className="hover:text-white transition flex items-center gap-2"><div className="w-1.5 h-1.5 bg-secondary-500 rounded-full"></div>Cek Keanggotaan</Link></li>

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube } from 'lucide-react';
+import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube, ArrowLeft } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { MemberStatus } from '../types';
@@ -166,9 +166,9 @@ export const Home: React.FC = () => {
                 <div className="p-8 flex flex-col flex-grow">
                   <h3 className="font-serif text-2xl font-bold text-neutral-900 mb-3 line-clamp-2 group-hover:text-primary-700 transition-colors">{item.title}</h3>
                   <p className="text-neutral-600 text-sm line-clamp-3 mb-6 flex-grow leading-relaxed">{item.excerpt}</p>
-                  <span className="text-secondary-600 text-sm font-bold flex items-center gap-2 group/link cursor-pointer">
+                  <Link to={`/news/${item.id}`} className="text-secondary-600 text-sm font-bold flex items-center gap-2 group/link cursor-pointer hover:text-secondary-700">
                     Baca Selengkapnya <ArrowRight size={16} className="group-hover/link:translate-x-1 transition-transform" />
-                  </span>
+                  </Link>
                 </div>
               </div>
             ))}
@@ -198,12 +198,70 @@ export const News: React.FC = () => {
               </div>
               <h2 className="text-2xl font-bold font-serif text-neutral-900 mb-4">{item.title}</h2>
               <p className="text-neutral-600 mb-6 flex-grow leading-relaxed">{item.excerpt}</p>
-              <button className="text-primary-700 font-bold self-start hover:text-primary-900 flex items-center gap-2">
+              <Link to={`/news/${item.id}`} className="text-primary-700 font-bold self-start hover:text-primary-900 flex items-center gap-2">
                 Baca Selengkapnya <ArrowRight size={18} />
-              </button>
+              </Link>
             </div>
           </article>
         ))}
+      </div>
+    </motion.div>
+  );
+};
+
+export const NewsDetail: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const { news } = useApp();
+  const item = news.find(n => n.id === Number(id));
+
+  if (!item) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <h2 className="text-2xl font-bold text-neutral-800">Berita tidak ditemukan</h2>
+        <Link to="/news" className="mt-4 text-primary-600 hover:text-primary-700 flex items-center gap-2">
+          <ArrowLeft size={16} /> Kembali ke Berita
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-16 bg-white">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Link to="/news" className="inline-flex items-center gap-2 text-neutral-500 hover:text-primary-600 mb-8 transition">
+          <ArrowLeft size={18} /> Kembali ke Daftar Berita
+        </Link>
+
+        <div className="text-center mb-8">
+          <span className="inline-block px-3 py-1 bg-secondary-50 text-secondary-600 text-xs font-bold rounded-full mb-4 tracking-wider uppercase">
+             Kabar JASNU
+          </span>
+          <h1 className="text-3xl md:text-5xl font-serif font-bold text-primary-900 leading-tight mb-6">
+            {item.title}
+          </h1>
+          <div className="flex items-center justify-center gap-4 text-neutral-500 text-sm">
+             <span className="flex items-center gap-1"><Calendar size={14} /> {item.date}</span>
+             <span className="w-1 h-1 bg-neutral-300 rounded-full"></span>
+             <span>Admin Redaksi</span>
+          </div>
+        </div>
+
+        <div className="rounded-3xl overflow-hidden shadow-xl mb-10">
+           <img src={item.imageUrl} alt={item.title} className="w-full h-auto object-cover max-h-[500px]" />
+        </div>
+
+        <div className="prose prose-lg prose-emerald max-w-none text-neutral-700 leading-relaxed">
+           <div dangerouslySetInnerHTML={{ __html: item.content }} />
+        </div>
+        
+        {/* Share / Navigation Footer */}
+        <div className="mt-12 pt-8 border-t border-neutral-100 flex justify-between items-center">
+           <span className="text-neutral-400 text-sm">Bagikan kabar ini:</span>
+           <div className="flex gap-2">
+              {/* Dummy share buttons */}
+              <button className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600 hover:bg-primary-50 hover:text-primary-600 transition"><Instagram size={16} /></button>
+           </div>
+        </div>
       </div>
     </motion.div>
   );
@@ -372,7 +430,8 @@ export const ProfileView: React.FC = () => {
   const titleMap: Record<string, string> = {
     'sejarah': 'Sejarah Jamiyah',
     'pengurus': 'Susunan Pengurus Pusat',
-    'korwil': 'Daftar Koordinator Wilayah (Korwil)'
+    'korwil': 'Daftar Koordinator Wilayah (Korwil)',
+    'amaliyah': 'Amaliyah & Wirid Rutin JSN'
   };
 
   const displayTitle = currentPage?.title || titleMap[slug || ''] || 'Profil';

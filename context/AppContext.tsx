@@ -1,30 +1,18 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost } from '../types';
+import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost, AppContextType } from '../types';
 import { MOCK_INITIAL_STATE } from '../constants';
 import { supabase } from '../lib/supabase';
 
-interface AppContextType extends AppState {
-  login: (identifier: string, password: string) => Promise<User | null>;
-  logout: () => void;
-  register: (data: RegistrationInput) => void;
-  approveMember: (registrationId: number) => void;
-  rejectMember: (registrationId: number) => void;
-  createSession: (name: string) => void;
-  toggleSession: (sessionId: number) => void;
-  markAttendance: (sessionId: number, userId: number, photoUrl: string, location: string) => Promise<boolean>;
-  addNews: (news: Omit<NewsItem, 'id'>) => void;
-  addMediaPost: (post: Omit<MediaPost, 'id' | 'createdAt'>) => void;
-  deleteMediaPost: (id: number) => void;
-  updateSiteConfig: (config: SiteConfig) => void;
-  updateProfilePage: (slug: string, title: string, content: string) => void;
-  restoreData: (data: AppState) => void;
-  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
-  removeToast: (id: number) => void;
-  isLoading: boolean;
-}
-
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(MOCK_INITIAL_STATE);
@@ -197,6 +185,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         password: candidate.password,
         wilayah: candidate.wilayah,
         phone: candidate.phone,
+        address: candidate.address, // Added Address
         joined_at: new Date().toISOString().split('T')[0]
       }]);
 
@@ -217,6 +206,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast('Permohonan anggota ditolak', 'info');
     } catch (error) {
       showToast("Gagal menolak member", "error");
+    }
+  };
+
+  const deleteMember = async (userId: number) => {
+    try {
+      // Delete attendance records first to maintain referential integrity if not cascading
+      await supabase.from('attendance_records').delete().eq('user_id', userId);
+      
+      const { error } = await supabase.from('users').delete().eq('id', userId);
+      if (error) throw error;
+      
+      setState(prev => ({ ...prev, users: prev.users.filter(u => u.id !== userId) }));
+      showToast("Data anggota berhasil dihapus permanen.", "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Gagal menghapus anggota", "error");
+    }
+  };
+
+  const resetMemberPassword = async (userId: number) => {
+    try {
+      const defaultPass = "12345678";
+      const { error } = await supabase.from('users').update({ password: defaultPass }).eq('id', userId);
+      if (error) throw error;
+      showToast(`Password berhasil direset menjadi: ${defaultPass}`, "success");
+    } catch (error) {
+       console.error(error);
+       showToast("Gagal mereset password", "error");
     }
   };
 
@@ -307,6 +324,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateNews = async (id: number, newsData: Partial<NewsItem>) => {
+    try {
+      const updates: any = {
+        title: newsData.title,
+        excerpt: newsData.excerpt,
+        content: newsData.content,
+      };
+      
+      if (newsData.imageUrl) {
+        updates.image_url = newsData.imageUrl;
+      }
+
+      const { error } = await supabase.from('news').update(updates).eq('id', id);
+      if (error) throw error;
+      
+      fetchData();
+      showToast('Berita berhasil diperbarui', 'success');
+    } catch (error) {
+      showToast("Gagal memperbarui berita", "error");
+    }
+  };
+
+  const deleteNews = async (id: number) => {
+    try {
+      const { error } = await supabase.from('news').delete().eq('id', id);
+      if (error) throw error;
+      setState(prev => ({ ...prev, news: prev.news.filter(n => n.id !== id) }));
+      showToast('Berita berhasil dihapus', 'success');
+    } catch (error) {
+      showToast("Gagal menghapus berita", "error");
+    }
+  };
+
   const addMediaPost = async (post: Omit<MediaPost, 'id' | 'createdAt'>) => {
     try {
       const { error } = await supabase.from('media_posts').insert([{
@@ -382,16 +432,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, createSession, toggleSession, markAttendance, addNews, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, restoreData, showToast, removeToast, isLoading }}>
+    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, deleteMember, resetMemberPassword, createSession, toggleSession, markAttendance, addNews, updateNews, deleteNews, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, restoreData, showToast, removeToast, isLoading }}>
       {children}
     </AppContext.Provider>
   );
-};
-
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
-  return context;
 };
