@@ -5,7 +5,7 @@ import {
   Users, Calendar, FileText, BarChart2, UserCheck, AlertCircle, ArrowUpRight, 
   ChevronRight, Image as ImageIcon, Check, X,
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered,
-  Undo, Redo, Strikethrough, Quote, Link as LinkIcon, Video, Plus,
+  Undo, Redo, Strikethrough, Quote, Link as LinkIcon, Video, Plus, Table,
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
   User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone
@@ -280,6 +280,54 @@ export const AdminDashboard: React.FC = () => {
         }
     }
     editorRef.current?.focus();
+  };
+
+  const handleInsertTable = () => {
+    // Modern Table Template with Tailwind CSS
+    const tableHtml = `
+      <div class="overflow-hidden my-6 rounded-xl shadow-lg border border-neutral-200">
+        <table class="w-full text-sm text-left border-collapse bg-white">
+          <thead class="text-xs text-white uppercase bg-gradient-to-r from-primary-700 to-primary-600">
+            <tr>
+              <th class="px-6 py-4 font-bold border-b border-white/10">Wilayah / Jabatan</th>
+              <th class="px-6 py-4 font-bold border-b border-white/10">Nama Koordinator</th>
+              <th class="px-6 py-4 font-bold border-b border-white/10">Kontak / Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="bg-white hover:bg-primary-50 transition-colors duration-200">
+              <td class="px-6 py-4 border-b border-neutral-100 font-medium text-gray-900">Korwil 1</td>
+              <td class="px-6 py-4 border-b border-neutral-100">Nama Pengurus</td>
+              <td class="px-6 py-4 border-b border-neutral-100">08xx-xxxx-xxxx</td>
+            </tr>
+            <tr class="bg-neutral-50 hover:bg-primary-50 transition-colors duration-200">
+              <td class="px-6 py-4 border-b border-neutral-100 font-medium text-gray-900">Korwil 2</td>
+              <td class="px-6 py-4 border-b border-neutral-100">Nama Pengurus</td>
+              <td class="px-6 py-4 border-b border-neutral-100">08xx-xxxx-xxxx</td>
+            </tr>
+             <tr class="bg-white hover:bg-primary-50 transition-colors duration-200">
+              <td class="px-6 py-4 border-b border-neutral-100 font-medium text-gray-900">Korwil 3</td>
+              <td class="px-6 py-4 border-b border-neutral-100">Nama Pengurus</td>
+              <td class="px-6 py-4 border-b border-neutral-100">08xx-xxxx-xxxx</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p><br/></p>
+    `;
+    
+    if (editorRef.current) {
+        editorRef.current.focus();
+        document.execCommand('insertHTML', false, tableHtml);
+        
+        // Sync state
+        const html = editorRef.current.innerHTML;
+        if (activeTab === 'news') {
+             setNewsForm(prev => ({ ...prev, content: html }));
+        } else if (activeTab === 'profile') {
+             setProfileContent(html);
+        }
+    }
   };
 
   const handleEditorImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -812,6 +860,9 @@ export const AdminDashboard: React.FC = () => {
                                 <button type="button" onClick={() => execCmd('insertOrderedList')} className="p-1 hover:bg-gray-200 rounded" title="Numbered List"><ListOrdered size={16} /></button>
                                 <div className="w-px h-5 bg-gray-300 mx-1"></div>
                                 <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Image"><ImageIcon size={16} /></button>
+                                <button type="button" onClick={handleInsertTable} className="p-1 hover:bg-gray-200 rounded flex items-center gap-1" title="Insert Modern Table">
+                                  <Table size={16} /> 
+                                </button>
                                 <input type="file" ref={imageInputRef} onChange={handleEditorImageUpload} accept="image/*" className="hidden" />
                              </div>
                              
@@ -1130,6 +1181,7 @@ export const AdminDashboard: React.FC = () => {
                                 <div className="w-px h-5 bg-gray-300 mx-1"></div>
                                 <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Image"><ImageIcon size={16} /></button>
                                 <button type="button" onClick={() => videoInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Video"><Video size={16} /></button>
+                                <button type="button" onClick={handleInsertTable} className="p-1 hover:bg-gray-200 rounded flex items-center gap-1" title="Insert Modern Table"><Table size={16} /></button>
                                 <button type="button" onClick={() => {const url = prompt("URL:"); if(url) execCmd('createLink', url);}} className="p-1 hover:bg-gray-200 rounded" title="Link"><LinkIcon size={16} /></button>
                                 <input type="file" ref={imageInputRef} onChange={handleEditorImageUpload} accept="image/*" className="hidden" />
                                 <input type="file" ref={videoInputRef} onChange={handleEditorVideoUpload} accept="video/*" className="hidden" />
