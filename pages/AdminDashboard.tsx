@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -341,7 +340,11 @@ export const AdminDashboard: React.FC = () => {
       reader.onloadend = () => {
         if (reader.result) {
           editorRef.current?.focus();
-          document.execCommand('insertImage', false, reader.result as string);
+          
+          // FIX: Insert HTML with explicit inline styles for responsiveness
+          const imgHtml = `<img src="${reader.result}" style="max-width: 100%; height: auto; border-radius: 0.5rem; margin-top: 1rem; margin-bottom: 1rem;" />`;
+          document.execCommand('insertHTML', false, imgHtml);
+          
           if (editorRef.current) {
              const html = editorRef.current.innerHTML;
              if (activeTab === 'news') {
@@ -370,7 +373,7 @@ export const AdminDashboard: React.FC = () => {
            editorRef.current?.focus();
            const videoHtml = `
              <div class="my-4">
-               <video controls class="max-w-full rounded-lg shadow-sm border border-neutral-200" style="max-height: 400px;">
+               <video controls class="max-w-full rounded-lg shadow-sm border border-neutral-200" style="max-height: 400px; width: 100%;">
                  <source src="${reader.result}" type="${file.type}">
                  Browser Anda tidak mendukung tag video.
                </video>
@@ -869,7 +872,7 @@ export const AdminDashboard: React.FC = () => {
                              <div 
                                 ref={editorRef}
                                 contentEditable
-                                className="min-h-[400px] p-4 outline-none prose max-w-none bg-white"
+                                className="min-h-[400px] p-4 outline-none prose max-w-none bg-white [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg"
                                 onInput={(e) => setProfileContent(e.currentTarget.innerHTML)}
                              ></div>
                        </div>
@@ -1189,7 +1192,7 @@ export const AdminDashboard: React.FC = () => {
                              <div 
                                 ref={editorRef}
                                 contentEditable
-                                className="min-h-[300px] p-4 outline-none prose max-w-none bg-white"
+                                className="min-h-[300px] p-4 outline-none prose max-w-none bg-white [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg"
                                 onInput={(e) => setNewsForm({...newsForm, content: e.currentTarget.innerHTML})}
                              ></div>
                           </div>
