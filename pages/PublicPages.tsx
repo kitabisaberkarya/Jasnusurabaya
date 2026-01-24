@@ -155,20 +155,25 @@ export const Home: React.FC = () => {
           
           <div className="grid md:grid-cols-3 gap-8">
             {news.slice(0, 3).map((item) => (
-              <div key={item.id} className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group border border-neutral-100 flex flex-col h-full">
-                <div className="h-56 overflow-hidden relative">
-                  <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg text-xs font-bold text-primary-900 shadow-sm">
-                    {item.date}
-                  </div>
-                  <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </div>
+              <div key={item.id} className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group border border-neutral-100 flex flex-col h-full relative">
+                {/* Decorative top bar to replace image visual weight */}
+                <div className="h-2 w-full bg-gradient-to-r from-primary-600 to-secondary-500"></div>
+
                 <div className="p-8 flex flex-col flex-grow">
-                  <h3 className="font-serif text-2xl font-bold text-neutral-900 mb-3 line-clamp-2 group-hover:text-primary-700 transition-colors">{item.title}</h3>
-                  <p className="text-neutral-600 text-sm line-clamp-3 mb-6 flex-grow leading-relaxed">{item.excerpt}</p>
-                  <Link to={`/news/${item.id}`} className="text-secondary-600 text-sm font-bold flex items-center gap-2 group/link cursor-pointer hover:text-secondary-700">
-                    Baca Selengkapnya <ArrowRight size={16} className="group-hover/link:translate-x-1 transition-transform" />
-                  </Link>
+                  <div className="flex items-center gap-2 mb-4">
+                     <span className="bg-primary-50 text-primary-800 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border border-primary-100">
+                       <Calendar size={12} className="text-primary-600" /> {item.date}
+                     </span>
+                  </div>
+
+                  <h3 className="font-serif text-2xl font-bold text-neutral-900 mb-4 line-clamp-2 group-hover:text-primary-700 transition-colors">{item.title}</h3>
+                  <p className="text-neutral-600 text-sm line-clamp-4 mb-6 flex-grow leading-relaxed">{item.excerpt}</p>
+                  
+                  <div className="pt-6 border-t border-neutral-50 mt-auto">
+                    <Link to={`/news/${item.id}`} className="text-secondary-600 text-sm font-bold flex items-center gap-2 group/link cursor-pointer hover:text-secondary-700">
+                      Baca Selengkapnya <ArrowRight size={16} className="group-hover/link:translate-x-1 transition-transform" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
