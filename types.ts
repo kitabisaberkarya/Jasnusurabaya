@@ -145,5 +145,6 @@ export interface AppContextType extends AppState {
   restoreData: (data: AppState) => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   removeToast: (id: number) => void;
+  refreshData: () => Promise<void>;
   isLoading: boolean;
 }

@@ -57,7 +57,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const mappedConfig = config ? {
         appName: config.app_name,
-        orgName: config.org_name,
+        org_name: config.org_name,
         description: config.description,
         address: config.address,
         email: config.email,
@@ -486,7 +486,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, deleteMember, resetMemberPassword, createSession, toggleSession, markAttendance, addNews, updateNews, deleteNews, addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, addKorwil, deleteKorwil, restoreData, showToast, removeToast, isLoading }}>
+    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, deleteMember, resetMemberPassword, createSession, toggleSession, markAttendance, addNews, updateNews, deleteNews, addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, addKorwil, deleteKorwil, restoreData, showToast, removeToast, refreshData: fetchData, isLoading }}>
       {children}
     </AppContext.Provider>
   );

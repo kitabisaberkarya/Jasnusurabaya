@@ -1,12 +1,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi, AlertCircle } from 'lucide-react';
+import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi, AlertCircle, RefreshCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const MemberArea: React.FC = () => {
-  const { currentUser, attendanceSessions, markAttendance, showToast } = useApp();
+  const { currentUser, attendanceSessions, markAttendance, showToast, refreshData, isLoading } = useApp();
   const [selectedSession, setSelectedSession] = useState<number | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Camera & Location State
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -39,6 +40,13 @@ export const MemberArea: React.FC = () => {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshData();
+    setIsRefreshing(false);
+    showToast("Data absensi diperbarui", "info");
   };
 
   const getAddressFromCoords = async (lat: number, lng: number) => {
@@ -246,6 +254,7 @@ export const MemberArea: React.FC = () => {
         transition={{ duration: 0.8, type: "spring", stiffness: 200, damping: 25 }}
         style={{ transformStyle: 'preserve-3d' }}
       >
+        {/* ... Card Content (Same as before) ... */}
         {/* --- FRONT SIDE --- */}
         <div 
           className="absolute inset-0 w-full h-full rounded-2xl overflow-hidden border border-amber-500/40 bg-neutral-900"
@@ -444,13 +453,27 @@ export const MemberArea: React.FC = () => {
                      </div>
                      Sesi Absensi Aktif
                   </h2>
-                  <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full animate-pulse border border-emerald-200">
-                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Live
-                  </span>
+                  <div className="flex items-center gap-2">
+                     <button 
+                        onClick={handleRefresh}
+                        className={`p-1.5 rounded-full hover:bg-neutral-200 text-neutral-500 transition ${isRefreshing ? 'animate-spin' : ''}`}
+                        title="Refresh Data"
+                     >
+                        <RefreshCcw size={16} />
+                     </button>
+                     <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full animate-pulse border border-emerald-200">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Live
+                     </span>
+                  </div>
                </div>
                
                <div className="p-6">
-                  {activeSessions.length > 0 ? (
+                  {isLoading ? (
+                     <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
+                        <span className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-2"></span>
+                        <p className="text-sm">Memuat sesi...</p>
+                     </div>
+                  ) : activeSessions.length > 0 ? (
                      <div className="grid gap-4">
                         {activeSessions.map(session => {
                            const hasAttended = session.attendees.includes(currentUser.id);
@@ -489,7 +512,15 @@ export const MemberArea: React.FC = () => {
                            <Calendar size={32} />
                         </div>
                         <h3 className="text-neutral-900 font-bold text-lg">Tidak ada sesi aktif</h3>
-                        <p className="text-neutral-500 text-sm mt-1 max-w-xs mx-auto">Sesi absensi akan muncul di sini saat acara dimulai oleh admin.</p>
+                        <p className="text-neutral-500 text-sm mt-1 max-w-xs mx-auto mb-4">
+                           Sesi absensi akan muncul di sini saat acara dimulai oleh admin.
+                        </p>
+                        <button 
+                           onClick={handleRefresh}
+                           className="px-4 py-2 bg-white border border-neutral-300 text-neutral-700 rounded-lg text-sm font-bold hover:bg-neutral-50 transition shadow-sm inline-flex items-center gap-2"
+                        >
+                           <RefreshCcw size={14} /> Cek Lagi (Refresh)
+                        </button>
                      </div>
                   )}
                </div>
@@ -537,7 +568,7 @@ export const MemberArea: React.FC = () => {
          </div>
       </div>
 
-      {/* --- E-KTA MODAL --- */}
+      {/* --- E-KTA MODAL & CAMERA MODAL (UNCHANGED) --- */}
       <AnimatePresence>
         {isCardOpen && (
            <motion.div
