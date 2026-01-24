@@ -11,7 +11,7 @@ import {
   User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon, Lock
 } from 'lucide-react';
 import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord } from '../types';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 
 export const AdminDashboard: React.FC = () => {
   const { 
@@ -1180,28 +1180,6 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {activeTab === 'recap' && (
-               <div className="space-y-6">
-                  {/* ... Recap Content ... */}
-                  <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Laporan Rekapitulasi</h3></div>
-                     <div className="p-4">
-                        <div className="flex items-center gap-4 mb-4">
-                           <div className="flex-1">
-                              <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Jenis Laporan</label>
-                              <select className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#00c0ef] outline-none" value={recapType} onChange={(e) => setRecapType(e.target.value as any)}>
-                                 <option value="attendance">Absensi Kehadiran</option>
-                                 <option value="members">Data Anggota</option>
-                              </select>
-                           </div>
-                           <div className="flex-none self-end"><button onClick={downloadReport} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><FileSpreadsheet size={16} /> Download Excel</button></div>
-                        </div>
-                        <div className="bg-[#f9fafc] p-4 rounded border border-gray-200 text-sm text-gray-600"><p className="flex items-center gap-2 mb-2"><AlertTriangle size={16} className="text-[#f39c12]" /> <strong>Info:</strong></p>{recapType === 'attendance' ? "Laporan ini berisi rekap kehadiran anggota per sesi kegiatan." : "Laporan ini berisi database lengkap seluruh anggota yang terdaftar."}</div>
-                     </div>
-                  </div>
-               </div>
-            )}
-            
             {activeTab === 'settings' && (
                <div className="space-y-6">
                   {/* ... Settings Content ... */}
