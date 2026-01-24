@@ -142,60 +142,83 @@ export const MemberArea: React.FC = () => {
       if (context) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-
-        context.save();
-        context.scale(-1, 1);
-        context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
-        context.restore();
-
         const w = canvas.width;
         const h = canvas.height;
-        
-        const fontSizeTitle = Math.floor(w * 0.05);
-        const fontSizeName = Math.floor(w * 0.04);
-        const fontSizeMeta = Math.floor(w * 0.035);
-        const padding = Math.floor(w * 0.05);
-        
-        const gradientHeight = Math.floor(h * 0.3);
+
+        // 1. Draw Video (Mirrored)
+        context.save();
+        context.scale(-1, 1);
+        context.drawImage(video, -w, 0, w, h);
+        context.restore();
+
+        // 2. Professional Gradient Overlay (Bottom 35%)
+        // This ensures text is readable without obscuring the face in the center
+        const gradientHeight = h * 0.35;
         const gradient = context.createLinearGradient(0, h - gradientHeight, 0, h);
-        gradient.addColorStop(0, "transparent");
-        gradient.addColorStop(0.5, "rgba(0,0,0,0.7)");
-        gradient.addColorStop(1, "rgba(0,0,0,0.95)");
+        gradient.addColorStop(0, "rgba(0,0,0,0)");
+        gradient.addColorStop(0.4, "rgba(0,0,0,0.5)");
+        gradient.addColorStop(1, "rgba(0,0,0,0.9)");
         
         context.fillStyle = gradient;
         context.fillRect(0, h - gradientHeight, w, gradientHeight);
 
-        context.strokeStyle = "#ffffff";
-        context.lineWidth = Math.floor(w * 0.015);
-        context.strokeRect(0, 0, w, h);
+        // 3. Elegant Border
+        context.strokeStyle = "rgba(255, 255, 255, 0.3)";
+        context.lineWidth = w * 0.005;
+        context.strokeRect(w * 0.02, w * 0.02, w - (w * 0.04), h - (w * 0.04));
 
+        // 4. Text Configuration
+        context.textAlign = "center";
         context.shadowColor = "black";
         context.shadowBlur = 4;
-        context.textAlign = "center";
+        context.shadowOffsetX = 1;
+        context.shadowOffsetY = 1;
+        
         const centerX = w / 2;
+        const paddingSide = w * 0.05;
+        const maxWidth = w - (paddingSide * 2);
         
-        context.font = `bold ${fontSizeTitle}px sans-serif`;
-        context.fillStyle = "white";
-        context.fillText("JAMIYAH SHOLAWAT NARIYAH", centerX, h - (fontSizeTitle * 3.5), w - (padding * 2));
+        // Define Base Sizes relative to canvas width
+        const sizeName = Math.floor(w * 0.055); // Prominent Name
+        const sizeMeta = Math.floor(w * 0.025); // Smaller meta data
+        const sizeTitle = Math.floor(w * 0.03); // Org Title
 
-        context.font = `${fontSizeName}px sans-serif`;
-        context.fillStyle = "#e5e5e5";
-        context.fillText(`${currentUser.name}`, centerX, h - (fontSizeName * 2.2), w - (padding * 2));
+        // Calculate positions starting from Bottom
+        const bottomMargin = h * 0.04;
+        const lineSpacing = sizeMeta * 0.5;
 
+        // --- LINE 4: Location (Bottom) ---
+        context.font = `${sizeMeta}px sans-serif`;
+        context.fillStyle = "#d4d4d4"; // Light Gray
+        const yLocation = h - bottomMargin;
+        context.fillText(locationName, centerX, yLocation, maxWidth);
+
+        // --- LINE 3: Date/Time ---
         const timeString = new Date().toLocaleString('id-ID', { 
-          day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' 
+          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute:'2-digit' 
         });
-        
-        context.font = `bold ${fontSizeMeta}px monospace`;
-        context.fillStyle = "#fbbf24";
-        
-        const metaText = `${timeString}`;
-        context.fillText(metaText, centerX, h - (fontSizeMeta * 2.5), w - (padding * 2));
-        
-        // Location on next line
-        context.font = `${fontSizeMeta * 0.8}px sans-serif`;
-        context.fillStyle = "#ffffff";
-        context.fillText(locationName, centerX, h - fontSizeMeta, w - (padding * 2));
+        context.font = `bold ${sizeMeta}px monospace`;
+        context.fillStyle = "#fbbf24"; // Amber/Gold
+        const yTime = yLocation - sizeMeta - lineSpacing;
+        context.fillText(timeString, centerX, yTime, maxWidth);
+
+        // --- LINE 2: Name (The User) ---
+        context.font = `bold ${sizeName}px serif`; // Serif looks more "Official"
+        context.fillStyle = "white";
+        const yName = yTime - sizeName - (lineSpacing * 1.5);
+        context.fillText(currentUser.name.toUpperCase(), centerX, yName, maxWidth);
+
+        // --- LINE 1: Organization (Top of footer) ---
+        context.font = `bold ${sizeTitle}px sans-serif`;
+        context.fillStyle = "rgba(255,255,255,0.9)";
+        const yTitle = yName - sizeTitle - (lineSpacing * 2);
+        context.fillText("JAMIYAH SHOLAWAT NARIYAH", centerX, yTitle, maxWidth);
+
+        // Watermark / Logo hint (Optional, Top Right)
+        context.font = `italic ${sizeMeta * 0.8}px sans-serif`;
+        context.fillStyle = "rgba(255,255,255,0.5)";
+        context.textAlign = "right";
+        context.fillText("JSN Official System", w - (w*0.03), w*0.05);
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         setCapturedImage(dataUrl);
