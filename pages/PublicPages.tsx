@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube, ArrowLeft } from 'lucide-react';
+import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube, ArrowLeft, Clock, Share2 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { MemberStatus } from '../types';
@@ -181,29 +181,91 @@ export const Home: React.FC = () => {
 
 export const News: React.FC = () => {
   const { news } = useApp();
+  
   return (
-    <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-20">
-        <h1 className="text-5xl font-serif font-bold text-primary-900 mb-6">Berita & Artikel</h1>
-        <p className="text-neutral-500 max-w-2xl mx-auto text-lg">Informasi terkini mengenai jadwal pengajian, dokumentasi kegiatan, dan artikel keislaman.</p>
-      </div>
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-        {news.map((item) => (
-          <article key={item.id} className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden flex flex-col h-full hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-            <img src={item.imageUrl} alt={item.title} className="h-64 w-full object-cover" />
-            <div className="p-8 flex flex-col flex-grow">
-              <div className="flex items-center gap-2 text-sm text-secondary-600 font-medium mb-4">
-                <Calendar size={16} />
-                <span>{item.date}</span>
+    <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-20 bg-neutral-50 min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Header Section */}
+        <div className="text-center mb-20">
+          <span className="text-secondary-600 font-bold tracking-[0.2em] uppercase text-xs mb-3 block">Berita & Artikel</span>
+          <h1 className="text-4xl md:text-6xl font-serif font-bold text-primary-900 mb-6">Warta Jamiyah</h1>
+          <p className="text-neutral-500 max-w-2xl mx-auto text-lg leading-relaxed font-light">
+            Menyajikan informasi terkini seputar kegiatan majelis, jadwal pengajian, dokumentasi acara, dan artikel keislaman yang bermanfaat.
+          </p>
+          <div className="w-24 h-1 bg-secondary-500 mx-auto mt-8 rounded-full"></div>
+        </div>
+
+        {/* Elegant Grid Layout */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
+          {news.map((item, index) => (
+            <article 
+              key={item.id} 
+              className="bg-white rounded-[2rem] shadow-sm border border-neutral-100/50 overflow-hidden flex flex-col h-full hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:-translate-y-2 transition-all duration-500 group relative"
+            >
+              {/* Elegant Thumbnail Container */}
+              <div className="relative aspect-[4/3] overflow-hidden">
+                <img 
+                  src={item.imageUrl} 
+                  alt={item.title} 
+                  className="w-full h-full object-cover transform group-hover:scale-110 transition duration-1000 ease-out" 
+                />
+                
+                {/* Date Badge - Elegant Floating Style */}
+                <div className="absolute top-6 left-6 z-20">
+                  <div className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-xl shadow-lg border border-white/50 flex flex-col items-center min-w-[60px]">
+                    <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{item.date.split(' ')[1] || 'BLN'}</span>
+                    <span className="text-xl font-serif font-bold text-primary-900">{item.date.split(' ')[0] || '00'}</span>
+                  </div>
+                </div>
+
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               </div>
-              <h2 className="text-2xl font-bold font-serif text-neutral-900 mb-4">{item.title}</h2>
-              <p className="text-neutral-600 mb-6 flex-grow leading-relaxed">{item.excerpt}</p>
-              <Link to={`/news/${item.id}`} className="text-primary-700 font-bold self-start hover:text-primary-900 flex items-center gap-2">
-                Baca Selengkapnya <ArrowRight size={18} />
-              </Link>
-            </div>
-          </article>
-        ))}
+
+              {/* Content Body */}
+              <div className="p-8 flex flex-col flex-grow relative">
+                <div className="mb-4">
+                  <span className="inline-block px-3 py-1 rounded-full bg-primary-50 text-primary-700 text-[10px] font-bold uppercase tracking-widest border border-primary-100">
+                    Berita JSN
+                  </span>
+                </div>
+
+                <h2 className="text-2xl font-bold font-serif text-neutral-900 mb-4 leading-tight group-hover:text-primary-800 transition-colors">
+                  <Link to={`/news/${item.id}`} className="focus:outline-none">
+                    <span className="absolute inset-0" aria-hidden="true"></span>
+                    {item.title}
+                  </Link>
+                </h2>
+                
+                <p className="text-neutral-500 mb-8 flex-grow leading-relaxed font-sans text-sm line-clamp-3">
+                  {item.excerpt}
+                </p>
+
+                {/* Footer / Read More */}
+                <div className="flex items-center justify-between pt-6 border-t border-neutral-100">
+                  <div className="flex items-center gap-2 text-neutral-400 text-xs font-medium">
+                    <Clock size={14} />
+                    <span>3 Menit Baca</span>
+                  </div>
+                  <span className="text-secondary-600 font-bold text-sm flex items-center gap-2 group-hover:translate-x-2 transition-transform duration-300">
+                    Baca Selengkapnya <ArrowRight size={16} />
+                  </span>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {news.length === 0 && (
+           <div className="py-32 text-center">
+              <div className="inline-block p-6 rounded-full bg-neutral-100 mb-4">
+                <Calendar size={48} className="text-neutral-300" />
+              </div>
+              <h3 className="text-xl font-bold text-neutral-700">Belum ada berita</h3>
+              <p className="text-neutral-500 mt-2">Nantikan kabar terbaru dari kami.</p>
+           </div>
+        )}
       </div>
     </motion.div>
   );
@@ -226,42 +288,77 @@ export const NewsDetail: React.FC = () => {
   }
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-16 bg-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Link to="/news" className="inline-flex items-center gap-2 text-neutral-500 hover:text-primary-600 mb-8 transition">
-          <ArrowLeft size={18} /> Kembali ke Daftar Berita
-        </Link>
-
-        <div className="text-center mb-8">
-          <span className="inline-block px-3 py-1 bg-secondary-50 text-secondary-600 text-xs font-bold rounded-full mb-4 tracking-wider uppercase">
-             Kabar JASNU
-          </span>
-          <h1 className="text-3xl md:text-5xl font-serif font-bold text-primary-900 leading-tight mb-6">
-            {item.title}
-          </h1>
-          <div className="flex items-center justify-center gap-4 text-neutral-500 text-sm">
-             <span className="flex items-center gap-1"><Calendar size={14} /> {item.date}</span>
-             <span className="w-1 h-1 bg-neutral-300 rounded-full"></span>
-             <span>Admin Redaksi</span>
-          </div>
-        </div>
-
-        <div className="rounded-3xl overflow-hidden shadow-xl mb-10">
-           <img src={item.imageUrl} alt={item.title} className="w-full h-auto object-cover max-h-[500px]" />
-        </div>
-
-        <div className="prose prose-lg prose-emerald max-w-none text-neutral-700 leading-relaxed">
-           <div dangerouslySetInnerHTML={{ __html: item.content }} />
-        </div>
-        
-        {/* Share / Navigation Footer */}
-        <div className="mt-12 pt-8 border-t border-neutral-100 flex justify-between items-center">
-           <span className="text-neutral-400 text-sm">Bagikan kabar ini:</span>
+    <motion.div initial="hidden" animate="visible" variants={fadeIn} className="bg-white min-h-screen">
+      {/* Top Navigation Bar */}
+      <div className="border-b border-neutral-100 bg-white sticky top-[80px] z-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+           <Link to="/news" className="inline-flex items-center gap-2 text-neutral-500 hover:text-primary-700 transition font-medium text-sm group">
+              <div className="w-8 h-8 rounded-full bg-neutral-50 flex items-center justify-center group-hover:bg-primary-50 transition">
+                <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+              </div>
+              Kembali ke Daftar
+           </Link>
            <div className="flex gap-2">
-              {/* Dummy share buttons */}
-              <button className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600 hover:bg-primary-50 hover:text-primary-600 transition"><Instagram size={16} /></button>
+              <button className="p-2 text-neutral-400 hover:text-primary-600 transition" title="Bagikan">
+                 <Share2 size={18} />
+              </button>
            </div>
         </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        
+        {/* Article Header (No Cover Image) */}
+        <header className="mb-12 text-center">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <span className="px-3 py-1 bg-primary-50 text-primary-700 text-[10px] font-bold uppercase tracking-widest rounded-full border border-primary-100">
+               Kabar JASNU
+            </span>
+            <span className="w-1 h-1 bg-neutral-300 rounded-full"></span>
+            <span className="text-neutral-500 text-xs font-bold uppercase tracking-widest">
+               {item.date}
+            </span>
+          </div>
+          
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-serif font-bold text-primary-900 leading-[1.15] mb-8">
+            {item.title}
+          </h1>
+
+          <div className="flex items-center justify-center gap-4 py-6 border-t border-b border-neutral-100">
+             <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-serif font-bold text-lg">
+                   A
+                </div>
+                <div className="text-left">
+                   <p className="text-xs font-bold text-primary-900 uppercase tracking-wider">Admin Redaksi</p>
+                   <p className="text-xs text-neutral-500">JSN Surabaya Press</p>
+                </div>
+             </div>
+          </div>
+        </header>
+
+        {/* Content Body */}
+        {/* Note: Cover image (item.imageUrl) is intentionally excluded here based on requirements */}
+        <article className="prose prose-lg prose-emerald max-w-none text-neutral-700 leading-loose prose-headings:font-serif prose-headings:text-primary-900 prose-a:text-secondary-600 hover:prose-a:text-secondary-700 prose-img:rounded-2xl prose-img:shadow-lg">
+           <div dangerouslySetInnerHTML={{ __html: item.content }} />
+        </article>
+        
+        {/* Article Footer */}
+        <div className="mt-16 pt-8 border-t border-neutral-200">
+           <div className="bg-neutral-50 rounded-2xl p-8 text-center">
+              <h3 className="font-serif font-bold text-xl text-primary-900 mb-2">Terima kasih telah membaca</h3>
+              <p className="text-neutral-500 text-sm mb-6">Bagikan informasi kebaikan ini kepada rekan dan saudara Anda.</p>
+              <div className="flex justify-center gap-4">
+                 <button className="px-6 py-2 bg-white border border-neutral-200 rounded-full text-sm font-bold text-neutral-600 hover:bg-primary-50 hover:text-primary-700 hover:border-primary-200 transition flex items-center gap-2">
+                    <Share2 size={16} /> Bagikan Artikel
+                 </button>
+                 <Link to="/news" className="px-6 py-2 bg-primary-700 text-white rounded-full text-sm font-bold hover:bg-primary-800 transition flex items-center gap-2 shadow-lg shadow-primary-700/20">
+                    Baca Berita Lainnya
+                 </Link>
+              </div>
+           </div>
+        </div>
+
       </div>
     </motion.div>
   );
