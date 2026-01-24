@@ -50,16 +50,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabase.from('korwils').select('*').order('name', { ascending: true })
       ]);
       
-      // FIX: Mapping is_open (DB) to isOpen (App)
       const mappedSessions = (sessions || []).map((s: any) => ({
         ...s,
-        isOpen: s.is_open, // Explicit mapping
+        isOpen: s.is_open,
         attendees: Array.isArray(s.attendees) ? s.attendees : []
       }));
 
       const mappedConfig = config ? {
         appName: config.app_name,
-        org_name: config.org_name,
+        orgName: config.org_name,
         description: config.description,
         address: config.address,
         email: config.email,
@@ -78,6 +77,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createdAt: m.created_at
       }));
 
+      const mappedRecords = (records || []).map((r: any) => ({
+        id: r.id,
+        sessionId: r.session_id,
+        userId: r.user_id,
+        userName: r.user_name,
+        timestamp: r.timestamp,
+        photoUrl: r.photo_url,
+        location: r.location
+      }));
+
       setState(prev => ({
         ...prev,
         users: users || [],
@@ -87,7 +96,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         profilePages: (profiles as ProfilePage[]) || [],
         attendanceSessions: mappedSessions,
         registrations: registrations || [],
-        attendanceRecords: records || [],
+        attendanceRecords: mappedRecords || [],
         siteConfig: mappedConfig as SiteConfig,
         korwils: (korwils as Korwil[]) || []
       }));
@@ -187,7 +196,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         role: UserRole.MEMBER,
         status: MemberStatus.ACTIVE,
         nia: nia,
-        nik: candidate.nik, // Include NIK
+        nik: candidate.nik,
         password: candidate.password,
         wilayah: candidate.wilayah,
         phone: candidate.phone,
@@ -217,7 +226,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteMember = async (userId: number) => {
     try {
-      // Delete attendance records first to maintain referential integrity if not cascading
       await supabase.from('attendance_records').delete().eq('user_id', userId);
       
       const { error } = await supabase.from('users').delete().eq('id', userId);
@@ -252,14 +260,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         attendees: []
       }]);
       if (error) throw error;
-      const { data } = await supabase.from('attendance_sessions').select('*').order('id', { ascending: false });
-      // Fix mapping here as well
-      const mapped = (data || []).map((s:any) => ({
-        ...s, 
-        isOpen: s.is_open, // Explicit mapping
-        attendees: s.attendees || []
-      }));
-      setState(prev => ({ ...prev, attendanceSessions: mapped }));
+      fetchData(); // Refresh to ensure we get proper ID
       showToast('Sesi absensi baru berhasil dibuat & dibuka', 'success');
     } catch (error) {
       showToast("Gagal membuat sesi", "error");
@@ -270,10 +271,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const session = state.attendanceSessions.find(s => s.id === sessionId);
     if (!session) return;
     try {
-      // Toggle logic using current state
       const newStatus = !session.isOpen;
-      
-      // Update Database
       const { error } = await supabase
         .from('attendance_sessions')
         .update({ is_open: newStatus })
@@ -281,7 +279,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
       if (error) throw error;
 
-      // Update Local State immediately for UI Feedback
       setState(prev => ({
         ...prev,
         attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, isOpen: newStatus } : s)
@@ -320,14 +317,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setState(prev => ({
         ...prev,
         attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, attendees: newAttendees } : s),
-        attendanceRecords: [...prev.attendanceRecords, {
+        attendanceRecords: [{
           id: recordId, sessionId, userId, userName: user.name, timestamp: new Date().toLocaleString('id-ID'), photoUrl, location
-        }]
+        }, ...prev.attendanceRecords]
       }));
       return true;
     } catch (error) {
       console.error(error);
       return false;
+    }
+  };
+
+  // NEW: Update Attendance Record
+  const updateAttendanceRecord = async (recordId: string, data: Partial<AttendanceRecord>) => {
+    try {
+      const updates: any = {};
+      if (data.location) updates.location = data.location;
+      if (data.userName) updates.user_name = data.userName;
+      if (data.timestamp) updates.timestamp = data.timestamp;
+
+      const { error } = await supabase.from('attendance_records').update(updates).eq('id', recordId);
+      if (error) throw error;
+
+      setState(prev => ({
+        ...prev,
+        attendanceRecords: prev.attendanceRecords.map(r => r.id === recordId ? { ...r, ...data } : r)
+      }));
+      showToast("Data absensi berhasil diperbarui", "success");
+    } catch (error) {
+      console.error("Update attendance failed", error);
+      showToast("Gagal memperbarui data absensi", "error");
+    }
+  };
+
+  // NEW: Delete Attendance Record
+  const deleteAttendanceRecord = async (recordId: string, sessionId: number, userId: number) => {
+    try {
+      // 1. Delete Record
+      const { error } = await supabase.from('attendance_records').delete().eq('id', recordId);
+      if (error) throw error;
+
+      // 2. Remove user from session attendees list to allow re-attendance if needed
+      const session = state.attendanceSessions.find(s => s.id === sessionId);
+      if (session) {
+        const newAttendees = session.attendees.filter(id => id !== userId);
+        await supabase.from('attendance_sessions').update({ attendees: newAttendees }).eq('id', sessionId);
+        
+        setState(prev => ({
+          ...prev,
+          attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, attendees: newAttendees } : s),
+          attendanceRecords: prev.attendanceRecords.filter(r => r.id !== recordId)
+        }));
+      } else {
+        setState(prev => ({
+          ...prev,
+          attendanceRecords: prev.attendanceRecords.filter(r => r.id !== recordId)
+        }));
+      }
+
+      showToast("Data absensi berhasil dihapus", "success");
+    } catch (error) {
+      console.error("Delete attendance failed", error);
+      showToast("Gagal menghapus data absensi", "error");
     }
   };
 
@@ -390,7 +441,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         caption: item.caption
       }]);
       if (error) throw error;
-      fetchData(); // Refresh to get the new ID and items
+      fetchData(); 
       showToast('Foto berhasil ditambahkan ke galeri', 'success');
     } catch (error) {
       console.error(error);
@@ -507,7 +558,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, deleteMember, resetMemberPassword, createSession, toggleSession, markAttendance, addNews, updateNews, deleteNews, addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, addKorwil, deleteKorwil, restoreData, showToast, removeToast, refreshData: fetchData, isLoading }}>
+    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, deleteMember, resetMemberPassword, createSession, toggleSession, markAttendance, updateAttendanceRecord, deleteAttendanceRecord, addNews, updateNews, deleteNews, addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, addKorwil, deleteKorwil, restoreData, showToast, removeToast, refreshData: fetchData, isLoading }}>
       {children}
     </AppContext.Provider>
   );

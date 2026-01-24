@@ -10,13 +10,13 @@ import {
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
   User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon, Lock
 } from 'lucide-react';
-import { MemberStatus, AppState, NewsItem, AttendanceSession } from '../types';
+import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord } from '../types';
 import * as XLSX from 'xlsx';
 
 export const AdminDashboard: React.FC = () => {
   const { 
     users, registrations, approveMember, rejectMember, deleteMember, resetMemberPassword, attendanceSessions, attendanceRecords, 
-    createSession, toggleSession, news, gallery, mediaPosts, addNews, updateNews, deleteNews, 
+    createSession, toggleSession, markAttendance, updateAttendanceRecord, deleteAttendanceRecord, news, gallery, mediaPosts, addNews, updateNews, deleteNews, 
     addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, 
     showToast, currentUser, logout, 
     siteConfig, updateSiteConfig, restoreData, profilePages, updateProfilePage, 
@@ -39,6 +39,10 @@ export const AdminDashboard: React.FC = () => {
   const [attendanceSearch, setAttendanceSearch] = useState('');
   const [attendanceViewMode, setAttendanceViewMode] = useState<'list' | 'grid'>('list');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  
+  // Attendance Edit State
+  const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+  const [editRecordForm, setEditRecordForm] = useState({ userName: '', location: '', timestamp: '' });
 
   // News Form State
   const [newsForm, setNewsForm] = useState({ title: '', excerpt: '', content: '', imageUrl: '' });
@@ -293,6 +297,30 @@ export const AdminDashboard: React.FC = () => {
       deleteKorwil(id);
     }
   };
+  
+  // Attendance Management
+  const handleEditRecord = (record: AttendanceRecord) => {
+    setEditingRecord(record);
+    setEditRecordForm({
+      userName: record.userName,
+      location: record.location,
+      timestamp: record.timestamp
+    });
+  };
+
+  const handleSaveRecord = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingRecord) {
+      updateAttendanceRecord(editingRecord.id, editRecordForm);
+      setEditingRecord(null);
+    }
+  };
+
+  const handleDeleteRecord = (record: AttendanceRecord) => {
+    if (window.confirm(`Hapus data kehadiran '${record.userName}'?`)) {
+      deleteAttendanceRecord(record.id, record.sessionId, record.userId);
+    }
+  };
 
   const execCmd = (command: string, value: string | undefined = undefined) => {
     document.execCommand(command, false, value);
@@ -475,7 +503,7 @@ export const AdminDashboard: React.FC = () => {
               "Kegiatan": session.name,
               "Nama Anggota": user.name,
               "NIA": user.nia || '-',
-              "NIK KTP": user.nik || '-', // Added NIK
+              "NIK KTP": user.nik || '-', 
               "Wilayah": user.wilayah || '-',
               "Waktu Hadir": record ? record.timestamp : '-',
               "Lokasi": record ? record.location : '-'
@@ -487,7 +515,7 @@ export const AdminDashboard: React.FC = () => {
       users.filter(u => u.role !== 'admin').forEach(user => {
          data.push({
            "NIA": user.nia || '-', 
-           "NIK KTP": user.nik || '-', // Added NIK
+           "NIK KTP": user.nik || '-', 
            "Nama Lengkap": user.name, 
            "Email": user.email, 
            "No HP": user.phone || '-',
@@ -519,7 +547,7 @@ export const AdminDashboard: React.FC = () => {
       data.push({
         "Nama": user?.name || record.userName, 
         "NIA": user?.nia || '-', 
-        "NIK KTP": user?.nik || '-', // Added NIK
+        "NIK KTP": user?.nik || '-',
         "Waktu": record.timestamp,
         "Lokasi": record.location, 
         "Wilayah": user?.wilayah || '-'
@@ -682,7 +710,7 @@ export const AdminDashboard: React.FC = () => {
 
             {activeTab === 'news' && (
                <div className="space-y-6">
-                 {/* ... News Content (No Change) ... */}
+                 {/* ... News Content ... */}
                  <div ref={formRef} className={`bg-white border-t-[3px] ${editingNewsId ? 'border-[#f39c12]' : 'border-[#dd4b39]'} shadow-sm rounded-sm`}>
                     <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
                        <h3 className="text-lg font-normal text-[#333]">{editingNewsId ? 'Edit Berita' : 'Tulis Berita Baru'}</h3>
@@ -757,7 +785,6 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {/* Gallery, Attendance, Approval (Unchanged logic, just placeholder for brevity) */}
             {activeTab === 'gallery' && (
                <div className="space-y-6">
                  {/* ... Gallery Content ... */}
@@ -838,7 +865,12 @@ export const AdminDashboard: React.FC = () => {
                                                <td className="px-4 py-2 w-16"><img src={record.photoUrl} alt="Bukti" onClick={() => setPreviewImage(record.photoUrl)} className="w-10 h-10 rounded-full object-cover border border-gray-200 cursor-pointer hover:scale-110 transition" /></td>
                                                <td className="px-4 py-2"><div className="font-bold text-[#333]">{record.userName}</div><div className="text-xs text-gray-500">ID: {record.userId}</div></td>
                                                <td className="px-4 py-2 text-sm"><div className="flex items-center gap-1 text-gray-700 font-medium"><Calendar size={12} /> {record.timestamp}</div><div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1 truncate max-w-xs" title={record.location}><MapPin size={10} className="text-red-500" /> {record.location}</div></td>
-                                               <td className="px-4 py-2 text-right"><button onClick={() => setPreviewImage(record.photoUrl)} className="text-[#3c8dbc] hover:text-[#367fa9] text-xs font-bold border border-[#3c8dbc] px-2 py-1 rounded-sm hover:bg-[#3c8dbc] hover:text-white transition">Lihat Bukti</button></td>
+                                               <td className="px-4 py-2 text-right">
+                                                   <div className="flex justify-end gap-2">
+                                                       <button onClick={() => handleEditRecord(record)} className="text-[#f39c12] hover:text-[#e08e0b] p-1.5 rounded hover:bg-orange-50 transition" title="Edit Data"><Edit3 size={16} /></button>
+                                                       <button onClick={() => handleDeleteRecord(record)} className="text-[#dd4b39] hover:text-[#c23321] p-1.5 rounded hover:bg-red-50 transition" title="Hapus Data"><Trash2 size={16} /></button>
+                                                   </div>
+                                               </td>
                                             </tr>
                                          ))}
                                       </tbody>
@@ -847,12 +879,16 @@ export const AdminDashboard: React.FC = () => {
                              ) : (
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                    {getFilteredAttendance().map(record => (
-                                      <div key={record.id} className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden hover:shadow-md transition group">
+                                      <div key={record.id} className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden hover:shadow-md transition group relative">
                                          <div className="aspect-[4/5] bg-gray-100 relative overflow-hidden cursor-pointer" onClick={() => setPreviewImage(record.photoUrl)}>
                                             <img src={record.photoUrl} alt={record.userName} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                                             <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent text-white"><div className="font-bold text-sm truncate">{record.userName}</div><div className="text-[10px] opacity-80">{record.timestamp}</div></div>
                                          </div>
                                          <div className="p-2 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-500 flex justify-between items-center"><span className="truncate max-w-[100px]" title={record.location}>{record.location}</span><MapPin size={10} /></div>
+                                         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                             <button onClick={() => handleEditRecord(record)} className="bg-white/90 text-[#f39c12] p-1.5 rounded-full shadow hover:bg-white"><Edit3 size={14} /></button>
+                                             <button onClick={() => handleDeleteRecord(record)} className="bg-white/90 text-[#dd4b39] p-1.5 rounded-full shadow hover:bg-white"><Trash2 size={14} /></button>
+                                         </div>
                                       </div>
                                    ))}
                                 </div>
@@ -985,7 +1021,6 @@ export const AdminDashboard: React.FC = () => {
             )}
 
             {/* Profile, Media, Backup (Unchanged logic) */}
-            {/* ... */}
             
             {activeTab === 'profile' && (
                 <div className="space-y-6">
@@ -1178,6 +1213,7 @@ export const AdminDashboard: React.FC = () => {
          </div>
       </main>
 
+      {/* --- Image Preview Modal --- */}
       {previewImage && (
          <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
             <div className="relative max-w-4xl max-h-[90vh]">
@@ -1185,6 +1221,45 @@ export const AdminDashboard: React.FC = () => {
                <button onClick={() => setPreviewImage(null)} className="absolute -top-4 -right-4 bg-white text-black p-2 rounded-full shadow-lg hover:bg-gray-100"><X size={24} /></button>
             </div>
          </div>
+      )}
+
+      {/* --- Edit Attendance Record Modal --- */}
+      {editingRecord && (
+        <div className="fixed inset-0 z-[99] bg-black/50 flex items-center justify-center p-4">
+           <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
+              <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                 <h3 className="font-bold text-gray-700">Edit Data Absensi</h3>
+                 <button onClick={() => setEditingRecord(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              </div>
+              <form onSubmit={handleSaveRecord} className="p-4 space-y-4">
+                 <div className="p-3 bg-blue-50 text-blue-800 rounded text-sm mb-2 border border-blue-100">
+                    <p className="font-bold">ID: {editingRecord.id}</p>
+                    <p className="text-xs mt-1">Mengedit data absensi secara manual.</p>
+                 </div>
+                 
+                 <div>
+                    <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Anggota (Tampilan)</label>
+                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-blue-500 outline-none" value={editRecordForm.userName} onChange={(e) => setEditRecordForm({...editRecordForm, userName: e.target.value})} required />
+                 </div>
+                 
+                 <div>
+                    <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Lokasi Tercatat</label>
+                    <textarea className="w-full px-3 py-2 border border-gray-300 rounded focus:border-blue-500 outline-none h-20 text-sm" value={editRecordForm.location} onChange={(e) => setEditRecordForm({...editRecordForm, location: e.target.value})} required></textarea>
+                 </div>
+
+                 <div>
+                    <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Waktu Kehadiran</label>
+                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-blue-500 outline-none text-sm" value={editRecordForm.timestamp} onChange={(e) => setEditRecordForm({...editRecordForm, timestamp: e.target.value})} required />
+                    <p className="text-[10px] text-gray-400 mt-1">Format: DD/MM/YYYY, HH.mm.ss</p>
+                 </div>
+
+                 <div className="flex justify-end pt-2 border-t border-gray-100 gap-2">
+                    <button type="button" onClick={() => setEditingRecord(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded text-sm font-bold">Batal</button>
+                    <button type="submit" className="px-4 py-2 bg-[#3c8dbc] hover:bg-[#367fa9] text-white rounded text-sm font-bold shadow-sm flex items-center gap-2"><Save size={16} /> Simpan Perubahan</button>
+                 </div>
+              </form>
+           </div>
+        </div>
       )}
     </div>
   );

@@ -132,6 +132,10 @@ export interface AppContextType extends AppState {
   createSession: (name: string) => void;
   toggleSession: (sessionId: number) => void;
   markAttendance: (sessionId: number, userId: number, photoUrl: string, location: string) => Promise<boolean>;
+  // New Actions
+  updateAttendanceRecord: (recordId: string, data: Partial<AttendanceRecord>) => void;
+  deleteAttendanceRecord: (recordId: string, sessionId: number, userId: number) => void;
+  
   addNews: (news: Omit<NewsItem, 'id'>) => void;
   updateNews: (id: number, news: Partial<NewsItem>) => void;
   deleteNews: (id: number) => void;
