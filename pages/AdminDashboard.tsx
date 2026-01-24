@@ -41,7 +41,6 @@ export const AdminDashboard: React.FC = () => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // News Form State
-  // Added imageUrl to state for explicit cover management
   const [newsForm, setNewsForm] = useState({ title: '', excerpt: '', content: '', imageUrl: '' });
   const [editingNewsId, setEditingNewsId] = useState<number | null>(null);
   const newsCoverInputRef = useRef<HTMLInputElement>(null);
@@ -106,7 +105,6 @@ export const AdminDashboard: React.FC = () => {
           if (newsForm.content === '') {
             editorRef.current.innerHTML = '';
           } else if (editorRef.current.innerHTML === '') {
-            // Only set if we have content and editor is empty (prevent overwrite loop)
             editorRef.current.innerHTML = newsForm.content;
           }
       }
@@ -123,16 +121,10 @@ export const AdminDashboard: React.FC = () => {
 
   const handleNewsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Use the explicitly uploaded cover image, or fallback to placeholder
     const thumbnail = newsForm.imageUrl || "https://picsum.photos/800/600";
-    
-    // We NO LONGER extract/remove images from content. 
-    // This decouples the thumbnail from the body content, fixing the double image issue.
     const finalContent = newsForm.content;
 
     if (editingNewsId !== null) {
-      // Update existing news
       updateNews(editingNewsId, {
         title: newsForm.title,
         excerpt: newsForm.excerpt,
@@ -141,7 +133,6 @@ export const AdminDashboard: React.FC = () => {
       });
       setEditingNewsId(null);
     } else {
-      // Add new news
       addNews({
         ...newsForm,
         content: finalContent,
@@ -150,7 +141,6 @@ export const AdminDashboard: React.FC = () => {
       });
     }
     
-    // Reset form
     setNewsForm({ title: '', excerpt: '', content: '', imageUrl: '' });
     setEditingNewsId(null);
     if (editorRef.current) editorRef.current.innerHTML = '';
@@ -159,20 +149,15 @@ export const AdminDashboard: React.FC = () => {
 
   const handleEditNews = (newsItem: NewsItem) => {
     setEditingNewsId(newsItem.id);
-    
-    // Load existing data
     setNewsForm({
       title: newsItem.title,
       excerpt: newsItem.excerpt,
       content: newsItem.content,
-      imageUrl: newsItem.imageUrl // Load the cover image into state
+      imageUrl: newsItem.imageUrl
     });
-
-    // Manually update editor content
     if (editorRef.current) {
        editorRef.current.innerHTML = newsItem.content;
     }
-    // Scroll to form
     formRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -192,7 +177,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Explicit Cover Image Upload for News
   const handleNewsCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -210,7 +194,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Gallery Handlers
   const handleGallerySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!galleryForm.imageUrl) {
@@ -243,7 +226,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Member Management Handlers
   const handleDeleteMember = (id: number, name: string) => {
     if (window.confirm(`PERHATIAN: Apakah Anda yakin ingin menghapus anggota ${name}? Data kehadiran dan akun akan dihapus permanen.`)) {
       deleteMember(id);
@@ -261,7 +243,6 @@ export const AdminDashboard: React.FC = () => {
     let embedUrl = "";
 
     if (mediaForm.type === 'youtube') {
-       // Extract Video ID
        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
        const match = mediaForm.url.match(regExp);
        if (match && match[2].length === 11) {
@@ -271,17 +252,11 @@ export const AdminDashboard: React.FC = () => {
           return;
        }
     } else {
-       // Instagram Embed (Support Post, Reel, TV)
-       // Checks for instagram.com followed by p, reel, or tv
        if (mediaForm.url.match(/instagram\.com\/(p|reel|tv)\//)) {
-           // Remove query parameters (like ?igsh=...)
            let cleanUrl = mediaForm.url.split('?')[0];
-           
-           // Ensure no trailing slash before appending embed
            if (cleanUrl.endsWith('/')) {
                cleanUrl = cleanUrl.slice(0, -1);
            }
-           
            embedUrl = `${cleanUrl}/embed`;
        } else {
            showToast("URL Instagram tidak valid (Gunakan Link Postingan/Reel)", "error");
@@ -333,7 +308,6 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleInsertTable = () => {
-    // Modern Table Template with Tailwind CSS
     const tableHtml = `
       <div class="overflow-hidden my-6 rounded-xl shadow-lg border border-neutral-200">
         <table class="w-full text-sm text-left border-collapse bg-white">
@@ -350,16 +324,6 @@ export const AdminDashboard: React.FC = () => {
               <td class="px-6 py-4 border-b border-neutral-100">Nama Pengurus</td>
               <td class="px-6 py-4 border-b border-neutral-100">08xx-xxxx-xxxx</td>
             </tr>
-            <tr class="bg-neutral-50 hover:bg-primary-50 transition-colors duration-200">
-              <td class="px-6 py-4 border-b border-neutral-100 font-medium text-gray-900">Korwil 2</td>
-              <td class="px-6 py-4 border-b border-neutral-100">Nama Pengurus</td>
-              <td class="px-6 py-4 border-b border-neutral-100">08xx-xxxx-xxxx</td>
-            </tr>
-             <tr class="bg-white hover:bg-primary-50 transition-colors duration-200">
-              <td class="px-6 py-4 border-b border-neutral-100 font-medium text-gray-900">Korwil 3</td>
-              <td class="px-6 py-4 border-b border-neutral-100">Nama Pengurus</td>
-              <td class="px-6 py-4 border-b border-neutral-100">08xx-xxxx-xxxx</td>
-            </tr>
           </tbody>
         </table>
       </div>
@@ -369,14 +333,9 @@ export const AdminDashboard: React.FC = () => {
     if (editorRef.current) {
         editorRef.current.focus();
         document.execCommand('insertHTML', false, tableHtml);
-        
-        // Sync state
         const html = editorRef.current.innerHTML;
-        if (activeTab === 'news') {
-             setNewsForm(prev => ({ ...prev, content: html }));
-        } else if (activeTab === 'profile') {
-             setProfileContent(html);
-        }
+        if (activeTab === 'news') setNewsForm(prev => ({ ...prev, content: html }));
+        if (activeTab === 'profile') setProfileContent(html);
     }
   };
 
@@ -391,18 +350,12 @@ export const AdminDashboard: React.FC = () => {
       reader.onloadend = () => {
         if (reader.result) {
           editorRef.current?.focus();
-          
-          // FIX: Insert HTML with explicit inline styles for responsiveness
           const imgHtml = `<img src="${reader.result}" style="max-width: 100%; height: auto; border-radius: 0.5rem; margin-top: 1rem; margin-bottom: 1rem;" />`;
           document.execCommand('insertHTML', false, imgHtml);
-          
           if (editorRef.current) {
              const html = editorRef.current.innerHTML;
-             if (activeTab === 'news') {
-                  setNewsForm(prev => ({ ...prev, content: html }));
-             } else if (activeTab === 'profile') {
-                  setProfileContent(html);
-             }
+             if (activeTab === 'news') setNewsForm(prev => ({ ...prev, content: html }));
+             if (activeTab === 'profile') setProfileContent(html);
           }
         }
       };
@@ -432,14 +385,10 @@ export const AdminDashboard: React.FC = () => {
              </div>
            `;
            document.execCommand('insertHTML', false, videoHtml);
-           
            if (editorRef.current) {
              const html = editorRef.current.innerHTML;
-             if (activeTab === 'news') {
-                  setNewsForm(prev => ({ ...prev, content: html }));
-             } else if (activeTab === 'profile') {
-                  setProfileContent(html);
-             }
+             if (activeTab === 'news') setNewsForm(prev => ({ ...prev, content: html }));
+             if (activeTab === 'profile') setProfileContent(html);
           }
         }
       };
@@ -472,24 +421,12 @@ export const AdminDashboard: React.FC = () => {
 
   const handleBackup = () => {
     const backupData: AppState = {
-      users,
-      registrations,
-      news,
-      gallery,
-      mediaPosts,
-      profilePages,
-      attendanceSessions,
-      attendanceRecords,
-      siteConfig,
-      korwils,
-      currentUser: null, 
-      toasts: [] 
+      users, registrations, news, gallery, mediaPosts, profilePages, attendanceSessions, attendanceRecords, siteConfig, korwils,
+      currentUser: null, toasts: [] 
     };
-
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    
     const date = new Date().toISOString().slice(0, 10);
     downloadAnchorNode.setAttribute("download", `JSN_Backup_${date}.json`);
     document.body.appendChild(downloadAnchorNode); 
@@ -507,7 +444,6 @@ export const AdminDashboard: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileReader = new FileReader();
     const file = e.target.files?.[0];
-    
     if (file) {
       fileReader.readAsText(file, "UTF-8");
       fileReader.onload = (event) => {
@@ -521,9 +457,7 @@ export const AdminDashboard: React.FC = () => {
         }
       };
     }
-    if (fileInputRef.current) {
-       fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const downloadReport = () => {
@@ -551,13 +485,8 @@ export const AdminDashboard: React.FC = () => {
     } else {
       users.filter(u => u.role !== 'admin').forEach(user => {
          data.push({
-           "NIA": user.nia || '-',
-           "Nama Lengkap": user.name,
-           "Email": user.email,
-           "No HP": user.phone || '-',
-           "Alamat": user.address || '-',
-           "Wilayah": user.wilayah || '-',
-           "Status": user.status === MemberStatus.ACTIVE ? 'Aktif' : 'Pending',
+           "NIA": user.nia || '-', "Nama Lengkap": user.name, "Email": user.email, "No HP": user.phone || '-',
+           "Alamat": user.address || '-', "Wilayah": user.wilayah || '-', "Status": user.status === MemberStatus.ACTIVE ? 'Aktif' : 'Pending',
            "Bergabung": user.joinedAt || '-'
          });
       });
@@ -569,8 +498,6 @@ export const AdminDashboard: React.FC = () => {
     }
 
     const ws = XLSX.utils.json_to_sheet(data);
-    const wscols = Object.keys(data[0]).map(() => ({ wch: 25 }));
-    ws['!cols'] = wscols;
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, recapType === 'attendance' ? "Absensi" : "Anggota");
     XLSX.writeFile(wb, `Laporan_${recapType === 'attendance' ? 'Absensi' : 'Anggota'}_${timestamp}.xlsx`);
@@ -580,15 +507,11 @@ export const AdminDashboard: React.FC = () => {
   const downloadSessionReport = (session: AttendanceSession) => {
     const data: any[] = [];
     const filteredRecords = attendanceRecords.filter(r => r.sessionId === session.id);
-    
     filteredRecords.forEach(record => {
       const user = users.find(u => u.id === record.userId);
       data.push({
-        "Nama": user?.name || record.userName,
-        "NIA": user?.nia || '-',
-        "Waktu": record.timestamp,
-        "Lokasi": record.location,
-        "Wilayah": user?.wilayah || '-'
+        "Nama": user?.name || record.userName, "NIA": user?.nia || '-', "Waktu": record.timestamp,
+        "Lokasi": record.location, "Wilayah": user?.wilayah || '-'
       });
     });
 
@@ -625,7 +548,6 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#ecf0f5] font-sans text-sm">
-      {/* 1. Header Bar */}
       <header className="fixed top-0 left-0 right-0 h-[50px] bg-[#3c8dbc] z-50 flex">
         <div className={`h-full bg-[#367fa9] text-white flex items-center justify-center font-bold text-lg transition-all duration-300 ${sidebarOpen ? 'w-[230px]' : 'w-[50px]'}`}>
            {sidebarOpen ? 'JSN ADMIN' : 'JSN'}
@@ -650,7 +572,6 @@ export const AdminDashboard: React.FC = () => {
         </nav>
       </header>
 
-      {/* 2. Sidebar Navigation */}
       <aside className={`fixed top-[50px] bottom-0 left-0 bg-[#222d32] text-[#b8c7ce] transition-all duration-300 z-40 overflow-y-auto ${sidebarOpen ? 'w-[230px]' : 'w-[50px]'}`}>
          {sidebarOpen && (
            <div className="p-4 flex items-center gap-3 mb-4">
@@ -672,7 +593,7 @@ export const AdminDashboard: React.FC = () => {
                  { id: 'members', icon: Users, label: 'Data Anggota', badge: null }, 
                  { id: 'profile', icon: UserIcon, label: 'Manajemen Profil', badge: null },
                  { id: 'media', icon: PlayCircle, label: 'Manajemen Media', badge: null },
-                 { id: 'gallery', icon: ImageIcon, label: 'Manajemen Galeri', badge: null }, // NEW ITEM
+                 { id: 'gallery', icon: ImageIcon, label: 'Manajemen Galeri', badge: null },
                  { id: 'attendance', icon: Calendar, label: 'Absensi Majelis', badge: null },
                  { id: 'recap', icon: FileSpreadsheet, label: 'Rekapitulasi', badge: null },
                  { id: 'news', icon: FileText, label: 'Manajemen Berita', badge: null },
@@ -704,7 +625,6 @@ export const AdminDashboard: React.FC = () => {
          </div>
       </aside>
 
-      {/* 3. Main Content Wrapper */}
       <main className={`pt-[50px] transition-all duration-300 min-h-screen flex flex-col ${sidebarOpen ? 'ml-[230px]' : 'ml-[50px]'}`}>
          
          <div className="px-6 py-4 flex justify-between items-center bg-transparent">
@@ -727,140 +647,65 @@ export const AdminDashboard: React.FC = () => {
          </div>
 
          <div className="px-6 pb-6 flex-grow">
-            
             {activeTab === 'overview' && (
-              <>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                    <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
-                       <div className="w-[90px] h-full bg-[#00c0ef] flex items-center justify-center text-white">
-                          <Settings size={40} />
-                       </div>
-                       <div className="px-4 flex-grow">
-                          <span className="block text-xs uppercase font-bold text-[#333]">ANGGOTA AKTIF</span>
-                          <span className="block text-lg font-bold text-[#333]">{activeMembersCount}</span>
-                       </div>
-                    </div>
-                    <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
-                       <div className="w-[90px] h-full bg-[#dd4b39] flex items-center justify-center text-white">
-                          <AlertCircle size={40} />
-                       </div>
-                       <div className="px-4 flex-grow">
-                          <span className="block text-xs uppercase font-bold text-[#333]">PENDING</span>
-                          <span className="block text-lg font-bold text-[#333]">{pendingCount}</span>
-                       </div>
-                    </div>
-                    <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
-                       <div className="w-[90px] h-full bg-[#00a65a] flex items-center justify-center text-white">
-                          <Calendar size={40} />
-                       </div>
-                       <div className="px-4 flex-grow">
-                          <span className="block text-xs uppercase font-bold text-[#333]">TOTAL SESI</span>
-                          <span className="block text-lg font-bold text-[#333]">{totalSessions}</span>
-                       </div>
-                    </div>
-                    <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
-                       <div className="w-[90px] h-full bg-[#f39c12] flex items-center justify-center text-white">
-                          <Users size={40} />
-                       </div>
-                       <div className="px-4 flex-grow">
-                          <span className="block text-xs uppercase font-bold text-[#333]">TOTAL BERITA</span>
-                          <span className="block text-lg font-bold text-[#333]">{totalNews}</span>
-                       </div>
-                    </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                 {/* Overview Cards */}
+                 <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
+                    <div className="w-[90px] h-full bg-[#00c0ef] flex items-center justify-center text-white"><Settings size={40} /></div>
+                    <div className="px-4 flex-grow"><span className="block text-xs uppercase font-bold text-[#333]">ANGGOTA AKTIF</span><span className="block text-lg font-bold text-[#333]">{activeMembersCount}</span></div>
                  </div>
-              </>
+                 <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
+                    <div className="w-[90px] h-full bg-[#dd4b39] flex items-center justify-center text-white"><AlertCircle size={40} /></div>
+                    <div className="px-4 flex-grow"><span className="block text-xs uppercase font-bold text-[#333]">PENDING</span><span className="block text-lg font-bold text-[#333]">{pendingCount}</span></div>
+                 </div>
+                 <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
+                    <div className="w-[90px] h-full bg-[#00a65a] flex items-center justify-center text-white"><Calendar size={40} /></div>
+                    <div className="px-4 flex-grow"><span className="block text-xs uppercase font-bold text-[#333]">TOTAL SESI</span><span className="block text-lg font-bold text-[#333]">{totalSessions}</span></div>
+                 </div>
+                 <div className="bg-white shadow-sm rounded-sm flex items-center overflow-hidden h-[90px]">
+                    <div className="w-[90px] h-full bg-[#f39c12] flex items-center justify-center text-white"><Users size={40} /></div>
+                    <div className="px-4 flex-grow"><span className="block text-xs uppercase font-bold text-[#333]">TOTAL BERITA</span><span className="block text-lg font-bold text-[#333]">{totalNews}</span></div>
+                 </div>
+              </div>
             )}
-            
-            {/* ... Other Tabs Code ... */}
-            
+
             {activeTab === 'news' && (
                <div className="space-y-6">
-                 {/* ... News Tab Content ... */}
-                 {/* Write News Box */}
                  <div ref={formRef} className={`bg-white border-t-[3px] ${editingNewsId ? 'border-[#f39c12]' : 'border-[#dd4b39]'} shadow-sm rounded-sm`}>
                     <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
                        <h3 className="text-lg font-normal text-[#333]">{editingNewsId ? 'Edit Berita' : 'Tulis Berita Baru'}</h3>
-                       {editingNewsId && (
-                           <button onClick={handleCancelEditNews} className="text-gray-500 hover:text-gray-700 text-xs flex items-center gap-1">
-                               <X size={14} /> Batal Edit
-                           </button>
-                       )}
+                       {editingNewsId && <button onClick={handleCancelEditNews} className="text-gray-500 hover:text-gray-700 text-xs flex items-center gap-1"><X size={14} /> Batal Edit</button>}
                     </div>
                     <div className="p-4">
                        <form onSubmit={handleNewsSubmit} className="space-y-4">
-                          <input 
-                            type="text" 
-                            placeholder="Judul Berita" 
-                            className="w-full px-4 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none transition text-lg"
-                            required
-                            value={newsForm.title}
-                            onChange={e => setNewsForm({...newsForm, title: e.target.value})}
-                          />
-                          
-                          {/* Explicit Cover Image Upload - FIX FOR DOUBLE IMAGE */}
+                          <input type="text" placeholder="Judul Berita" className="w-full px-4 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none transition text-lg" required value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} />
                           <div className="p-4 border border-gray-300 rounded-sm bg-gray-50">
                              <label className="block text-xs uppercase font-bold text-gray-500 mb-2">Upload Sampul Berita (Cover)</label>
                              <div className="flex items-center gap-4">
                                 <div className="w-32 h-24 bg-gray-200 flex items-center justify-center overflow-hidden border border-gray-300 rounded">
-                                   {newsForm.imageUrl ? (
-                                      <img src={newsForm.imageUrl} alt="Cover" className="w-full h-full object-cover" />
-                                   ) : (
-                                      <ImageIcon size={24} className="text-gray-400" />
-                                   )}
+                                   {newsForm.imageUrl ? <img src={newsForm.imageUrl} alt="Cover" className="w-full h-full object-cover" /> : <ImageIcon size={24} className="text-gray-400" />}
                                 </div>
                                 <div className="flex-1">
-                                   <input 
-                                      type="file" 
-                                      accept="image/*"
-                                      ref={newsCoverInputRef}
-                                      onChange={handleNewsCoverUpload}
-                                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#3c8dbc] file:text-white hover:file:bg-[#367fa9]"
-                                   />
-                                   <p className="text-[10px] text-gray-500 mt-1">Gambar ini akan menjadi thumbnail di daftar berita dan header di halaman detail. Jangan masukkan gambar yang sama di dalam editor teks di bawah jika tidak ingin muncul dua kali.</p>
+                                   <input type="file" accept="image/*" ref={newsCoverInputRef} onChange={handleNewsCoverUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#3c8dbc] file:text-white hover:file:bg-[#367fa9]" />
+                                   <p className="text-[10px] text-gray-500 mt-1">Gambar ini akan menjadi thumbnail. Jangan masukkan gambar yang sama di editor jika tidak ingin muncul dua kali.</p>
                                 </div>
                              </div>
                           </div>
-
                           <div className="border border-gray-300 rounded-sm">
                              <div className="bg-[#f0f0f0] border-b border-gray-300 p-2 flex flex-wrap gap-1">
-                                <button type="button" onClick={() => execCmd('bold')} className="p-1 hover:bg-gray-200 rounded" title="Bold"><Bold size={16} /></button>
-                                <button type="button" onClick={() => execCmd('italic')} className="p-1 hover:bg-gray-200 rounded" title="Italic"><Italic size={16} /></button>
-                                <button type="button" onClick={() => execCmd('underline')} className="p-1 hover:bg-gray-200 rounded" title="Underline"><Underline size={16} /></button>
+                                <button type="button" onClick={() => execCmd('bold')} className="p-1 hover:bg-gray-200 rounded"><Bold size={16} /></button>
+                                <button type="button" onClick={() => execCmd('italic')} className="p-1 hover:bg-gray-200 rounded"><Italic size={16} /></button>
+                                <button type="button" onClick={() => execCmd('underline')} className="p-1 hover:bg-gray-200 rounded"><Underline size={16} /></button>
                                 <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button type="button" onClick={() => execCmd('insertUnorderedList')} className="p-1 hover:bg-gray-200 rounded" title="Bullet List"><List size={16} /></button>
-                                <button type="button" onClick={() => execCmd('insertOrderedList')} className="p-1 hover:bg-gray-200 rounded" title="Numbered List"><ListOrdered size={16} /></button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button type="button" onClick={() => execCmd('justifyLeft')} className="p-1 hover:bg-gray-200 rounded" title="Align Left"><AlignLeft size={16} /></button>
-                                <button type="button" onClick={() => execCmd('justifyCenter')} className="p-1 hover:bg-gray-200 rounded" title="Align Center"><AlignCenter size={16} /></button>
-                                <button type="button" onClick={() => execCmd('justifyRight')} className="p-1 hover:bg-gray-200 rounded" title="Align Right"><AlignRight size={16} /></button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Image"><ImageIcon size={16} /></button>
-                                <button type="button" onClick={() => videoInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Video"><Video size={16} /></button>
-                                <button type="button" onClick={handleInsertTable} className="p-1 hover:bg-gray-200 rounded flex items-center gap-1" title="Insert Modern Table"><Table size={16} /></button>
-                                <button type="button" onClick={() => {const url = prompt("URL:"); if(url) execCmd('createLink', url);}} className="p-1 hover:bg-gray-200 rounded" title="Link"><LinkIcon size={16} /></button>
+                                <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={16} /></button>
+                                <button type="button" onClick={handleInsertTable} className="p-1 hover:bg-gray-200 rounded"><Table size={16} /></button>
                                 <input type="file" ref={imageInputRef} onChange={handleEditorImageUpload} accept="image/*" className="hidden" />
                                 <input type="file" ref={videoInputRef} onChange={handleEditorVideoUpload} accept="video/*" className="hidden" />
                              </div>
-                             <div 
-                                ref={editorRef}
-                                contentEditable
-                                className="min-h-[300px] p-4 outline-none prose max-w-none bg-white [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg"
-                                onInput={(e) => setNewsForm({...newsForm, content: e.currentTarget.innerHTML})}
-                             ></div>
+                             <div ref={editorRef} contentEditable className="min-h-[300px] p-4 outline-none prose max-w-none bg-white [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg" onInput={(e) => setNewsForm({...newsForm, content: e.currentTarget.innerHTML})} ></div>
                           </div>
-                          <textarea 
-                             placeholder="Ringkasan Singkat (Excerpt)" 
-                             className="w-full px-4 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-20 text-sm"
-                             required
-                             value={newsForm.excerpt}
-                             onChange={e => setNewsForm({...newsForm, excerpt: e.target.value})}
-                          ></textarea>
+                          <textarea placeholder="Ringkasan Singkat (Excerpt)" className="w-full px-4 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-20 text-sm" required value={newsForm.excerpt} onChange={e => setNewsForm({...newsForm, excerpt: e.target.value})}></textarea>
                           <div className="flex justify-end gap-2">
-                             {editingNewsId && (
-                                <button type="button" onClick={handleCancelEditNews} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-sm font-bold shadow-sm">
-                                   Batal
-                                </button>
-                             )}
                              <button type="submit" className={`${editingNewsId ? 'bg-[#f39c12] hover:bg-[#e08e0b]' : 'bg-[#3c8dbc] hover:bg-[#367fa9]'} text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2`}>
                                 {editingNewsId ? <><Save size={16} /> Simpan Perubahan</> : 'Publish Berita'}
                              </button>
@@ -868,20 +713,12 @@ export const AdminDashboard: React.FC = () => {
                        </form>
                     </div>
                  </div>
-
-                 {/* List News */}
                  <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
-                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                       <h3 className="text-lg font-normal text-[#333]">Daftar Berita</h3>
-                    </div>
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Daftar Berita</h3></div>
                     <div className="p-0">
                        <table className="w-full text-left">
                           <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
-                             <tr>
-                                <th className="px-4 py-3 border-b">Berita</th>
-                                <th className="px-4 py-3 border-b w-48">Tanggal</th>
-                                <th className="px-4 py-3 border-b text-right w-32">Aksi</th>
-                             </tr>
+                             <tr><th className="px-4 py-3 border-b">Berita</th><th className="px-4 py-3 border-b w-48">Tanggal</th><th className="px-4 py-3 border-b text-right w-32">Aksi</th></tr>
                           </thead>
                           <tbody>
                              {news.map(item => (
@@ -889,90 +726,188 @@ export const AdminDashboard: React.FC = () => {
                                    <td className="px-4 py-3">
                                       <div className="flex gap-4">
                                          <img src={item.imageUrl} alt="" className="w-16 h-16 object-cover rounded shadow-sm" />
-                                         <div>
-                                            <h4 className="font-bold text-[#333] line-clamp-1">{item.title}</h4>
-                                            <p className="text-xs text-gray-500 line-clamp-2 mt-1">{item.excerpt}</p>
-                                         </div>
+                                         <div><h4 className="font-bold text-[#333] line-clamp-1">{item.title}</h4><p className="text-xs text-gray-500 line-clamp-2 mt-1">{item.excerpt}</p></div>
                                       </div>
                                    </td>
-                                   <td className="px-4 py-3 text-sm text-gray-600">
-                                      <div className="flex items-center gap-2">
-                                         <Calendar size={14} /> {item.date}
-                                      </div>
-                                   </td>
+                                   <td className="px-4 py-3 text-sm text-gray-600"><div className="flex items-center gap-2"><Calendar size={14} /> {item.date}</div></td>
                                    <td className="px-4 py-3 text-right">
                                       <div className="flex justify-end gap-2">
-                                         <button 
-                                            onClick={() => handleEditNews(item)}
-                                            className="bg-[#f39c12] hover:bg-[#db8b0b] text-white p-2 rounded-sm shadow-sm transition"
-                                            title="Edit Berita"
-                                         >
-                                            <Edit3 size={16} />
-                                         </button>
-                                         <button 
-                                            onClick={() => handleDeleteNews(item.id)}
-                                            className="bg-[#dd4b39] hover:bg-[#c23321] text-white p-2 rounded-sm shadow-sm transition"
-                                            title="Hapus Berita"
-                                         >
-                                            <Trash2 size={16} />
-                                         </button>
+                                         <button onClick={() => handleEditNews(item)} className="bg-[#f39c12] hover:bg-[#db8b0b] text-white p-2 rounded-sm shadow-sm transition"><Edit3 size={16} /></button>
+                                         <button onClick={() => handleDeleteNews(item.id)} className="bg-[#dd4b39] hover:bg-[#c23321] text-white p-2 rounded-sm shadow-sm transition"><Trash2 size={16} /></button>
                                       </div>
                                    </td>
                                 </tr>
                              ))}
                           </tbody>
                        </table>
-                       {news.length === 0 && (
-                          <div className="p-8 text-center text-gray-400">Belum ada berita yang dipublish.</div>
-                       )}
                     </div>
                  </div>
                </div>
             )}
-            
-            {/* ... Remaining Tabs ... */}
+
+            {activeTab === 'gallery' && (
+               <div className="space-y-6">
+                 <div className="bg-white border-t-[3px] border-[#605ca8] shadow-sm rounded-sm">
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Upload Foto Galeri</h3></div>
+                    <div className="p-4">
+                       <form onSubmit={handleGallerySubmit} className="space-y-4">
+                          <div className="flex flex-col md:flex-row gap-4">
+                             <div className="w-full md:w-1/3">
+                                <label className="block text-xs uppercase font-bold text-gray-500 mb-1">File Gambar</label>
+                                <div className="border-2 border-dashed border-gray-300 rounded-sm p-4 text-center hover:bg-gray-50 transition cursor-pointer relative" onClick={() => galleryInputRef.current?.click()}>
+                                   {galleryForm.imageUrl ? <img src={galleryForm.imageUrl} alt="Preview" className="max-h-40 mx-auto object-contain" /> : <div className="py-8 text-gray-400"><ImageIcon size={32} className="mx-auto mb-2" /><span className="text-xs">Klik untuk pilih foto</span></div>}
+                                   <input type="file" ref={galleryInputRef} onChange={handleGalleryImageUpload} accept="image/*" className="hidden" />
+                                </div>
+                             </div>
+                             <div className="w-full md:w-2/3 flex flex-col justify-between">
+                                <div>
+                                   <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Judul / Caption</label>
+                                   <input type="text" placeholder="Kegiatan majelis di..." className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#605ca8] outline-none" required value={galleryForm.caption} onChange={e => setGalleryForm({...galleryForm, caption: e.target.value})} />
+                                </div>
+                                <div className="flex justify-end mt-4">
+                                   <button type="submit" className="bg-[#605ca8] hover:bg-[#4b478d] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Upload size={16} /> Upload Foto</button>
+                                </div>
+                             </div>
+                          </div>
+                       </form>
+                    </div>
+                 </div>
+                 <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Daftar Galeri</h3></div>
+                    <div className="p-4">
+                       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                          {gallery.map(item => (
+                             <div key={item.id} className="group relative border border-gray-200 rounded-sm overflow-hidden shadow-sm hover:shadow-md transition">
+                                <div className="aspect-square bg-gray-100 overflow-hidden"><img src={item.url} alt={item.caption} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" /></div>
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2"><button onClick={() => deleteGalleryItem(item.id)} className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 shadow-lg"><Trash2 size={16} /></button></div>
+                                <div className="p-2 text-xs text-gray-600 truncate bg-white border-t border-gray-100">{item.caption}</div>
+                             </div>
+                          ))}
+                       </div>
+                       {gallery.length === 0 && <div className="p-10 text-center text-gray-400 border-2 border-dashed border-gray-200 rounded"><ImageIcon size={48} className="mx-auto mb-2 opacity-20" />Belum ada foto di galeri.</div>}
+                    </div>
+                 </div>
+               </div>
+            )}
+
+            {activeTab === 'attendance' && (
+               <div className="space-y-6">
+                  {viewingSession ? (
+                    <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm animate-fade-in-up">
+                       <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col md:flex-row justify-between items-center gap-4">
+                          <div className="flex items-center gap-3">
+                             <button onClick={() => setViewingSession(null)} className="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-full transition"><ChevronRight className="rotate-180" size={20} /></button>
+                             <div><h3 className="text-lg font-bold text-[#333]">{viewingSession.name}</h3><p className="text-xs text-gray-500 flex items-center gap-2"><Calendar size={12} /> {viewingSession.date} <span className="w-1 h-1 bg-gray-300 rounded-full"></span> <Users size={12} /> {viewingSession.attendees.length} Hadir</p></div>
+                          </div>
+                          <div className="flex items-center gap-3 w-full md:w-auto">
+                             <div className="flex bg-gray-100 rounded-sm p-1 border border-gray-200">
+                                <button onClick={() => setAttendanceViewMode('list')} className={`p-1.5 rounded-sm ${attendanceViewMode === 'list' ? 'bg-white shadow-sm text-[#3c8dbc]' : 'text-gray-500'}`}><ListIcon size={16} /></button>
+                                <button onClick={() => setAttendanceViewMode('grid')} className={`p-1.5 rounded-sm ${attendanceViewMode === 'grid' ? 'bg-white shadow-sm text-[#3c8dbc]' : 'text-gray-500'}`}><Grid size={16} /></button>
+                             </div>
+                             <div className="relative flex-grow md:flex-grow-0"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} /><input type="text" placeholder="Cari Nama..." value={attendanceSearch} onChange={(e) => setAttendanceSearch(e.target.value)} className="pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none w-full md:w-48" /></div>
+                             <button onClick={() => downloadSessionReport(viewingSession)} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-3 py-1.5 rounded-sm text-xs font-bold shadow-sm flex items-center gap-2 whitespace-nowrap"><FileSpreadsheet size={14} /> Export XLS</button>
+                          </div>
+                       </div>
+                       <div className="p-4 bg-gray-50 min-h-[400px]">
+                          {getFilteredAttendance().length === 0 ? <div className="flex flex-col items-center justify-center h-64 text-gray-400"><Users size={48} className="mb-2 opacity-20" /><p>Tidak ada data kehadiran ditemukan.</p></div> : (
+                             <>
+                             {attendanceViewMode === 'list' ? (
+                                <div className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden">
+                                   <table className="w-full text-left">
+                                      <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
+                                         <tr><th className="px-4 py-3 border-b">Foto</th><th className="px-4 py-3 border-b">Nama Anggota</th><th className="px-4 py-3 border-b">Waktu & Lokasi</th><th className="px-4 py-3 border-b text-right">Aksi</th></tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-100">
+                                         {getFilteredAttendance().map(record => (
+                                            <tr key={record.id} className="hover:bg-[#f9fafc]">
+                                               <td className="px-4 py-2 w-16"><img src={record.photoUrl} alt="Bukti" onClick={() => setPreviewImage(record.photoUrl)} className="w-10 h-10 rounded-full object-cover border border-gray-200 cursor-pointer hover:scale-110 transition" /></td>
+                                               <td className="px-4 py-2"><div className="font-bold text-[#333]">{record.userName}</div><div className="text-xs text-gray-500">ID: {record.userId}</div></td>
+                                               <td className="px-4 py-2 text-sm"><div className="flex items-center gap-1 text-gray-700 font-medium"><Calendar size={12} /> {record.timestamp}</div><div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1 truncate max-w-xs" title={record.location}><MapPin size={10} className="text-red-500" /> {record.location}</div></td>
+                                               <td className="px-4 py-2 text-right"><button onClick={() => setPreviewImage(record.photoUrl)} className="text-[#3c8dbc] hover:text-[#367fa9] text-xs font-bold border border-[#3c8dbc] px-2 py-1 rounded-sm hover:bg-[#3c8dbc] hover:text-white transition">Lihat Bukti</button></td>
+                                            </tr>
+                                         ))}
+                                      </tbody>
+                                   </table>
+                                </div>
+                             ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                   {getFilteredAttendance().map(record => (
+                                      <div key={record.id} className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden hover:shadow-md transition group">
+                                         <div className="aspect-[4/5] bg-gray-100 relative overflow-hidden cursor-pointer" onClick={() => setPreviewImage(record.photoUrl)}>
+                                            <img src={record.photoUrl} alt={record.userName} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                                            <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent text-white"><div className="font-bold text-sm truncate">{record.userName}</div><div className="text-[10px] opacity-80">{record.timestamp}</div></div>
+                                         </div>
+                                         <div className="p-2 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-500 flex justify-between items-center"><span className="truncate max-w-[100px]" title={record.location}>{record.location}</span><MapPin size={10} /></div>
+                                      </div>
+                                   ))}
+                                </div>
+                             )}
+                             </>
+                          )}
+                       </div>
+                    </div>
+                  ) : (
+                    <>
+                    <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm p-4">
+                       <h3 className="text-lg font-normal text-[#333] mb-4">Buat Sesi Absensi Baru</h3>
+                       <form onSubmit={handleCreateSession} className="flex gap-2">
+                          <div className="flex-grow"><input type="text" placeholder="Nama Kegiatan (Misal: Majelis Rutin 1 Muharram)" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none transition" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} required /></div>
+                          <button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-4 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Plus size={16} /> Buat Sesi</button>
+                       </form>
+                    </div>
+                    <div className="bg-white border-t-[3px] border-[#00a65a] shadow-sm rounded-sm">
+                       <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Riwayat Sesi & Laporan</h3></div>
+                       <div className="overflow-x-auto">
+                          <table className="w-full text-left">
+                             <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
+                                <tr><th className="px-4 py-3 border-b">Tanggal</th><th className="px-4 py-3 border-b">Nama Kegiatan</th><th className="px-4 py-3 border-b text-center">Hadir</th><th className="px-4 py-3 border-b text-center">Status</th><th className="px-4 py-3 border-b text-center">Open/Close</th><th className="px-4 py-3 border-b text-right">Detail</th></tr>
+                             </thead>
+                             <tbody>
+                                {attendanceSessions.map(session => (
+                                   <tr key={session.id} className="hover:bg-gray-50 border-b last:border-0 group">
+                                      <td className="px-4 py-3 text-sm text-gray-600">{session.date}</td>
+                                      <td className="px-4 py-3 font-bold text-[#333]">{session.name}</td>
+                                      <td className="px-4 py-3 text-center text-sm"><span className="bg-[#f39c12] text-white px-2 py-0.5 rounded text-xs font-bold">{session.attendees.length}</span></td>
+                                      <td className="px-4 py-3 text-center"><span className={`px-2 py-0.5 rounded text-xs font-bold text-white ${session.isOpen ? 'bg-[#00a65a]' : 'bg-[#dd4b39]'}`}>{session.isOpen ? 'OPEN' : 'CLOSED'}</span></td>
+                                      <td className="px-4 py-3 text-center">
+                                         <label className="inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" className="sr-only peer" checked={session.isOpen} onChange={() => toggleSession(session.id)} />
+                                            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#3c8dbc]"></div>
+                                         </label>
+                                      </td>
+                                      <td className="px-4 py-3 text-right"><button onClick={() => setViewingSession(session)} className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-1 rounded-sm text-xs font-bold shadow-sm inline-flex items-center gap-1 transition"><Eye size={14} /> Lihat Data</button></td>
+                                   </tr>
+                                ))}
+                             </tbody>
+                          </table>
+                          {attendanceSessions.length === 0 && <div className="p-8 text-center text-gray-400">Belum ada sesi yang dibuat.</div>}
+                       </div>
+                    </div>
+                    </>
+                  )}
+               </div>
+            )}
+
             {activeTab === 'approval' && (
                <div className="bg-white border-t-[3px] border-[#f39c12] shadow-sm rounded-sm">
-                  <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
-                     <h3 className="text-lg font-normal text-[#333]">Data Pendaftaran Baru</h3>
-                  </div>
+                  <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center"><h3 className="text-lg font-normal text-[#333]">Data Pendaftaran Baru</h3></div>
                   <div className="p-0">
-                     {registrations.length === 0 ? (
-                        <div className="p-10 text-center text-gray-500">
-                           Tidak ada data pendaftaran pending.
-                        </div>
-                     ) : (
+                     {registrations.length === 0 ? <div className="p-10 text-center text-gray-500">Tidak ada data pendaftaran pending.</div> : (
                         <div className="overflow-x-auto">
                            <table className="w-full text-left border-collapse">
                               <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
-                                 <tr>
-                                    <th className="px-4 py-3 border-b">Nama</th>
-                                    <th className="px-4 py-3 border-b">Kontak</th>
-                                    <th className="px-4 py-3 border-b">Wilayah</th>
-                                    <th className="px-4 py-3 border-b text-right">Aksi</th>
-                                 </tr>
+                                 <tr><th className="px-4 py-3 border-b">Nama</th><th className="px-4 py-3 border-b">Kontak</th><th className="px-4 py-3 border-b">Wilayah</th><th className="px-4 py-3 border-b text-right">Aksi</th></tr>
                               </thead>
                               <tbody>
                                  {registrations.map(reg => (
                                     <tr key={reg.id} className="hover:bg-gray-50 border-b last:border-0">
-                                       <td className="px-4 py-3">
-                                          <div className="font-bold text-[#333]">{reg.name}</div>
-                                          <div className="text-xs text-gray-500">NIK: {reg.nik}</div>
-                                          <div className="text-xs text-gray-500 mt-1 flex items-center gap-1"><MapPin size={10} /> {reg.address}</div>
-                                       </td>
-                                       <td className="px-4 py-3 text-sm">
-                                          <div>{reg.email}</div>
-                                          <div className="text-gray-500">{reg.phone}</div>
-                                       </td>
+                                       <td className="px-4 py-3"><div className="font-bold text-[#333]">{reg.name}</div><div className="text-xs text-gray-500">NIK: {reg.nik}</div><div className="text-xs text-gray-500 mt-1 flex items-center gap-1"><MapPin size={10} /> {reg.address}</div></td>
+                                       <td className="px-4 py-3 text-sm"><div>{reg.email}</div><div className="text-gray-500">{reg.phone}</div></td>
                                        <td className="px-4 py-3 text-sm">{reg.wilayah}</td>
                                        <td className="px-4 py-3 text-right">
                                           <div className="flex justify-end gap-2">
-                                             <button onClick={() => approveMember(reg.id)} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-3 py-1 rounded-sm text-xs font-bold shadow-sm">
-                                                Approve
-                                             </button>
-                                             <button onClick={() => rejectMember(reg.id)} className="bg-[#dd4b39] hover:bg-[#d73925] text-white px-3 py-1 rounded-sm text-xs font-bold shadow-sm">
-                                                Reject
-                                             </button>
+                                             <button onClick={() => approveMember(reg.id)} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-3 py-1 rounded-sm text-xs font-bold shadow-sm">Approve</button>
+                                             <button onClick={() => rejectMember(reg.id)} className="bg-[#dd4b39] hover:bg-[#d73925] text-white px-3 py-1 rounded-sm text-xs font-bold shadow-sm">Reject</button>
                                           </div>
                                        </td>
                                     </tr>
@@ -990,66 +925,28 @@ export const AdminDashboard: React.FC = () => {
                   <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-center gap-4">
                      <h3 className="text-lg font-normal text-[#333]">Data Anggota Aktif</h3>
                      <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <input 
-                           type="text" 
-                           placeholder="Cari Nama / NIA..." 
-                           className="px-3 py-1.5 border border-gray-300 rounded-sm text-sm focus:outline-none focus:border-[#3c8dbc] w-full sm:w-64"
-                           value={memberSearch}
-                           onChange={(e) => setMemberSearch(e.target.value)}
-                        />
-                        <button className="bg-gray-100 p-2 rounded-sm border border-gray-300 text-gray-600">
-                           <Search size={16} />
-                        </button>
+                        <input type="text" placeholder="Cari Nama / NIA..." className="px-3 py-1.5 border border-gray-300 rounded-sm text-sm focus:outline-none focus:border-[#3c8dbc] w-full sm:w-64" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
+                        <button className="bg-gray-100 p-2 rounded-sm border border-gray-300 text-gray-600"><Search size={16} /></button>
                      </div>
                   </div>
                   <div className="p-0">
-                     {filteredMembers.length === 0 ? (
-                        <div className="p-10 text-center text-gray-500">
-                           Data anggota tidak ditemukan.
-                        </div>
-                     ) : (
+                     {filteredMembers.length === 0 ? <div className="p-10 text-center text-gray-500">Data anggota tidak ditemukan.</div> : (
                         <div className="overflow-x-auto">
                            <table className="w-full text-left border-collapse">
                               <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
-                                 <tr>
-                                    <th className="px-4 py-3 border-b w-10">No</th>
-                                    <th className="px-4 py-3 border-b">Identitas Anggota</th>
-                                    <th className="px-4 py-3 border-b">Kontak & Alamat</th>
-                                    <th className="px-4 py-3 border-b">Wilayah</th>
-                                    <th className="px-4 py-3 border-b text-right w-40">Aksi</th>
-                                 </tr>
+                                 <tr><th className="px-4 py-3 border-b w-10">No</th><th className="px-4 py-3 border-b">Identitas Anggota</th><th className="px-4 py-3 border-b">Kontak & Alamat</th><th className="px-4 py-3 border-b">Wilayah</th><th className="px-4 py-3 border-b text-right w-40">Aksi</th></tr>
                               </thead>
                               <tbody>
                                  {filteredMembers.map((member, idx) => (
                                     <tr key={member.id} className="hover:bg-gray-50 border-b last:border-0">
                                        <td className="px-4 py-3 text-gray-500 text-center">{idx + 1}</td>
-                                       <td className="px-4 py-3">
-                                          <div className="font-bold text-[#333]">{member.name}</div>
-                                          <div className="text-xs text-[#3c8dbc] font-mono bg-blue-50 inline-block px-1 rounded mt-1">NIA: {member.nia}</div>
-                                       </td>
-                                       <td className="px-4 py-3 text-sm">
-                                          <div className="flex items-center gap-1 text-gray-600"><Phone size={12} /> {member.phone || '-'}</div>
-                                          <div className="text-xs text-gray-500 mt-1 max-w-xs">{member.address || '-'}</div>
-                                       </td>
-                                       <td className="px-4 py-3 text-sm">
-                                          <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs border border-gray-200">{member.wilayah}</span>
-                                       </td>
+                                       <td className="px-4 py-3"><div className="font-bold text-[#333]">{member.name}</div><div className="text-xs text-[#3c8dbc] font-mono bg-blue-50 inline-block px-1 rounded mt-1">NIA: {member.nia}</div></td>
+                                       <td className="px-4 py-3 text-sm"><div className="flex items-center gap-1 text-gray-600"><Phone size={12} /> {member.phone || '-'}</div><div className="text-xs text-gray-500 mt-1 max-w-xs">{member.address || '-'}</div></td>
+                                       <td className="px-4 py-3 text-sm"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs border border-gray-200">{member.wilayah}</span></td>
                                        <td className="px-4 py-3 text-right">
                                           <div className="flex justify-end gap-2">
-                                             <button 
-                                                onClick={() => handleResetPassword(member.id, member.name)} 
-                                                className="bg-gray-100 hover:bg-gray-200 text-gray-600 p-1.5 rounded-sm border border-gray-300 transition"
-                                                title="Reset Password (12345678)"
-                                             >
-                                                <Key size={14} />
-                                             </button>
-                                             <button 
-                                                onClick={() => handleDeleteMember(member.id, member.name)} 
-                                                className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-sm border border-red-200 transition"
-                                                title="Hapus Anggota Permanen"
-                                             >
-                                                <Trash2 size={14} />
-                                             </button>
+                                             <button onClick={() => handleResetPassword(member.id, member.name)} className="bg-gray-100 hover:bg-gray-200 text-gray-600 p-1.5 rounded-sm border border-gray-300 transition" title="Reset Password (12345678)"><Key size={14} /></button>
+                                             <button onClick={() => handleDeleteMember(member.id, member.name)} className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-sm border border-red-200 transition" title="Hapus Anggota Permanen"><Trash2 size={14} /></button>
                                           </div>
                                        </td>
                                     </tr>
@@ -1062,27 +959,14 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {/* ... Other Tabs remain unchanged ... */}
-            
             {activeTab === 'profile' && (
                <div className="space-y-6">
-                 {/* ... Profile Tab Content ... */}
                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h3 className="text-lg font-normal text-[#333]">Edit Menu & Sub-Menu Profil</h3>
                         <div className="flex gap-2">
                             {['sejarah', 'pengurus', 'korwil', 'amaliyah'].map(slug => (
-                                <button
-                                   key={slug}
-                                   onClick={() => setSelectedProfileSlug(slug)}
-                                   className={`px-3 py-1 text-sm rounded-sm font-bold transition uppercase ${
-                                      selectedProfileSlug === slug 
-                                      ? 'bg-[#3c8dbc] text-white shadow-md' 
-                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                   }`}
-                                >
-                                   {slug === 'sejarah' ? 'Sejarah' : slug === 'pengurus' ? 'Pengurus' : slug === 'korwil' ? 'Daftar Korwil' : 'Amaliyah'}
-                                </button>
+                                <button key={slug} onClick={() => setSelectedProfileSlug(slug)} className={`px-3 py-1 text-sm rounded-sm font-bold transition uppercase ${selectedProfileSlug === slug ? 'bg-[#3c8dbc] text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{slug === 'sejarah' ? 'Sejarah' : slug === 'pengurus' ? 'Pengurus' : slug === 'korwil' ? 'Daftar Korwil' : 'Amaliyah'}</button>
                             ))}
                         </div>
                     </div>
@@ -1090,52 +974,26 @@ export const AdminDashboard: React.FC = () => {
                        <div className="mb-4">
                           <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Judul Halaman (Tampil di Menu Website)</label>
                           <div className="flex gap-2">
-                              <div className="bg-gray-100 p-2 rounded-l-sm border border-r-0 border-gray-300 text-gray-500">
-                                 <Edit3 size={18} />
-                              </div>
-                              <input 
-                                 type="text" 
-                                 value={profileTitle} 
-                                 onChange={(e) => setProfileTitle(e.target.value)}
-                                 className="w-full px-3 py-2 border border-gray-300 rounded-r-sm focus:border-[#3c8dbc] outline-none font-bold text-[#333]"
-                                 placeholder="Contoh: Sejarah Berdirinya JASNU"
-                              />
+                              <div className="bg-gray-100 p-2 rounded-l-sm border border-r-0 border-gray-300 text-gray-500"><Edit3 size={18} /></div>
+                              <input type="text" value={profileTitle} onChange={(e) => setProfileTitle(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-r-sm focus:border-[#3c8dbc] outline-none font-bold text-[#333]" placeholder="Contoh: Sejarah Berdirinya JASNU" />
                           </div>
-                          <p className="text-[10px] text-gray-400 mt-1">* Judul ini akan muncul sebagai heading utama di halaman {selectedProfileSlug === 'sejarah' ? 'Sejarah' : selectedProfileSlug === 'pengurus' ? 'Susunan Pengurus' : selectedProfileSlug === 'korwil' ? 'Daftar Korwil' : 'Amaliyah'}.</p>
                        </div>
-
                        <div className="border border-gray-300 rounded-sm">
                              <div className="bg-[#f0f0f0] border-b border-gray-300 p-2 flex flex-wrap gap-1">
-                                <button type="button" onClick={() => execCmd('bold')} className="p-1 hover:bg-gray-200 rounded" title="Bold"><Bold size={16} /></button>
-                                <button type="button" onClick={() => execCmd('italic')} className="p-1 hover:bg-gray-200 rounded" title="Italic"><Italic size={16} /></button>
-                                <button type="button" onClick={() => execCmd('underline')} className="p-1 hover:bg-gray-200 rounded" title="Underline"><Underline size={16} /></button>
+                                <button type="button" onClick={() => execCmd('bold')} className="p-1 hover:bg-gray-200 rounded"><Bold size={16} /></button>
+                                <button type="button" onClick={() => execCmd('italic')} className="p-1 hover:bg-gray-200 rounded"><Italic size={16} /></button>
+                                <button type="button" onClick={() => execCmd('underline')} className="p-1 hover:bg-gray-200 rounded"><Underline size={16} /></button>
                                 <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button type="button" onClick={() => execCmd('insertUnorderedList')} className="p-1 hover:bg-gray-200 rounded" title="Bullet List"><List size={16} /></button>
-                                <button type="button" onClick={() => execCmd('insertOrderedList')} className="p-1 hover:bg-gray-200 rounded" title="Numbered List"><ListOrdered size={16} /></button>
+                                <button type="button" onClick={() => execCmd('insertUnorderedList')} className="p-1 hover:bg-gray-200 rounded"><List size={16} /></button>
+                                <button type="button" onClick={() => execCmd('insertOrderedList')} className="p-1 hover:bg-gray-200 rounded"><ListOrdered size={16} /></button>
                                 <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded" title="Image"><ImageIcon size={16} /></button>
-                                <button type="button" onClick={handleInsertTable} className="p-1 hover:bg-gray-200 rounded flex items-center gap-1" title="Insert Modern Table">
-                                  <Table size={16} /> 
-                                </button>
+                                <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={16} /></button>
+                                <button type="button" onClick={handleInsertTable} className="p-1 hover:bg-gray-200 rounded flex items-center gap-1"><Table size={16} /></button>
                                 <input type="file" ref={imageInputRef} onChange={handleEditorImageUpload} accept="image/*" className="hidden" />
                              </div>
-                             
-                             <div 
-                                ref={editorRef}
-                                contentEditable
-                                className="min-h-[400px] p-4 outline-none prose max-w-none bg-white [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg"
-                                onInput={(e) => setProfileContent(e.currentTarget.innerHTML)}
-                             ></div>
+                             <div ref={editorRef} contentEditable className="min-h-[400px] p-4 outline-none prose max-w-none bg-white [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg" onInput={(e) => setProfileContent(e.currentTarget.innerHTML)}></div>
                        </div>
-                       
-                       <div className="flex justify-end mt-4">
-                            <button 
-                               onClick={handleSaveProfile}
-                               className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"
-                            >
-                               <Save size={18} /> Simpan Perubahan Halaman
-                            </button>
-                       </div>
+                       <div className="flex justify-end mt-4"><button onClick={handleSaveProfile} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Save size={18} /> Simpan Perubahan Halaman</button></div>
                     </div>
                  </div>
                </div>
@@ -1143,184 +1001,140 @@ export const AdminDashboard: React.FC = () => {
             
             {activeTab === 'media' && (
                <div className="space-y-6">
-                 {/* ... Media Tab Content ... */}
-                 {/* Form Add Media */}
                  <div className="bg-white border-t-[3px] border-[#dd4b39] shadow-sm rounded-sm">
-                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                       <h3 className="text-lg font-normal text-[#333]">Tambah Video Baru</h3>
-                    </div>
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Tambah Video Baru</h3></div>
                     <div className="p-4">
                        <form onSubmit={handleAddMedia} className="space-y-4">
                           <div className="flex gap-4">
                              <div className="w-1/4">
                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Platform</label>
-                                <select 
-                                   className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none"
-                                   value={mediaForm.type}
-                                   onChange={e => setMediaForm({...mediaForm, type: e.target.value as any})}
-                                >
+                                <select className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none" value={mediaForm.type} onChange={e => setMediaForm({...mediaForm, type: e.target.value as any})}>
                                    <option value="youtube">YouTube</option>
                                    <option value="instagram">Instagram</option>
                                 </select>
                              </div>
                              <div className="w-3/4">
                                 <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Link Video (URL)</label>
-                                <input 
-                                   type="text" 
-                                   placeholder="https://www.instagram.com/reel/..."
-                                   className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none"
-                                   required
-                                   value={mediaForm.url}
-                                   onChange={e => setMediaForm({...mediaForm, url: e.target.value})}
-                                />
+                                <input type="text" placeholder="https://www.instagram.com/reel/..." className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none" required value={mediaForm.url} onChange={e => setMediaForm({...mediaForm, url: e.target.value})} />
                              </div>
                           </div>
                           <div>
                              <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Judul / Keterangan</label>
-                             <input 
-                                type="text" 
-                                placeholder="Dokumentasi Majelis..." 
-                                className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none"
-                                required
-                                value={mediaForm.caption}
-                                onChange={e => setMediaForm({...mediaForm, caption: e.target.value})}
-                             />
+                             <input type="text" placeholder="Dokumentasi Majelis..." className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none" required value={mediaForm.caption} onChange={e => setMediaForm({...mediaForm, caption: e.target.value})} />
                           </div>
-                          <div className="flex justify-end">
-                             <button type="submit" className="bg-[#dd4b39] hover:bg-[#c23321] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2">
-                                <Plus size={16} /> Tambah Media
-                             </button>
-                          </div>
+                          <div className="flex justify-end"><button type="submit" className="bg-[#dd4b39] hover:bg-[#c23321] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Plus size={16} /> Tambah Media</button></div>
                        </form>
                     </div>
                  </div>
-
-                 {/* List Media */}
                  <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
-                    <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                       <h3 className="text-lg font-normal text-[#333]">Daftar Media</h3>
-                    </div>
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Daftar Media</h3></div>
                     <div className="p-0">
                        {mediaPosts.map(post => (
                          <div key={post.id} className="p-4 border-b last:border-0 hover:bg-gray-50 flex gap-4 items-center">
                             <div className="w-32 h-20 bg-gray-100 flex items-center justify-center rounded overflow-hidden relative">
-                               {post.type === 'youtube' ? (
-                                  <img src={`https://img.youtube.com/vi/${post.embedUrl.split('/').pop()}/mqdefault.jpg`} className="w-full h-full object-cover" />
-                               ) : (
-                                  <Instagram className="text-pink-600" size={32} />
-                               )}
-                               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                  <PlayCircle className="text-white drop-shadow-md" />
-                               </div>
+                               {post.type === 'youtube' ? <img src={`https://img.youtube.com/vi/${post.embedUrl.split('/').pop()}/mqdefault.jpg`} className="w-full h-full object-cover" /> : <Instagram className="text-pink-600" size={32} />}
+                               <div className="absolute inset-0 flex items-center justify-center bg-black/20"><PlayCircle className="text-white drop-shadow-md" /></div>
                             </div>
                             <div className="flex-grow">
-                               <div className="flex items-center gap-2 mb-1">
-                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${post.type === 'youtube' ? 'bg-red-600' : 'bg-pink-600'}`}>
-                                     {post.type.toUpperCase()}
-                                  </span>
-                                  <span className="text-xs text-gray-500">{post.createdAt}</span>
-                                </div>
-                               <h4 className="font-bold text-gray-800">{post.caption}</h4>
-                               <a href={post.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline truncate block max-w-md">{post.url}</a>
+                               <div className="flex items-center gap-2 mb-1"><span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${post.type === 'youtube' ? 'bg-red-600' : 'bg-pink-600'}`}>{post.type.toUpperCase()}</span><span className="text-xs text-gray-500">{post.createdAt}</span></div>
+                               <h4 className="font-bold text-gray-800">{post.caption}</h4><a href={post.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline truncate block max-w-md">{post.url}</a>
                             </div>
-                            <button 
-                               onClick={() => deleteMediaPost(post.id)}
-                               className="p-2 text-red-500 hover:bg-red-50 rounded transition"
-                               title="Hapus Media"
-                            >
-                               <Trash2 size={18} />
-                            </button>
+                            <button onClick={() => deleteMediaPost(post.id)} className="p-2 text-red-500 hover:bg-red-50 rounded transition" title="Hapus Media"><Trash2 size={18} /></button>
                          </div>
                        ))}
-                       {mediaPosts.length === 0 && (
-                          <div className="p-8 text-center text-gray-400">Belum ada data media.</div>
-                       )}
+                       {mediaPosts.length === 0 && <div className="p-8 text-center text-gray-400">Belum ada data media.</div>}
                     </div>
                  </div>
                </div>
             )}
 
-            {/* ... Remaining Tabs ... */}
             {activeTab === 'recap' && (
                <div className="space-y-6">
-                  {/* ... Recap Tab Content ... */}
                   <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                        <h3 className="text-lg font-normal text-[#333]">Laporan Rekapitulasi</h3>
-                     </div>
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Laporan Rekapitulasi</h3></div>
                      <div className="p-4">
                         <div className="flex items-center gap-4 mb-4">
                            <div className="flex-1">
                               <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Jenis Laporan</label>
-                              <select 
-                                 className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#00c0ef] outline-none"
-                                 value={recapType}
-                                 onChange={(e) => setRecapType(e.target.value as any)}
-                              >
+                              <select className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#00c0ef] outline-none" value={recapType} onChange={(e) => setRecapType(e.target.value as any)}>
                                  <option value="attendance">Absensi Kehadiran</option>
                                  <option value="members">Data Anggota</option>
                               </select>
                            </div>
-                           <div className="flex-none self-end">
-                              <button 
-                                 onClick={downloadReport}
-                                 className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"
-                              >
-                                 <FileSpreadsheet size={16} /> Download Excel
-                              </button>
-                           </div>
+                           <div className="flex-none self-end"><button onClick={downloadReport} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><FileSpreadsheet size={16} /> Download Excel</button></div>
                         </div>
-                        <div className="bg-[#f9fafc] p-4 rounded border border-gray-200 text-sm text-gray-600">
-                           <p className="flex items-center gap-2 mb-2">
-                              <AlertTriangle size={16} className="text-[#f39c12]" /> 
-                              <strong>Info:</strong>
-                           </p>
-                           {recapType === 'attendance' 
-                              ? "Laporan ini berisi rekap kehadiran anggota per sesi kegiatan. Kolom mencakup: Tanggal, Nama Kegiatan, Nama Anggota, NIA, dan Wilayah."
-                              : "Laporan ini berisi database lengkap seluruh anggota yang terdaftar (Aktif & Pending). Kolom mencakup: NIA, Nama, Kontak, Alamat, Wilayah, dan Status."
-                           }
-                        </div>
+                        <div className="bg-[#f9fafc] p-4 rounded border border-gray-200 text-sm text-gray-600"><p className="flex items-center gap-2 mb-2"><AlertTriangle size={16} className="text-[#f39c12]" /> <strong>Info:</strong></p>{recapType === 'attendance' ? "Laporan ini berisi rekap kehadiran anggota per sesi kegiatan." : "Laporan ini berisi database lengkap seluruh anggota yang terdaftar."}</div>
                      </div>
                   </div>
                </div>
             )}
             
+            {activeTab === 'settings' && (
+               <div className="space-y-6">
+                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Pengaturan Aplikasi</h3></div>
+                     <div className="p-4">
+                        <form onSubmit={handleSaveConfig} className="space-y-4">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Aplikasi</label><input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" value={configForm.appName} onChange={(e) => setConfigForm({...configForm, appName: e.target.value})} /></div>
+                              <div><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Organisasi</label><input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" value={configForm.orgName} onChange={(e) => setConfigForm({...configForm, orgName: e.target.value})} /></div>
+                              <div className="md:col-span-2"><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Deskripsi Singkat</label><textarea className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-20" value={configForm.description} onChange={(e) => setConfigForm({...configForm, description: e.target.value})}></textarea></div>
+                              <div><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Email Kontak</label><input type="email" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" value={configForm.email} onChange={(e) => setConfigForm({...configForm, email: e.target.value})} /></div>
+                              <div><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nomor Telepon</label><input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" value={configForm.phone} onChange={(e) => setConfigForm({...configForm, phone: e.target.value})} /></div>
+                              <div className="md:col-span-2"><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Alamat Lengkap</label><input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" value={configForm.address} onChange={(e) => setConfigForm({...configForm, address: e.target.value})} /></div>
+                              <div className="md:col-span-2"><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Upload Logo Baru</label><div className="flex items-center gap-4"><img src={configForm.logoUrl} alt="Preview" className="w-16 h-16 object-cover rounded-full border border-gray-200" /><input type="file" accept="image/*" ref={logoInputRef} onChange={handleLogoUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#3c8dbc] file:text-white hover:file:bg-[#367fa9]" /></div></div>
+                           </div>
+                           <div className="flex justify-end pt-4 border-t border-gray-100"><button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Save size={16} /> Simpan Pengaturan</button></div>
+                        </form>
+                     </div>
+                  </div>
+                  <div className="bg-white border-t-[3px] border-[#00a65a] shadow-sm rounded-sm">
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Manajemen Data Master (Korwil)</h3></div>
+                     <div className="p-4">
+                        <div className="flex flex-col md:flex-row gap-6">
+                          <div className="flex-1">
+                             <h4 className="font-bold text-gray-600 mb-3 text-xs uppercase">Daftar Wilayah (Korwil)</h4>
+                             <div className="border border-gray-200 rounded-sm h-60 overflow-y-auto bg-gray-50">
+                                {korwils.length > 0 ? (
+                                  <ul className="divide-y divide-gray-200">
+                                    {korwils.map(korwil => (
+                                      <li key={korwil.id} className="px-4 py-2 flex justify-between items-center hover:bg-white transition"><span className="text-sm text-gray-700">{korwil.name}</span><button onClick={() => handleDeleteKorwil(korwil.id, korwil.name)} className="text-red-500 hover:text-red-700 p-1"><Trash2 size={14} /></button></li>
+                                    ))}
+                                  </ul>
+                                ) : <div className="p-4 text-center text-gray-400 text-sm">Belum ada data wilayah.</div>}
+                             </div>
+                          </div>
+                          <div className="md:w-1/3">
+                             <h4 className="font-bold text-gray-600 mb-3 text-xs uppercase">Tambah Wilayah Baru</h4>
+                             <form onSubmit={handleAddKorwil} className="space-y-3">
+                                <div><label className="block text-xs font-bold text-gray-500 mb-1">Nama Wilayah / Kecamatan</label><input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#00a65a] outline-none" placeholder="Contoh: Rungkut" value={newKorwilName} onChange={(e) => setNewKorwilName(e.target.value)} required /></div>
+                                <button type="submit" className="w-full bg-[#00a65a] hover:bg-[#008d4c] text-white px-4 py-2 rounded-sm font-bold shadow-sm flex items-center justify-center gap-2"><Plus size={16} /> Tambah Wilayah</button>
+                             </form>
+                          </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            )}
+
             {activeTab === 'backup' && (
                <div className="space-y-6">
-                  {/* ... Backup Tab Content ... */}
                   <div className="bg-white border-t-[3px] border-[#f39c12] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                        <h3 className="text-lg font-normal text-[#333]">Backup & Restore Database</h3>
-                     </div>
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Backup & Restore Database</h3></div>
                      <div className="p-8">
                         <div className="grid md:grid-cols-2 gap-8">
                            <div className="border border-gray-200 rounded p-6 text-center hover:shadow-lg transition">
-                              <div className="w-16 h-16 bg-[#00a65a] rounded-full flex items-center justify-center mx-auto mb-4 text-white">
-                                 <Download size={32} />
-                              </div>
+                              <div className="w-16 h-16 bg-[#00a65a] rounded-full flex items-center justify-center mx-auto mb-4 text-white"><Download size={32} /></div>
                               <h4 className="font-bold text-lg mb-2">Backup Data</h4>
                               <p className="text-gray-500 text-sm mb-6">Unduh seluruh data aplikasi (Anggota, Berita, Absensi) dalam format JSON.</p>
-                              <button onClick={handleBackup} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm inline-flex items-center gap-2">
-                                 Download Backup
-                              </button>
+                              <button onClick={handleBackup} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm inline-flex items-center gap-2">Download Backup</button>
                            </div>
-
                            <div className="border border-gray-200 rounded p-6 text-center hover:shadow-lg transition">
-                              <div className="w-16 h-16 bg-[#dd4b39] rounded-full flex items-center justify-center mx-auto mb-4 text-white">
-                                 <Upload size={32} />
-                              </div>
+                              <div className="w-16 h-16 bg-[#dd4b39] rounded-full flex items-center justify-center mx-auto mb-4 text-white"><Upload size={32} /></div>
                               <h4 className="font-bold text-lg mb-2">Restore Data</h4>
                               <p className="text-gray-500 text-sm mb-6">Kembalikan data dari file backup JSON. <span className="text-red-500 font-bold">Perhatian: Data saat ini akan ditimpa!</span></p>
-                              <input 
-                                 type="file" 
-                                 ref={fileInputRef} 
-                                 onChange={handleFileChange} 
-                                 accept=".json" 
-                                 className="hidden" 
-                              />
-                              <button onClick={handleRestoreClick} className="bg-[#dd4b39] hover:bg-[#c23321] text-white px-6 py-2 rounded-sm font-bold shadow-sm inline-flex items-center gap-2">
-                                 Upload File Backup
-                              </button>
+                              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+                              <button onClick={handleRestoreClick} className="bg-[#dd4b39] hover:bg-[#c23321] text-white px-6 py-2 rounded-sm font-bold shadow-sm inline-flex items-center gap-2">Upload File Backup</button>
                            </div>
                         </div>
                      </div>
@@ -1331,20 +1145,11 @@ export const AdminDashboard: React.FC = () => {
          </div>
       </main>
 
-      {/* Preview Modal for Attendance */}
       {previewImage && (
-         <div 
-           className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
-           onClick={() => setPreviewImage(null)}
-         >
+         <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
             <div className="relative max-w-4xl max-h-[90vh]">
                <img src={previewImage} className="max-w-full max-h-[90vh] rounded shadow-2xl" alt="Preview" />
-               <button 
-                  onClick={() => setPreviewImage(null)}
-                  className="absolute -top-4 -right-4 bg-white text-black p-2 rounded-full shadow-lg hover:bg-gray-100"
-               >
-                  <X size={24} />
-               </button>
+               <button onClick={() => setPreviewImage(null)} className="absolute -top-4 -right-4 bg-white text-black p-2 rounded-full shadow-lg hover:bg-gray-100"><X size={24} /></button>
             </div>
          </div>
       )}
