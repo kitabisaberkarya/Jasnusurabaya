@@ -488,6 +488,71 @@ export const AdminDashboard: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // HELPER: Generate Styled Excel using xlsx-js-style
+  const generateStyledExcel = (data: any[], sheetName: string, fileName: string) => {
+     // 1. Create Worksheet
+     const ws = XLSX.utils.json_to_sheet(data);
+
+     // 2. Define Styles
+     // Header Style: Emerald Background, White Bold Text, Centered
+     const headerStyle = {
+        font: { name: "Arial", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "064E3B" } }, // Emerald 900
+        alignment: { horizontal: "center", vertical: "center" },
+        border: {
+           top: { style: "thin", color: { rgb: "FFFFFF" } },
+           bottom: { style: "thin", color: { rgb: "FFFFFF" } },
+           left: { style: "thin", color: { rgb: "FFFFFF" } },
+           right: { style: "thin", color: { rgb: "FFFFFF" } }
+        }
+     };
+
+     // Body Style: Alternating Colors (Not strictly possible row-by-row easily without loop, applying base style)
+     const bodyStyle = {
+        font: { name: "Arial", sz: 10 },
+        alignment: { vertical: "center" },
+        border: {
+           top: { style: "thin", color: { rgb: "E2E8F0" } }, // Neutral 200
+           bottom: { style: "thin", color: { rgb: "E2E8F0" } },
+           left: { style: "thin", color: { rgb: "E2E8F0" } },
+           right: { style: "thin", color: { rgb: "E2E8F0" } }
+        }
+     };
+
+     // 3. Apply Styles to Cells
+     const range = XLSX.utils.decode_range(ws['!ref'] || "A1:A1");
+     
+     // Calculate Column Widths based on content
+     const colWidths: number[] = [];
+
+     for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+           const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+           if (!ws[cellRef]) continue;
+
+           // Apply Header Style
+           if (R === 0) {
+              ws[cellRef].s = headerStyle;
+           } else {
+              // Apply Body Style
+              ws[cellRef].s = bodyStyle;
+           }
+
+           // Calculate Max Width
+           const cellValue = ws[cellRef].v ? String(ws[cellRef].v) : "";
+           colWidths[C] = Math.max(colWidths[C] || 10, cellValue.length + 5);
+        }
+     }
+
+     // 4. Set Column Widths
+     ws['!cols'] = colWidths.map(w => ({ wch: w }));
+
+     // 5. Create Workbook and Download
+     const wb = XLSX.utils.book_new();
+     XLSX.utils.book_append_sheet(wb, ws, sheetName);
+     XLSX.writeFile(wb, fileName);
+  };
+
   const downloadReport = () => {
     const data: any[] = [];
     const timestamp = new Date().toISOString().slice(0,10);
@@ -495,17 +560,19 @@ export const AdminDashboard: React.FC = () => {
     if (recapType === 'attendance') {
       attendanceSessions.forEach(session => {
         session.attendees.forEach(userId => {
-          const user = users.find(u => u.id === userId);
-          const record = attendanceRecords.find(r => r.sessionId === session.id && r.userId === userId);
+          // Use String comparison for safer matching
+          const user = users.find(u => String(u.id) === String(userId));
+          const record = attendanceRecords.find(r => r.sessionId === session.id && String(r.userId) === String(userId));
+          
           if (user) {
             data.push({
               "Tanggal": session.date,
               "Kegiatan": session.name,
-              "Nama Anggota": user.name,
+              "Nama Anggota": user.name.toUpperCase(),
               "NIA": user.nia || '-',
-              "NIK KTP": user.nik || '-', 
+              "NIK KTP": user.nik || '-', // Pastikan NIK terambil
               "Wilayah": user.wilayah || '-',
-              "Waktu Hadir": record ? record.timestamp : '-',
+              "Waktu Hadir": record ? record.timestamp : 'Manual/Tanpa Foto',
               "Lokasi": record ? record.location : '-'
             });
           }
@@ -515,13 +582,13 @@ export const AdminDashboard: React.FC = () => {
       users.filter(u => u.role !== 'admin').forEach(user => {
          data.push({
            "NIA": user.nia || '-', 
-           "NIK KTP": user.nik || '-', 
-           "Nama Lengkap": user.name, 
+           "NIK KTP": user.nik || '-', // Pastikan NIK terambil
+           "Nama Lengkap": user.name.toUpperCase(), 
            "Email": user.email, 
            "No HP": user.phone || '-',
            "Alamat": user.address || '-', 
            "Wilayah": user.wilayah || '-', 
-           "Status": user.status === MemberStatus.ACTIVE ? 'Aktif' : 'Pending',
+           "Status": user.status === MemberStatus.ACTIVE ? 'AKTIF' : 'PENDING',
            "Bergabung": user.joinedAt || '-'
          });
       });
@@ -532,25 +599,26 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, recapType === 'attendance' ? "Absensi" : "Anggota");
-    XLSX.writeFile(wb, `Laporan_${recapType === 'attendance' ? 'Absensi' : 'Anggota'}_${timestamp}.xlsx`);
-    showToast("Laporan berhasil diunduh (XLSX)", "success");
+    generateStyledExcel(data, recapType === 'attendance' ? "Laporan Absensi" : "Database Anggota", `JSN_Laporan_${recapType}_${timestamp}.xlsx`);
+    showToast("Laporan berhasil diunduh (Styled XLSX)", "success");
   };
 
   const downloadSessionReport = (session: AttendanceSession) => {
     const data: any[] = [];
     const filteredRecords = attendanceRecords.filter(r => r.sessionId === session.id);
+    
     filteredRecords.forEach(record => {
-      const user = users.find(u => u.id === record.userId);
+      // Robust comparison using String() to avoid Type Mismatches
+      const user = users.find(u => String(u.id) === String(record.userId));
+      
       data.push({
-        "Nama": user?.name || record.userName, 
-        "NIA": user?.nia || '-', 
-        "NIK KTP": user?.nik || '-',
         "Waktu": record.timestamp,
-        "Lokasi": record.location, 
-        "Wilayah": user?.wilayah || '-'
+        "Nama Lengkap": (user?.name || record.userName).toUpperCase(), 
+        "NIA": user?.nia || '-', 
+        "NIK KTP": user?.nik || '-', // Pastikan NIK terambil
+        "Wilayah": user?.wilayah || '-',
+        "Lokasi Kehadiran": record.location,
+        "Status": "HADIR"
       });
     });
 
@@ -559,10 +627,9 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, session.name.substring(0, 30));
-    XLSX.writeFile(wb, `Absensi_${session.name.replace(/\s+/g, '_')}_${session.date}.xlsx`);
+    const safeName = session.name.replace(/[^a-z0-9]/gi, '_').substring(0, 20);
+    generateStyledExcel(data, "Absensi Sesi", `JSN_Absensi_${safeName}_${session.date}.xlsx`);
+    showToast("Absensi sesi berhasil diunduh (Styled XLSX)", "success");
   }
 
   const activeMembersCount = users.filter(u => u.status === MemberStatus.ACTIVE && u.role !== 'admin').length;
