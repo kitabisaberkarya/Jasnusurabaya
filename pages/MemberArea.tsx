@@ -139,6 +139,10 @@ export const MemberArea: React.FC = () => {
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
 
+      // Get Active Session Name
+      const currentSession = attendanceSessions.find(s => s.id === selectedSession);
+      const activityName = currentSession ? currentSession.name : "Kegiatan Rutin JSN";
+
       if (context) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -151,74 +155,83 @@ export const MemberArea: React.FC = () => {
         context.drawImage(video, -w, 0, w, h);
         context.restore();
 
-        // 2. Professional Gradient Overlay (Bottom 35%)
-        // This ensures text is readable without obscuring the face in the center
-        const gradientHeight = h * 0.35;
+        // 2. Professional Gradient Overlay (Increased height to accommodate more text)
+        const gradientHeight = h * 0.45; // 45% of height for better text contrast
         const gradient = context.createLinearGradient(0, h - gradientHeight, 0, h);
         gradient.addColorStop(0, "rgba(0,0,0,0)");
-        gradient.addColorStop(0.4, "rgba(0,0,0,0.5)");
-        gradient.addColorStop(1, "rgba(0,0,0,0.9)");
+        gradient.addColorStop(0.3, "rgba(0,0,0,0.6)");
+        gradient.addColorStop(1, "rgba(0,0,0,0.95)");
         
         context.fillStyle = gradient;
         context.fillRect(0, h - gradientHeight, w, gradientHeight);
 
         // 3. Elegant Border
-        context.strokeStyle = "rgba(255, 255, 255, 0.3)";
+        context.strokeStyle = "rgba(255, 255, 255, 0.2)";
         context.lineWidth = w * 0.005;
-        context.strokeRect(w * 0.02, w * 0.02, w - (w * 0.04), h - (w * 0.04));
+        context.strokeRect(w * 0.03, w * 0.03, w - (w * 0.06), h - (w * 0.06));
 
         // 4. Text Configuration
         context.textAlign = "center";
         context.shadowColor = "black";
         context.shadowBlur = 4;
-        context.shadowOffsetX = 1;
-        context.shadowOffsetY = 1;
+        context.shadowOffsetX = 2;
+        context.shadowOffsetY = 2;
         
         const centerX = w / 2;
-        const paddingSide = w * 0.05;
-        const maxWidth = w - (paddingSide * 2);
-        
-        // Define Base Sizes relative to canvas width
-        const sizeName = Math.floor(w * 0.055); // Prominent Name
-        const sizeMeta = Math.floor(w * 0.025); // Smaller meta data
-        const sizeTitle = Math.floor(w * 0.03); // Org Title
+        // Font sizes scaled to canvas width
+        const sizeName = Math.floor(w * 0.055); // Name (Large)
+        const sizeActivity = Math.floor(w * 0.04); // Activity (Medium)
+        const sizeMeta = Math.floor(w * 0.025); // Date/Loc (Small)
+        const sizeOrg = Math.floor(w * 0.025); // Org (Small Header)
 
-        // Calculate positions starting from Bottom
-        const bottomMargin = h * 0.04;
-        const lineSpacing = sizeMeta * 0.5;
+        // Vertical spacing helper
+        const bottomMargin = h * 0.05;
+        const lineSpacing = sizeMeta * 0.6;
 
-        // --- LINE 4: Location (Bottom) ---
+        // --- STACK FROM BOTTOM UP ---
+
+        // LINE 5: Location
         context.font = `${sizeMeta}px sans-serif`;
         context.fillStyle = "#d4d4d4"; // Light Gray
         const yLocation = h - bottomMargin;
-        context.fillText(locationName, centerX, yLocation, maxWidth);
+        context.fillText(locationName, centerX, yLocation);
 
-        // --- LINE 3: Date/Time ---
+        // LINE 4: Date
         const timeString = new Date().toLocaleString('id-ID', { 
           weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute:'2-digit' 
         });
-        context.font = `bold ${sizeMeta}px monospace`;
-        context.fillStyle = "#fbbf24"; // Amber/Gold
-        const yTime = yLocation - sizeMeta - lineSpacing;
-        context.fillText(timeString, centerX, yTime, maxWidth);
+        context.font = `${sizeMeta}px monospace`;
+        context.fillStyle = "#e5e5e5"; 
+        const yDate = yLocation - sizeMeta - lineSpacing;
+        context.fillText(timeString, centerX, yDate);
 
-        // --- LINE 2: Name (The User) ---
-        context.font = `bold ${sizeName}px serif`; // Serif looks more "Official"
+        // LINE 3: User Name (The Subject)
+        context.font = `bold ${sizeName}px serif`;
         context.fillStyle = "white";
-        const yName = yTime - sizeName - (lineSpacing * 1.5);
-        context.fillText(currentUser.name.toUpperCase(), centerX, yName, maxWidth);
+        const yName = yDate - sizeName - (lineSpacing * 1.5);
+        context.fillText(currentUser.name.toUpperCase(), centerX, yName);
 
-        // --- LINE 1: Organization (Top of footer) ---
-        context.font = `bold ${sizeTitle}px sans-serif`;
-        context.fillStyle = "rgba(255,255,255,0.9)";
-        const yTitle = yName - sizeTitle - (lineSpacing * 2);
-        context.fillText("JAMIYAH SHOLAWAT NARIYAH", centerX, yTitle, maxWidth);
+        // LINE 2: Activity Name (The Context - Highlighted)
+        context.font = `bold ${sizeActivity}px sans-serif`;
+        context.fillStyle = "#fbbf24"; // Amber/Gold Color
+        const yActivity = yName - sizeActivity - lineSpacing;
+        context.fillText(activityName, centerX, yActivity);
 
-        // Watermark / Logo hint (Optional, Top Right)
+        // LINE 1: Organization (The Brand)
+        context.font = `bold ${sizeOrg}px sans-serif`;
+        context.fillStyle = "rgba(255,255,255,0.7)";
+        context.letterSpacing = "2px";
+        const yOrg = yActivity - sizeOrg - (lineSpacing * 2);
+        context.fillText("JAMIYAH SHOLAWAT NARIYAH", centerX, yOrg);
+
+        // Reset Letter Spacing for future draws (if any)
+        context.letterSpacing = "0px";
+
+        // Top Right Watermark
         context.font = `italic ${sizeMeta * 0.8}px sans-serif`;
-        context.fillStyle = "rgba(255,255,255,0.5)";
+        context.fillStyle = "rgba(255,255,255,0.4)";
         context.textAlign = "right";
-        context.fillText("JSN Official System", w - (w*0.03), w*0.05);
+        context.fillText("JSN Verified Attendance", w - (w*0.05), w*0.06);
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         setCapturedImage(dataUrl);
