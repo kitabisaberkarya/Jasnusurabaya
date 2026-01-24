@@ -8,7 +8,7 @@ import {
   Undo, Redo, Strikethrough, Quote, Link as LinkIcon, Video, Plus, Table,
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
-  User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon
+  User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon, Lock
 } from 'lucide-react';
 import { MemberStatus, AppState, NewsItem, AttendanceSession } from '../types';
 import * as XLSX from 'xlsx';
@@ -475,6 +475,7 @@ export const AdminDashboard: React.FC = () => {
               "Kegiatan": session.name,
               "Nama Anggota": user.name,
               "NIA": user.nia || '-',
+              "NIK KTP": user.nik || '-', // Added NIK
               "Wilayah": user.wilayah || '-',
               "Waktu Hadir": record ? record.timestamp : '-',
               "Lokasi": record ? record.location : '-'
@@ -485,8 +486,14 @@ export const AdminDashboard: React.FC = () => {
     } else {
       users.filter(u => u.role !== 'admin').forEach(user => {
          data.push({
-           "NIA": user.nia || '-', "Nama Lengkap": user.name, "Email": user.email, "No HP": user.phone || '-',
-           "Alamat": user.address || '-', "Wilayah": user.wilayah || '-', "Status": user.status === MemberStatus.ACTIVE ? 'Aktif' : 'Pending',
+           "NIA": user.nia || '-', 
+           "NIK KTP": user.nik || '-', // Added NIK
+           "Nama Lengkap": user.name, 
+           "Email": user.email, 
+           "No HP": user.phone || '-',
+           "Alamat": user.address || '-', 
+           "Wilayah": user.wilayah || '-', 
+           "Status": user.status === MemberStatus.ACTIVE ? 'Aktif' : 'Pending',
            "Bergabung": user.joinedAt || '-'
          });
       });
@@ -510,8 +517,12 @@ export const AdminDashboard: React.FC = () => {
     filteredRecords.forEach(record => {
       const user = users.find(u => u.id === record.userId);
       data.push({
-        "Nama": user?.name || record.userName, "NIA": user?.nia || '-', "Waktu": record.timestamp,
-        "Lokasi": record.location, "Wilayah": user?.wilayah || '-'
+        "Nama": user?.name || record.userName, 
+        "NIA": user?.nia || '-', 
+        "NIK KTP": user?.nik || '-', // Added NIK
+        "Waktu": record.timestamp,
+        "Lokasi": record.location, 
+        "Wilayah": user?.wilayah || '-'
       });
     });
 
@@ -671,6 +682,7 @@ export const AdminDashboard: React.FC = () => {
 
             {activeTab === 'news' && (
                <div className="space-y-6">
+                 {/* ... News Content (No Change) ... */}
                  <div ref={formRef} className={`bg-white border-t-[3px] ${editingNewsId ? 'border-[#f39c12]' : 'border-[#dd4b39]'} shadow-sm rounded-sm`}>
                     <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
                        <h3 className="text-lg font-normal text-[#333]">{editingNewsId ? 'Edit Berita' : 'Tulis Berita Baru'}</h3>
@@ -745,8 +757,10 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
+            {/* Gallery, Attendance, Approval (Unchanged logic, just placeholder for brevity) */}
             {activeTab === 'gallery' && (
                <div className="space-y-6">
+                 {/* ... Gallery Content ... */}
                  <div className="bg-white border-t-[3px] border-[#605ca8] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Upload Foto Galeri</h3></div>
                     <div className="p-4">
@@ -792,6 +806,7 @@ export const AdminDashboard: React.FC = () => {
 
             {activeTab === 'attendance' && (
                <div className="space-y-6">
+                  {/* ... Attendance Logic ... */}
                   {viewingSession ? (
                     <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm animate-fade-in-up">
                        <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col md:flex-row justify-between items-center gap-4">
@@ -940,7 +955,17 @@ export const AdminDashboard: React.FC = () => {
                                  {filteredMembers.map((member, idx) => (
                                     <tr key={member.id} className="hover:bg-gray-50 border-b last:border-0">
                                        <td className="px-4 py-3 text-gray-500 text-center">{idx + 1}</td>
-                                       <td className="px-4 py-3"><div className="font-bold text-[#333]">{member.name}</div><div className="text-xs text-[#3c8dbc] font-mono bg-blue-50 inline-block px-1 rounded mt-1">NIA: {member.nia}</div></td>
+                                       <td className="px-4 py-3">
+                                          <div className="font-bold text-[#333]">{member.name}</div>
+                                          <div className="flex gap-2 mt-1">
+                                             <div className="text-xs text-[#3c8dbc] font-mono bg-blue-50 inline-block px-1 rounded border border-blue-100">NIA: {member.nia}</div>
+                                             {member.nik && (
+                                                <div className="text-xs text-gray-500 font-mono bg-gray-50 inline-block px-1 rounded border border-gray-200" title="Nomor Induk Kependudukan">
+                                                   NIK: {member.nik}
+                                                </div>
+                                             )}
+                                          </div>
+                                       </td>
                                        <td className="px-4 py-3 text-sm"><div className="flex items-center gap-1 text-gray-600"><Phone size={12} /> {member.phone || '-'}</div><div className="text-xs text-gray-500 mt-1 max-w-xs">{member.address || '-'}</div></td>
                                        <td className="px-4 py-3 text-sm"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs border border-gray-200">{member.wilayah}</span></td>
                                        <td className="px-4 py-3 text-right">
@@ -959,8 +984,12 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
+            {/* Profile, Media, Backup (Unchanged logic) */}
+            {/* ... */}
+            
             {activeTab === 'profile' && (
-               <div className="space-y-6">
+                <div className="space-y-6">
+                 {/* ... Profile Content (Unchanged) ... */}
                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h3 className="text-lg font-normal text-[#333]">Edit Menu & Sub-Menu Profil</h3>
@@ -1001,6 +1030,7 @@ export const AdminDashboard: React.FC = () => {
             
             {activeTab === 'media' && (
                <div className="space-y-6">
+                 {/* ... Media Content ... */}
                  <div className="bg-white border-t-[3px] border-[#dd4b39] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Tambah Video Baru</h3></div>
                     <div className="p-4">
@@ -1050,6 +1080,7 @@ export const AdminDashboard: React.FC = () => {
 
             {activeTab === 'recap' && (
                <div className="space-y-6">
+                  {/* ... Recap Content ... */}
                   <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
                      <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Laporan Rekapitulasi</h3></div>
                      <div className="p-4">
@@ -1071,6 +1102,7 @@ export const AdminDashboard: React.FC = () => {
             
             {activeTab === 'settings' && (
                <div className="space-y-6">
+                  {/* ... Settings Content ... */}
                   <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
                      <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Pengaturan Aplikasi</h3></div>
                      <div className="p-4">
@@ -1119,6 +1151,7 @@ export const AdminDashboard: React.FC = () => {
 
             {activeTab === 'backup' && (
                <div className="space-y-6">
+                  {/* ... Backup Content ... */}
                   <div className="bg-white border-t-[3px] border-[#f39c12] shadow-sm rounded-sm">
                      <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Backup & Restore Database</h3></div>
                      <div className="p-8">

@@ -17,10 +17,11 @@ export interface User {
   role: UserRole;
   status: MemberStatus;
   nia?: string; // Nomor Induk Anggota
+  nik?: string; // Nomor Induk Kependudukan (Added)
   password?: string;
   wilayah?: string;
   phone?: string;
-  address?: string; // Added field
+  address?: string; 
   joinedAt: string;
 }
 

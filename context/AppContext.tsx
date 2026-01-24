@@ -50,8 +50,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabase.from('korwils').select('*').order('name', { ascending: true })
       ]);
       
+      // FIX: Mapping is_open (DB) to isOpen (App)
       const mappedSessions = (sessions || []).map((s: any) => ({
         ...s,
+        isOpen: s.is_open, // Explicit mapping
         attendees: Array.isArray(s.attendees) ? s.attendees : []
       }));
 
@@ -185,10 +187,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         role: UserRole.MEMBER,
         status: MemberStatus.ACTIVE,
         nia: nia,
+        nik: candidate.nik, // Include NIK
         password: candidate.password,
         wilayah: candidate.wilayah,
         phone: candidate.phone,
-        address: candidate.address, // Added Address
+        address: candidate.address,
         joined_at: new Date().toISOString().split('T')[0]
       }]);
 
@@ -250,7 +253,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }]);
       if (error) throw error;
       const { data } = await supabase.from('attendance_sessions').select('*').order('id', { ascending: false });
-      const mapped = (data || []).map((s:any) => ({...s, attendees: s.attendees || []}));
+      // Fix mapping here as well
+      const mapped = (data || []).map((s:any) => ({
+        ...s, 
+        isOpen: s.is_open, // Explicit mapping
+        attendees: s.attendees || []
+      }));
       setState(prev => ({ ...prev, attendanceSessions: mapped }));
       showToast('Sesi absensi baru berhasil dibuat & dibuka', 'success');
     } catch (error) {
@@ -262,12 +270,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const session = state.attendanceSessions.find(s => s.id === sessionId);
     if (!session) return;
     try {
-      await supabase.from('attendance_sessions').update({ is_open: !session.isOpen }).eq('id', sessionId);
+      // Toggle logic using current state
+      const newStatus = !session.isOpen;
+      
+      // Update Database
+      const { error } = await supabase
+        .from('attendance_sessions')
+        .update({ is_open: newStatus })
+        .eq('id', sessionId);
+        
+      if (error) throw error;
+
+      // Update Local State immediately for UI Feedback
       setState(prev => ({
         ...prev,
-        attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, isOpen: !s.isOpen } : s)
+        attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, isOpen: newStatus } : s)
       }));
+      
     } catch (error) {
+      console.error(error);
       showToast("Gagal mengubah status sesi", "error");
     }
   };
