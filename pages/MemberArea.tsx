@@ -1,19 +1,23 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi } from 'lucide-react';
+import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const MemberArea: React.FC = () => {
   const { currentUser, attendanceSessions, markAttendance, showToast } = useApp();
   const [selectedSession, setSelectedSession] = useState<number | null>(null);
   
-  // Camera State
+  // Camera & Location State
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [locationName, setLocationName] = useState<string>("Mencari lokasi...");
+  
+  // Strict Location Logic
+  const [locationName, setLocationName] = useState<string>("");
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,8 +54,9 @@ export const MemberArea: React.FC = () => {
         const village = data.address.village || data.address.suburb || '';
         const city = data.address.city || data.address.town || data.address.county || '';
         const state = data.address.state || '';
+        const road = data.address.road || '';
         
-        const formattedAddress = [village, city].filter(Boolean).join(', ');
+        const formattedAddress = [road, village, city].filter(Boolean).join(', ');
         return formattedAddress || state || "Lokasi Terdeteksi";
       }
       return "Lokasi GPS Terdeteksi";
@@ -65,6 +70,12 @@ export const MemberArea: React.FC = () => {
     setSelectedSession(sessionId);
     setIsCameraOpen(true);
     setCapturedImage(null);
+    fetchLocation();
+    startCamera();
+  };
+
+  const fetchLocation = () => {
+    setLocationStatus('loading');
     setLocationName("Mendeteksi lokasi...");
     
     if (navigator.geolocation) {
@@ -76,19 +87,20 @@ export const MemberArea: React.FC = () => {
           });
           const address = await getAddressFromCoords(position.coords.latitude, position.coords.longitude);
           setLocationName(address);
+          setLocationStatus('success');
         },
         (error) => {
           console.error(error);
-          setLocationName("Lokasi Tidak Dikenal");
+          setLocationName("Gagal mendeteksi lokasi");
+          setLocationStatus('error');
           showToast("Gagal mendeteksi lokasi, pastikan GPS aktif.", "error");
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       setLocationName("GPS Tidak Support");
+      setLocationStatus('error');
     }
-
-    startCamera();
   };
 
   const startCamera = async () => {
@@ -109,6 +121,11 @@ export const MemberArea: React.FC = () => {
   };
 
   const takePhoto = () => {
+    if (locationStatus !== 'success') {
+      showToast("Tunggu hingga lokasi terdeteksi!", "error");
+      return;
+    }
+
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -131,7 +148,7 @@ export const MemberArea: React.FC = () => {
         const fontSizeMeta = Math.floor(w * 0.035);
         const padding = Math.floor(w * 0.05);
         
-        const gradientHeight = Math.floor(h * 0.25);
+        const gradientHeight = Math.floor(h * 0.3);
         const gradient = context.createLinearGradient(0, h - gradientHeight, 0, h);
         gradient.addColorStop(0, "transparent");
         gradient.addColorStop(0.5, "rgba(0,0,0,0.7)");
@@ -164,8 +181,13 @@ export const MemberArea: React.FC = () => {
         context.font = `bold ${fontSizeMeta}px monospace`;
         context.fillStyle = "#fbbf24";
         
-        const metaText = `${timeString} • ${locationName}`;
-        context.fillText(metaText, centerX, h - fontSizeMeta, w - (padding * 2));
+        const metaText = `${timeString}`;
+        context.fillText(metaText, centerX, h - (fontSizeMeta * 2.5), w - (padding * 2));
+        
+        // Location on next line
+        context.font = `${fontSizeMeta * 0.8}px sans-serif`;
+        context.fillStyle = "#ffffff";
+        context.fillText(locationName, centerX, h - fontSizeMeta, w - (padding * 2));
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         setCapturedImage(dataUrl);
@@ -579,10 +601,15 @@ export const MemberArea: React.FC = () => {
               <div className="absolute top-0 left-0 right-0 p-4 z-20 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent">
                 <div>
                    <h3 className="text-white font-bold text-lg drop-shadow-md">Ambil Foto Kehadiran</h3>
-                   <p className="text-neutral-300 text-xs flex items-center gap-1 drop-shadow-md">
-                      <MapPin size={10} className="text-amber-500" /> 
-                      {locationName}
-                   </p>
+                   <div className="text-neutral-300 text-xs flex items-center gap-2 drop-shadow-md mt-1">
+                      {locationStatus === 'loading' && <span className="animate-spin w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full"></span>}
+                      {locationStatus === 'error' && <AlertCircle size={12} className="text-red-500" />}
+                      {locationStatus === 'success' && <MapPin size={12} className="text-emerald-500" />}
+                      <span className="truncate max-w-[200px]">{locationName}</span>
+                      {locationStatus !== 'loading' && (
+                         <button onClick={fetchLocation} className="text-amber-400 underline ml-2">Refresh</button>
+                      )}
+                   </div>
                 </div>
                 <button onClick={closeCameraModal} className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition">
                   <X size={20} />
@@ -613,9 +640,10 @@ export const MemberArea: React.FC = () => {
                  {!capturedImage ? (
                    <button 
                      onClick={takePhoto}
-                     className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center relative group"
+                     disabled={locationStatus !== 'success'}
+                     className={`w-20 h-20 rounded-full border-4 flex items-center justify-center relative group transition-all ${locationStatus === 'success' ? 'border-white cursor-pointer' : 'border-gray-600 opacity-50 cursor-not-allowed'}`}
                    >
-                      <div className="w-16 h-16 bg-white rounded-full group-active:scale-90 transition-transform"></div>
+                      <div className={`w-16 h-16 rounded-full transition-transform ${locationStatus === 'success' ? 'bg-white group-active:scale-90' : 'bg-gray-600'}`}></div>
                    </button>
                  ) : (
                    <div className="flex w-full gap-4">

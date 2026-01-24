@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -7,9 +8,9 @@ import {
   Undo, Redo, Strikethrough, Quote, Link as LinkIcon, Video, Plus, Table,
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
-  User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone
+  User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon
 } from 'lucide-react';
-import { MemberStatus, AppState, NewsItem } from '../types';
+import { MemberStatus, AppState, NewsItem, AttendanceSession } from '../types';
 import * as XLSX from 'xlsx';
 
 export const AdminDashboard: React.FC = () => {
@@ -32,6 +33,12 @@ export const AdminDashboard: React.FC = () => {
   
   // Member Management State
   const [memberSearch, setMemberSearch] = useState('');
+
+  // Attendance Detail State
+  const [viewingSession, setViewingSession] = useState<AttendanceSession | null>(null);
+  const [attendanceSearch, setAttendanceSearch] = useState('');
+  const [attendanceViewMode, setAttendanceViewMode] = useState<'list' | 'grid'>('list');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // News Form State
   const [newsForm, setNewsForm] = useState({ title: '', excerpt: '', content: '' });
@@ -500,13 +507,16 @@ export const AdminDashboard: React.FC = () => {
       attendanceSessions.forEach(session => {
         session.attendees.forEach(userId => {
           const user = users.find(u => u.id === userId);
+          const record = attendanceRecords.find(r => r.sessionId === session.id && r.userId === userId);
           if (user) {
             data.push({
               "Tanggal": session.date,
               "Kegiatan": session.name,
               "Nama Anggota": user.name,
               "NIA": user.nia || '-',
-              "Wilayah": user.wilayah || '-'
+              "Wilayah": user.wilayah || '-',
+              "Waktu Hadir": record ? record.timestamp : '-',
+              "Lokasi": record ? record.location : '-'
             });
           }
         });
@@ -540,6 +550,32 @@ export const AdminDashboard: React.FC = () => {
     showToast("Laporan berhasil diunduh (XLSX)", "success");
   };
 
+  const downloadSessionReport = (session: AttendanceSession) => {
+    const data: any[] = [];
+    const filteredRecords = attendanceRecords.filter(r => r.sessionId === session.id);
+    
+    filteredRecords.forEach(record => {
+      const user = users.find(u => u.id === record.userId);
+      data.push({
+        "Nama": user?.name || record.userName,
+        "NIA": user?.nia || '-',
+        "Waktu": record.timestamp,
+        "Lokasi": record.location,
+        "Wilayah": user?.wilayah || '-'
+      });
+    });
+
+    if (data.length === 0) {
+      showToast("Belum ada yang hadir pada sesi ini.", "info");
+      return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, session.name.substring(0, 30));
+    XLSX.writeFile(wb, `Absensi_${session.name.replace(/\s+/g, '_')}_${session.date}.xlsx`);
+  }
+
   const activeMembersCount = users.filter(u => u.status === MemberStatus.ACTIVE && u.role !== 'admin').length;
   const pendingCount = registrations.length;
   const totalSessions = attendanceSessions.length;
@@ -551,6 +587,14 @@ export const AdminDashboard: React.FC = () => {
       u.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
       (u.nia && u.nia.toLowerCase().includes(memberSearch.toLowerCase()))
   );
+
+  const getFilteredAttendance = () => {
+    if (!viewingSession) return [];
+    return attendanceRecords.filter(record => 
+       record.sessionId === viewingSession.id &&
+       record.userName.toLowerCase().includes(attendanceSearch.toLowerCase())
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#ecf0f5] font-sans text-sm">
@@ -1250,68 +1294,217 @@ export const AdminDashboard: React.FC = () => {
             
             {activeTab === 'attendance' && (
                <div className="space-y-6">
-                  {/* ... Attendance Tab Content ... */}
-                  {/* Form Box */}
-                  <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm p-4">
-                     <h3 className="text-lg font-normal text-[#333] mb-4">Buat Sesi Absensi Baru</h3>
-                     <form onSubmit={handleCreateSession} className="flex gap-2">
-                        <div className="flex-grow">
-                           <input
-                              type="text"
-                              placeholder="Nama Kegiatan"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none transition"
-                              value={newSessionName}
-                              onChange={(e) => setNewSessionName(e.target.value)}
-                              required
-                           />
-                        </div>
-                        <button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-4 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2">
-                           <Plus size={16} /> Buat
-                        </button>
-                     </form>
-                  </div>
+                  {/* ATTENDANCE DETAIL MODAL / VIEW */}
+                  {viewingSession ? (
+                    <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm animate-fade-in-up">
+                       <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col md:flex-row justify-between items-center gap-4">
+                          <div className="flex items-center gap-3">
+                             <button 
+                               onClick={() => setViewingSession(null)}
+                               className="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-full transition"
+                             >
+                                <ChevronRight className="rotate-180" size={20} />
+                             </button>
+                             <div>
+                                <h3 className="text-lg font-bold text-[#333]">{viewingSession.name}</h3>
+                                <p className="text-xs text-gray-500 flex items-center gap-2">
+                                   <Calendar size={12} /> {viewingSession.date} 
+                                   <span className="w-1 h-1 bg-gray-300 rounded-full"></span> 
+                                   <Users size={12} /> {viewingSession.attendees.length} Hadir
+                                </p>
+                             </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-3 w-full md:w-auto">
+                             <div className="flex bg-gray-100 rounded-sm p-1 border border-gray-200">
+                                <button 
+                                  onClick={() => setAttendanceViewMode('list')}
+                                  className={`p-1.5 rounded-sm ${attendanceViewMode === 'list' ? 'bg-white shadow-sm text-[#3c8dbc]' : 'text-gray-500'}`}
+                                >
+                                   <ListIcon size={16} />
+                                </button>
+                                <button 
+                                  onClick={() => setAttendanceViewMode('grid')}
+                                  className={`p-1.5 rounded-sm ${attendanceViewMode === 'grid' ? 'bg-white shadow-sm text-[#3c8dbc]' : 'text-gray-500'}`}
+                                >
+                                   <Grid size={16} />
+                                </button>
+                             </div>
+                             
+                             <div className="relative flex-grow md:flex-grow-0">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                                <input 
+                                   type="text" 
+                                   placeholder="Cari Nama..." 
+                                   value={attendanceSearch}
+                                   onChange={(e) => setAttendanceSearch(e.target.value)}
+                                   className="pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none w-full md:w-48"
+                                />
+                             </div>
 
-                  {/* List Box */}
-                  <div className="bg-white border-t-[3px] border-[#00a65a] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]">
-                        <h3 className="text-lg font-normal text-[#333]">Riwayat Sesi</h3>
-                     </div>
-                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                           <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
-                              <tr>
-                                 <th className="px-4 py-3 border-b">Tanggal</th>
-                                 <th className="px-4 py-3 border-b">Nama Kegiatan</th>
-                                 <th className="px-4 py-3 border-b text-center">Hadir</th>
-                                 <th className="px-4 py-3 border-b text-center">Status</th>
-                                 <th className="px-4 py-3 border-b text-center">Aksi</th>
-                              </tr>
-                           </thead>
-                           <tbody>
-                              {attendanceSessions.map(session => (
-                                 <tr key={session.id} className="hover:bg-gray-50 border-b last:border-0">
-                                    <td className="px-4 py-3 text-sm text-gray-600">{session.date}</td>
-                                    <td className="px-4 py-3 font-bold text-[#333]">{session.name}</td>
-                                    <td className="px-4 py-3 text-center text-sm">
-                                       <span className="bg-[#f39c12] text-white px-2 py-0.5 rounded text-xs font-bold">{session.attendees.length}</span>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                       <span className={`px-2 py-0.5 rounded text-xs font-bold text-white ${session.isOpen ? 'bg-[#00a65a]' : 'bg-[#dd4b39]'}`}>
-                                          {session.isOpen ? 'OPEN' : 'CLOSED'}
-                                       </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                       <label className="inline-flex items-center cursor-pointer">
-                                          <input type="checkbox" className="sr-only peer" checked={session.isOpen} onChange={() => toggleSession(session.id)} />
-                                          <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#3c8dbc]"></div>
-                                       </label>
-                                    </td>
-                                 </tr>
-                              ))}
-                           </tbody>
-                        </table>
-                     </div>
-                  </div>
+                             <button 
+                                onClick={() => downloadSessionReport(viewingSession)}
+                                className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-3 py-1.5 rounded-sm text-xs font-bold shadow-sm flex items-center gap-2 whitespace-nowrap"
+                             >
+                                <FileSpreadsheet size={14} /> Export XLS
+                             </button>
+                          </div>
+                       </div>
+                       
+                       <div className="p-4 bg-gray-50 min-h-[400px]">
+                          {getFilteredAttendance().length === 0 ? (
+                             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                                <Users size={48} className="mb-2 opacity-20" />
+                                <p>Tidak ada data kehadiran ditemukan.</p>
+                             </div>
+                          ) : (
+                             <>
+                             {attendanceViewMode === 'list' ? (
+                                <div className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden">
+                                   <table className="w-full text-left">
+                                      <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
+                                         <tr>
+                                            <th className="px-4 py-3 border-b">Foto</th>
+                                            <th className="px-4 py-3 border-b">Nama Anggota</th>
+                                            <th className="px-4 py-3 border-b">Waktu & Lokasi</th>
+                                            <th className="px-4 py-3 border-b text-right">Aksi</th>
+                                         </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-100">
+                                         {getFilteredAttendance().map(record => (
+                                            <tr key={record.id} className="hover:bg-[#f9fafc]">
+                                               <td className="px-4 py-2 w-16">
+                                                  <img 
+                                                     src={record.photoUrl} 
+                                                     alt="Bukti" 
+                                                     onClick={() => setPreviewImage(record.photoUrl)}
+                                                     className="w-10 h-10 rounded-full object-cover border border-gray-200 cursor-pointer hover:scale-110 transition"
+                                                  />
+                                               </td>
+                                               <td className="px-4 py-2">
+                                                  <div className="font-bold text-[#333]">{record.userName}</div>
+                                                  <div className="text-xs text-gray-500">ID: {record.userId}</div>
+                                               </td>
+                                               <td className="px-4 py-2 text-sm">
+                                                  <div className="flex items-center gap-1 text-gray-700 font-medium"><Calendar size={12} /> {record.timestamp}</div>
+                                                  <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1 truncate max-w-xs" title={record.location}>
+                                                     <MapPin size={10} className="text-red-500" /> {record.location}
+                                                  </div>
+                                               </td>
+                                               <td className="px-4 py-2 text-right">
+                                                  <button 
+                                                     onClick={() => setPreviewImage(record.photoUrl)}
+                                                     className="text-[#3c8dbc] hover:text-[#367fa9] text-xs font-bold border border-[#3c8dbc] px-2 py-1 rounded-sm hover:bg-[#3c8dbc] hover:text-white transition"
+                                                  >
+                                                     Lihat Bukti
+                                                  </button>
+                                               </td>
+                                            </tr>
+                                         ))}
+                                      </tbody>
+                                   </table>
+                                </div>
+                             ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                   {getFilteredAttendance().map(record => (
+                                      <div key={record.id} className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden hover:shadow-md transition group">
+                                         <div className="aspect-[4/5] bg-gray-100 relative overflow-hidden cursor-pointer" onClick={() => setPreviewImage(record.photoUrl)}>
+                                            <img src={record.photoUrl} alt={record.userName} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80"></div>
+                                            <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                                               <div className="font-bold text-sm truncate">{record.userName}</div>
+                                               <div className="text-[10px] opacity-80">{record.timestamp}</div>
+                                            </div>
+                                         </div>
+                                         <div className="p-2 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-500 flex justify-between items-center">
+                                            <span className="truncate max-w-[100px]" title={record.location}>{record.location}</span>
+                                            <MapPin size={10} />
+                                         </div>
+                                      </div>
+                                   ))}
+                                </div>
+                             )}
+                             </>
+                          )}
+                       </div>
+                    </div>
+                  ) : (
+                    <>
+                    {/* CREATE SESSION FORM */}
+                    <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm p-4">
+                       <h3 className="text-lg font-normal text-[#333] mb-4">Buat Sesi Absensi Baru</h3>
+                       <form onSubmit={handleCreateSession} className="flex gap-2">
+                          <div className="flex-grow">
+                             <input
+                                type="text"
+                                placeholder="Nama Kegiatan (Misal: Majelis Rutin 1 Muharram)"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none transition"
+                                value={newSessionName}
+                                onChange={(e) => setNewSessionName(e.target.value)}
+                                required
+                             />
+                          </div>
+                          <button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-4 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2">
+                             <Plus size={16} /> Buat Sesi
+                          </button>
+                       </form>
+                    </div>
+
+                    {/* LIST SESSIONS */}
+                    <div className="bg-white border-t-[3px] border-[#00a65a] shadow-sm rounded-sm">
+                       <div className="px-4 py-3 border-b border-[#f4f4f4]">
+                          <h3 className="text-lg font-normal text-[#333]">Riwayat Sesi & Laporan</h3>
+                       </div>
+                       <div className="overflow-x-auto">
+                          <table className="w-full text-left">
+                             <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
+                                <tr>
+                                   <th className="px-4 py-3 border-b">Tanggal</th>
+                                   <th className="px-4 py-3 border-b">Nama Kegiatan</th>
+                                   <th className="px-4 py-3 border-b text-center">Hadir</th>
+                                   <th className="px-4 py-3 border-b text-center">Status</th>
+                                   <th className="px-4 py-3 border-b text-center">Open/Close</th>
+                                   <th className="px-4 py-3 border-b text-right">Detail</th>
+                                </tr>
+                             </thead>
+                             <tbody>
+                                {attendanceSessions.map(session => (
+                                   <tr key={session.id} className="hover:bg-gray-50 border-b last:border-0 group">
+                                      <td className="px-4 py-3 text-sm text-gray-600">{session.date}</td>
+                                      <td className="px-4 py-3 font-bold text-[#333]">{session.name}</td>
+                                      <td className="px-4 py-3 text-center text-sm">
+                                         <span className="bg-[#f39c12] text-white px-2 py-0.5 rounded text-xs font-bold">{session.attendees.length}</span>
+                                      </td>
+                                      <td className="px-4 py-3 text-center">
+                                         <span className={`px-2 py-0.5 rounded text-xs font-bold text-white ${session.isOpen ? 'bg-[#00a65a]' : 'bg-[#dd4b39]'}`}>
+                                            {session.isOpen ? 'OPEN' : 'CLOSED'}
+                                         </span>
+                                      </td>
+                                      <td className="px-4 py-3 text-center">
+                                         <label className="inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" className="sr-only peer" checked={session.isOpen} onChange={() => toggleSession(session.id)} />
+                                            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#3c8dbc]"></div>
+                                         </label>
+                                      </td>
+                                      <td className="px-4 py-3 text-right">
+                                         <button 
+                                            onClick={() => setViewingSession(session)}
+                                            className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-1 rounded-sm text-xs font-bold shadow-sm inline-flex items-center gap-1 transition"
+                                         >
+                                            <Eye size={14} /> Lihat Data
+                                         </button>
+                                      </td>
+                                   </tr>
+                                ))}
+                             </tbody>
+                          </table>
+                          {attendanceSessions.length === 0 && (
+                             <div className="p-8 text-center text-gray-400">Belum ada sesi yang dibuat.</div>
+                          )}
+                       </div>
+                    </div>
+                    </>
+                  )}
                </div>
             )}
             
@@ -1536,6 +1729,24 @@ export const AdminDashboard: React.FC = () => {
 
          </div>
       </main>
+
+      {/* Preview Modal for Attendance */}
+      {previewImage && (
+         <div 
+           className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
+           onClick={() => setPreviewImage(null)}
+         >
+            <div className="relative max-w-4xl max-h-[90vh]">
+               <img src={previewImage} className="max-w-full max-h-[90vh] rounded shadow-2xl" alt="Preview" />
+               <button 
+                  onClick={() => setPreviewImage(null)}
+                  className="absolute -top-4 -right-4 bg-white text-black p-2 rounded-full shadow-lg hover:bg-gray-100"
+               >
+                  <X size={24} />
+               </button>
+            </div>
+         </div>
+      )}
     </div>
   );
 };
