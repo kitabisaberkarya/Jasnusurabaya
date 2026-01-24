@@ -122,11 +122,18 @@ export const AdminDashboard: React.FC = () => {
   const handleNewsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     let thumbnail = "https://picsum.photos/800/600";
-    if (editorRef.current) {
-      const firstImg = editorRef.current.querySelector('img');
-      if (firstImg) {
-        thumbnail = firstImg.src;
-      }
+    
+    // FIX: Parse content to detect and extract the first image as thumbnail
+    // Then remove it from the content body to prevent double rendering (Header + Body)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(newsForm.content, 'text/html');
+    const firstImg = doc.querySelector('img');
+    let finalContent = newsForm.content;
+
+    if (firstImg) {
+      thumbnail = firstImg.src;
+      firstImg.remove(); // Remove the image from the body content
+      finalContent = doc.body.innerHTML;
     }
 
     if (editingNewsId !== null) {
@@ -134,7 +141,7 @@ export const AdminDashboard: React.FC = () => {
       updateNews(editingNewsId, {
         title: newsForm.title,
         excerpt: newsForm.excerpt,
-        content: newsForm.content,
+        content: finalContent,
         imageUrl: thumbnail
       });
       setEditingNewsId(null);
@@ -142,6 +149,7 @@ export const AdminDashboard: React.FC = () => {
       // Add new news
       addNews({
         ...newsForm,
+        content: finalContent,
         imageUrl: thumbnail,
         date: new Date().toISOString().split('T')[0]
       });
@@ -155,14 +163,24 @@ export const AdminDashboard: React.FC = () => {
 
   const handleEditNews = (newsItem: NewsItem) => {
     setEditingNewsId(newsItem.id);
+    
+    // FIX: Re-inject image into content for the editor so the user can see/edit it
+    // Only if it's not the default placeholder and not already present
+    let contentForEditor = newsItem.content;
+    const placeholder = "https://picsum.photos/800/600";
+    
+    if (newsItem.imageUrl && newsItem.imageUrl !== placeholder && !newsItem.content.includes(newsItem.imageUrl)) {
+        contentForEditor = `<img src="${newsItem.imageUrl}" style="max-width: 100%; height: auto; border-radius: 0.5rem; margin-top: 1rem; margin-bottom: 1rem;" />${newsItem.content}`;
+    }
+
     setNewsForm({
       title: newsItem.title,
       excerpt: newsItem.excerpt,
-      content: newsItem.content
+      content: contentForEditor
     });
     // Manually update editor content
     if (editorRef.current) {
-       editorRef.current.innerHTML = newsItem.content;
+       editorRef.current.innerHTML = contentForEditor;
     }
     // Scroll to form
     formRef.current?.scrollIntoView({ behavior: 'smooth' });
