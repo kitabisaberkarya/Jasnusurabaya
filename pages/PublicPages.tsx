@@ -1,6 +1,5 @@
-
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube, ArrowLeft, Clock, Share2, Facebook, Twitter, Link as LinkIcon, MessageCircle } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
@@ -36,6 +35,31 @@ export const Home: React.FC = () => {
   const activeSlide = sliders.length > 0 ? sliders[currentSlide] : defaultSlide;
   const aboutPage = profilePages.find(p => p.slug === 'tentang-kami');
   
+  // LOGIC: Extract image from content or use default
+  const { aboutImage, aboutContent } = useMemo(() => {
+    const defaultImg = "https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=1470&auto=format&fit=crop"; // Interior Masjid Elegan
+    
+    if (!aboutPage?.content) return { aboutImage: defaultImg, aboutContent: null };
+
+    // Regex to find the first image in the content
+    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/;
+    const match = aboutPage.content.match(imgRegex);
+    
+    if (match) {
+        // If found, use it as hero image and remove from text content to avoid duplicate
+        let cleanContent = aboutPage.content.replace(match[0], '');
+        // Clean up empty paragraphs or breaks that might be left over after removing the image
+        cleanContent = cleanContent.replace(/<p>\s*<\/p>/g, '').replace(/<p>&nbsp;<\/p>/g, '');
+
+        return { 
+            aboutImage: match[1], 
+            aboutContent: cleanContent
+        };
+    }
+
+    return { aboutImage: defaultImg, aboutContent: aboutPage.content };
+  }, [aboutPage]);
+
   return (
     <motion.div initial="hidden" animate="visible" variants={fadeIn}>
       {/* Hero Section with Dynamic Slider */}
@@ -99,7 +123,7 @@ export const Home: React.FC = () => {
                     Ahlan Wa Sahlan
                 </motion.span>
 
-                <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold font-serif mb-6 leading-tight drop-shadow-lg uppercase">
+                <h1 className="text-3xl md:text-5xl lg:text-6xl font-serif font-bold mb-6 leading-tight drop-shadow-lg uppercase">
                     {activeSlide.title}
                 </h1>
                 
@@ -150,46 +174,81 @@ export const Home: React.FC = () => {
         </motion.div>
       </section>
 
-      {/* About Section */}
-      <section className="py-24 bg-white">
+      {/* About Section - IMPROVED LAYOUT */}
+      <section className="py-24 bg-white overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-           <div className="grid md:grid-cols-2 gap-16 items-center">
-             <div className="relative group">
-                <div className="absolute -inset-4 bg-secondary-100 rounded-3xl transform rotate-3 transition-transform group-hover:rotate-6"></div>
-                <div className="absolute -inset-4 bg-primary-100 rounded-3xl transform -rotate-3 transition-transform group-hover:-rotate-6 opacity-70"></div>
-                <img 
-                  src="https://picsum.photos/600/400?random=10" 
-                  alt="Kegiatan Majelis" 
-                  className="relative rounded-2xl shadow-2xl w-full h-auto object-cover transform transition hover:scale-[1.02]"
-                />
+           <div className="grid md:grid-cols-2 gap-16 items-start">
+             
+             {/* Left Side: Image with Decorative Elements */}
+             <div className="relative group md:sticky md:top-32">
+                {/* Background Shapes */}
+                <div className="absolute -inset-4 bg-secondary-100/50 rounded-[2rem] transform rotate-3 transition-transform duration-700 group-hover:rotate-6"></div>
+                <div className="absolute -inset-4 bg-primary-50 rounded-[2rem] transform -rotate-3 transition-transform duration-700 group-hover:-rotate-6 opacity-70"></div>
+                
+                {/* Main Image Container */}
+                <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] border-4 border-white">
+                    <img 
+                      src={aboutImage} 
+                      alt="Tentang Kami" 
+                      className="w-full h-full object-cover transform transition duration-1000 group-hover:scale-105"
+                    />
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary-900/60 to-transparent opacity-60"></div>
+                    <div className="absolute bottom-6 left-6 text-white">
+                        <p className="text-xs uppercase tracking-widest font-bold text-secondary-400 mb-1">Sekilas Tentang</p>
+                        <h3 className="text-2xl font-serif font-bold">{siteConfig.appName}</h3>
+                    </div>
+                </div>
+                
+                {/* Floating Ornament */}
+                <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-pattern-dots opacity-20 z-0"></div>
              </div>
-             <div>
-               {aboutPage ? (
-                   <div className="prose prose-lg prose-emerald max-w-none text-neutral-600 prose-headings:font-serif prose-headings:text-primary-900 prose-ul:list-none prose-li:flex prose-li:gap-3">
-                      <div dangerouslySetInnerHTML={{ __html: aboutPage.content }} />
+
+             {/* Right Side: Content */}
+             <div className="relative z-10">
+               {aboutContent ? (
+                   // PROSE STYLING FIX: Text Justify, Better Spacing, Clean Tables
+                   <div className="prose prose-lg prose-emerald max-w-none text-neutral-600 text-justify prose-headings:font-serif prose-headings:text-primary-900 prose-headings:leading-tight prose-p:leading-relaxed prose-li:marker:text-secondary-500 prose-img:rounded-xl prose-img:shadow-lg prose-table:border-collapse prose-td:border prose-td:border-neutral-200 prose-td:p-2 prose-th:bg-primary-50 prose-th:p-2 prose-th:text-primary-900">
+                      <div dangerouslySetInnerHTML={{ __html: aboutContent }} />
                    </div>
                ) : (
+                  // Default Fallback Content
                   <>
-                   <h2 className="text-3xl md:text-5xl font-serif font-bold text-primary-900 mb-8 leading-tight">Membangun Ukhuwah <br/><span className="italic text-secondary-600">Islamiyah</span></h2>
-                   <p className="text-neutral-600 mb-8 leading-relaxed text-lg">
-                     {siteConfig.appName} {siteConfig.orgName} didirikan sebagai wadah untuk mempererat tali persaudaraan sesama muslim melalui lantunan sholawat dan kajian keislaman yang menyejukkan hati.
+                   <span className="inline-block px-3 py-1 rounded-full bg-secondary-50 text-secondary-600 text-[10px] font-bold uppercase tracking-widest mb-4 border border-secondary-100">
+                     Tentang Kami
+                   </span>
+                   <h2 className="text-3xl md:text-5xl font-serif font-bold text-primary-900 mb-8 leading-tight">Membangun Ukhuwah <br/><span className="italic text-secondary-600 relative">Islamiyah <span className="absolute bottom-1 left-0 w-full h-2 bg-secondary-100 -z-10 opacity-50"></span></span></h2>
+                   <p className="text-neutral-600 mb-8 leading-relaxed text-lg text-justify">
+                     {siteConfig.appName} {siteConfig.orgName} didirikan sebagai wadah untuk mempererat tali persaudaraan sesama muslim melalui lantunan sholawat dan kajian keislaman yang menyejukkan hati. Kami berkomitmen untuk menyebarkan nilai-nilai Islam yang Rahmatan Lil Alamin.
                    </p>
-                   <ul className="space-y-6 mb-10">
-                     {[
-                       `Rutin melaksanakan pembacaan ${siteConfig.appName} 4444x`,
-                       'Kajian kitab kuning bersama para Kyai & Habaib',
-                       'Santunan sosial dan pemberdayaan ekonomi umat'
-                     ].map((item, i) => (
-                       <li key={i} className="flex items-start gap-4">
-                         <div className="mt-1 w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
-                            <CheckCircle size={18} />
-                         </div>
-                         <span className="text-neutral-800 font-medium text-lg">{item}</span>
-                       </li>
-                     ))}
-                   </ul>
+                   
+                   <div className="bg-primary-50 rounded-2xl p-6 border border-primary-100 mb-8">
+                       <h4 className="font-bold text-primary-900 mb-4 flex items-center gap-2">
+                           <Calendar className="text-secondary-600" size={20} /> Kegiatan Rutin
+                       </h4>
+                       <ul className="space-y-4">
+                         {[
+                           `Rutin melaksanakan pembacaan ${siteConfig.appName} 4444x`,
+                           'Kajian kitab kuning bersama para Kyai & Habaib',
+                           'Santunan sosial dan pemberdayaan ekonomi umat'
+                         ].map((item, i) => (
+                           <li key={i} className="flex items-start gap-4">
+                             <div className="mt-1 w-6 h-6 rounded-full bg-white flex items-center justify-center text-secondary-600 flex-shrink-0 shadow-sm border border-secondary-100">
+                                <CheckCircle size={14} />
+                             </div>
+                             <span className="text-neutral-700 font-medium">{item}</span>
+                           </li>
+                         ))}
+                       </ul>
+                   </div>
                   </>
                )}
+               
+               <div className="mt-8 pt-8 border-t border-neutral-100 flex items-center gap-4">
+                   <Link to="/profile/sejarah" className="text-primary-700 font-bold hover:text-primary-800 flex items-center gap-2 group">
+                      Baca Sejarah Lengkap <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                   </Link>
+               </div>
              </div>
            </div>
         </div>
@@ -566,104 +625,92 @@ export const Database: React.FC = () => {
 
   return (
     <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-16">
-          <h1 className="text-5xl font-serif font-bold text-primary-900 mb-6">Database Anggota</h1>
-          <p className="text-neutral-500 text-lg">Cek status keanggotaan resmi Jamiyah Sholawat Nariyah.</p>
+      <div className="text-center mb-16">
+        <h1 className="text-4xl md:text-5xl font-serif font-bold text-primary-900 mb-6">Database Anggota</h1>
+        <p className="text-neutral-500 text-lg mb-8">Cek status keanggotaan resmi Jamiyah Sholawat Nariyah.</p>
+        
+        <div className="max-w-xl mx-auto relative">
+           <input 
+             type="text" 
+             placeholder="Cari nama anggota..." 
+             className="w-full px-6 py-4 rounded-full border border-neutral-200 shadow-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200 text-lg"
+             value={searchTerm}
+             onChange={(e) => setSearchTerm(e.target.value)}
+           />
+           <button className="absolute right-3 top-3 bg-primary-600 text-white p-2 rounded-full hover:bg-primary-700 transition">
+              <Search size={20} />
+           </button>
         </div>
+      </div>
 
-        <div className="bg-white p-8 rounded-3xl shadow-lg border border-neutral-100 mb-10 -mt-8 relative z-10">
-          <div className="relative group">
-            <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-neutral-400 group-focus-within:text-primary-500 transition-colors" size={24} />
-            <input 
-              type="text" 
-              placeholder="Cari nama anggota..." 
-              className="w-full pl-16 pr-6 py-5 rounded-2xl border-2 border-neutral-100 focus:border-primary-500 focus:ring-0 outline-none transition text-lg bg-neutral-50 focus:bg-white"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
-          {activeMembers.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-primary-50 border-b border-primary-100">
+      <div className="bg-white rounded-3xl shadow-lg border border-neutral-100 overflow-hidden">
+         <div className="overflow-x-auto">
+            <table className="w-full text-left">
+               <thead className="bg-primary-900 text-white uppercase text-xs font-bold tracking-wider">
                   <tr>
-                    <th className="px-8 py-6 font-serif font-bold text-primary-900">Nama Lengkap</th>
-                    <th className="px-8 py-6 font-serif font-bold text-primary-900">NIA</th>
-                    <th className="px-8 py-6 font-serif font-bold text-primary-900">Wilayah</th>
-                    <th className="px-8 py-6 font-serif font-bold text-primary-900 text-center">Status</th>
+                     <th className="px-6 py-4">Nama Lengkap</th>
+                     <th className="px-6 py-4">Nomor Anggota (NIA)</th>
+                     <th className="px-6 py-4">Wilayah</th>
+                     <th className="px-6 py-4 text-center">Status</th>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {activeMembers.map((member) => (
-                    <tr key={member.id} className="hover:bg-neutral-50 transition group">
-                      <td className="px-8 py-5 font-bold text-neutral-900 group-hover:text-primary-700">{member.name}</td>
-                      <td className="px-8 py-5 font-mono text-sm text-neutral-600 bg-neutral-50/50">{member.nia}</td>
-                      <td className="px-8 py-5 text-neutral-600 flex items-center gap-2">
-                        <MapPin size={16} className="text-secondary-500" />
-                        {member.wilayah || '-'}
-                      </td>
-                      <td className="px-8 py-5 text-center">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                          <CheckCircle size={12} className="mr-1" /> AKTIF
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-20 text-center text-neutral-400">
-              <Search size={48} className="mx-auto mb-4 opacity-20" />
-              <p className="text-lg">Data anggota tidak ditemukan.</p>
-            </div>
-          )}
-        </div>
+               </thead>
+               <tbody className="divide-y divide-neutral-100">
+                  {activeMembers.length > 0 ? activeMembers.map((member) => (
+                     <tr key={member.id} className="hover:bg-neutral-50 transition">
+                        <td className="px-6 py-4 font-bold text-primary-900">{member.name}</td>
+                        <td className="px-6 py-4 font-mono text-neutral-600">{member.nia}</td>
+                        <td className="px-6 py-4 text-neutral-600">{member.wilayah}</td>
+                        <td className="px-6 py-4 text-center">
+                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold uppercase">
+                              <CheckCircle size={12} /> Aktif
+                           </span>
+                        </td>
+                     </tr>
+                  )) : (
+                     <tr>
+                        <td colSpan={4} className="px-6 py-12 text-center text-neutral-400">
+                           {searchTerm ? 'Data tidak ditemukan.' : 'Silakan cari nama anggota.'}
+                        </td>
+                     </tr>
+                  )}
+               </tbody>
+            </table>
+         </div>
       </div>
     </motion.div>
   );
 };
 
 export const ProfileView: React.FC = () => {
-  const { slug } = useParams<{ slug: string }>();
-  const { profilePages } = useApp();
-  
-  const currentPage = profilePages.find(p => p.slug === slug);
-  
-  // Default titles if not found in DB
-  const titleMap: Record<string, string> = {
-    'sejarah': 'Sejarah Jamiyah',
-    'pengurus': 'Susunan Pengurus Pusat',
-    'korwil': 'Daftar Koordinator Wilayah (Korwil)',
-    'amaliyah': 'Amaliyah & Wirid Rutin'
-  };
+    const { slug } = useParams<{ slug: string }>();
+    const { profilePages } = useApp();
+    
+    const page = profilePages.find(p => p.slug === slug);
 
-  const displayTitle = currentPage?.title || titleMap[slug || ''] || 'Profil';
+    if (!page) {
+        return (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center">
+                <h2 className="text-2xl font-bold text-neutral-800">Halaman tidak ditemukan</h2>
+                <Link to="/" className="mt-4 text-primary-600 hover:text-primary-700 flex items-center gap-2">
+                    <ArrowLeft size={16} /> Kembali ke Beranda
+                </Link>
+            </div>
+        );
+    }
 
-  return (
-    <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-16">
-        <span className="text-secondary-600 font-bold tracking-wider uppercase text-sm">Profil Organisasi</span>
-        <h1 className="text-4xl md:text-5xl font-serif font-bold text-primary-900 mt-2">{displayTitle}</h1>
-      </div>
-
-      <div className="bg-white p-8 md:p-12 rounded-3xl shadow-lg border border-neutral-100 min-h-[400px]">
-        {currentPage ? (
-          <div 
-             className="prose prose-lg prose-emerald max-w-none text-neutral-700 leading-relaxed"
-             dangerouslySetInnerHTML={{ __html: currentPage.content }}
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-64 text-neutral-400">
-             <User size={64} className="mb-4 opacity-20" />
-             <p>Konten profil belum tersedia.</p>
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
+    return (
+        <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+                <span className="text-secondary-600 font-bold tracking-wider uppercase text-sm">Profil Organisasi</span>
+                <h1 className="text-4xl md:text-5xl font-serif font-bold text-primary-900 mt-2">{page.title}</h1>
+                <div className="w-24 h-1 bg-secondary-500 mx-auto mt-6 rounded-full"></div>
+            </div>
+            
+            <div className="bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-neutral-100">
+                <article className="prose prose-lg prose-emerald max-w-none text-neutral-700 leading-loose prose-headings:font-serif prose-headings:text-primary-900 prose-a:text-secondary-600 hover:prose-a:text-secondary-700 prose-img:rounded-2xl prose-img:shadow-lg prose-table:border-collapse prose-td:border prose-td:border-neutral-200 prose-td:p-3 prose-th:bg-primary-50 prose-th:p-3 prose-th:text-primary-900">
+                    <div dangerouslySetInnerHTML={{ __html: page.content }} />
+                </article>
+            </div>
+        </motion.div>
+    );
 };

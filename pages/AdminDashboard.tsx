@@ -15,6 +15,13 @@ import XLSX from 'xlsx-js-style';
 import { motion, AnimatePresence } from 'framer-motion';
 import { KORWIL_LIST } from '../constants';
 
+// Interface untuk baris data tabel Korwil
+interface KorwilRow {
+  wilayah: string;
+  nama: string;
+  kontak: string;
+}
+
 export const AdminDashboard: React.FC = () => {
   const { 
     users, registrations, approveMember, rejectMember, deleteMember, updateMember, resetMemberPassword, attendanceSessions, attendanceRecords, 
@@ -83,6 +90,11 @@ export const AdminDashboard: React.FC = () => {
   const [profileTitle, setProfileTitle] = useState('');
   const [profileContent, setProfileContent] = useState('');
 
+  // --- KORWIL TABLE EDITOR STATE ---
+  const [korwilRows, setKorwilRows] = useState<KorwilRow[]>([]);
+  const [newKorwilRow, setNewKorwilRow] = useState<KorwilRow>({ wilayah: '', nama: '', kontak: '' });
+  const [isKorwilInitialized, setIsKorwilInitialized] = useState(false);
+
   // Settings State
   const [configForm, setConfigForm] = useState(siteConfig);
   const [newKorwilName, setNewKorwilName] = useState('');
@@ -98,7 +110,8 @@ export const AdminDashboard: React.FC = () => {
   // Load initial content and title for profile editor
   useEffect(() => {
     const page = profilePages.find(p => p.slug === selectedProfileSlug);
-    setProfileContent(page ? page.content : '');
+    const content = page ? page.content : '';
+    setProfileContent(content);
     
     // Default titles fallback
     const defaultTitles: Record<string, string> = {
@@ -112,9 +125,41 @@ export const AdminDashboard: React.FC = () => {
     setProfileTitle(page ? page.title : defaultTitles[selectedProfileSlug] || '');
     
     // Sync to editor div if exists
-    if (editorRef.current) {
-        editorRef.current.innerHTML = page ? page.content : '';
+    if (editorRef.current && selectedProfileSlug !== 'korwil') {
+        editorRef.current.innerHTML = content;
     }
+
+    // Parsing HTML Table to JSON Rows for Korwil Editor
+    if (selectedProfileSlug === 'korwil') {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(content, 'text/html');
+        const rows = doc.querySelectorAll('tbody tr');
+        const parsedRows: KorwilRow[] = [];
+        
+        rows.forEach(tr => {
+            const cols = tr.querySelectorAll('td');
+            if (cols.length >= 3) {
+                parsedRows.push({
+                    wilayah: cols[0].innerText.trim(),
+                    nama: cols[1].innerText.trim(),
+                    kontak: cols[2].innerText.trim()
+                });
+            }
+        });
+
+        // Initialize with parsed data OR default empty if none
+        if (parsedRows.length > 0) {
+            setKorwilRows(parsedRows);
+        } else if (!isKorwilInitialized && (!page || !content)) {
+            // Initial dummy data if totally empty
+            setKorwilRows([
+                { wilayah: 'Kalirungkut', nama: 'H. Abdullah', kontak: '0812-xxxx-xxxx' },
+                { wilayah: 'Rungkut Kidul', nama: 'Ust. Ahmad', kontak: '0813-xxxx-xxxx' }
+            ]);
+        }
+        setIsKorwilInitialized(true);
+    }
+
   }, [selectedProfileSlug, profilePages, activeTab]);
   
   const editorRef = useRef<HTMLDivElement>(null);
@@ -137,6 +182,57 @@ export const AdminDashboard: React.FC = () => {
       }
     }
   }, [newsForm.content, activeTab]);
+
+  // --- KORWIL ACTIONS ---
+  const handleAddKorwilRow = () => {
+    if (newKorwilRow.wilayah && newKorwilRow.nama) {
+        setKorwilRows([...korwilRows, newKorwilRow]);
+        setNewKorwilRow({ wilayah: '', nama: '', kontak: '' });
+    } else {
+        showToast("Mohon isi Wilayah dan Nama Koordinator", "error");
+    }
+  };
+
+  const handleDeleteKorwilRow = (index: number) => {
+    const newRows = [...korwilRows];
+    newRows.splice(index, 1);
+    setKorwilRows(newRows);
+  };
+
+  const handleUpdateKorwilRow = (index: number, field: keyof KorwilRow, value: string) => {
+    const newRows = [...korwilRows];
+    newRows[index] = { ...newRows[index], [field]: value };
+    setKorwilRows(newRows);
+  };
+
+  // Generate Modern HTML Table from Data
+  const generateKorwilHTML = () => {
+     return `
+      <div class="w-full overflow-hidden rounded-xl border border-neutral-200 shadow-lg my-6 bg-white font-sans">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-gradient-to-r from-primary-900 to-primary-700 text-white">
+              <th class="p-5 font-bold text-sm uppercase tracking-wider border-b border-primary-800">Wilayah / Jabatan</th>
+              <th class="p-5 font-bold text-sm uppercase tracking-wider border-b border-primary-800">Nama Koordinator</th>
+              <th class="p-5 font-bold text-sm uppercase tracking-wider border-b border-primary-800">Kontak / Keterangan</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-100">
+            ${korwilRows.map((row, idx) => `
+              <tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50'} hover:bg-primary-50 transition-colors duration-200">
+                <td class="p-5 font-bold text-primary-900">${row.wilayah}</td>
+                <td class="p-5 text-neutral-700 font-medium">${row.nama}</td>
+                <td class="p-5 text-neutral-600 font-mono text-sm">${row.kontak}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div class="bg-neutral-50 p-4 text-xs text-center text-neutral-400 border-t border-neutral-200">
+           Update Data: ${new Date().toLocaleDateString('id-ID')}
+        </div>
+      </div>
+     `;
+  };
 
   const handleCreateSession = (e: React.FormEvent) => {
     e.preventDefault();
@@ -407,7 +503,10 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleSaveProfile = () => {
-    if (editorRef.current) {
+    if (selectedProfileSlug === 'korwil') {
+        const htmlContent = generateKorwilHTML();
+        updateProfilePage(selectedProfileSlug, profileTitle, htmlContent);
+    } else if (editorRef.current) {
         const content = editorRef.current.innerHTML;
         updateProfilePage(selectedProfileSlug, profileTitle, content);
     }
@@ -1350,10 +1449,9 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {/* Profile Tab (Keep existing) */}
+            {/* Profile Tab */}
             {activeTab === 'profile' && (
                 <div className="space-y-6">
-                 {/* ... Profile Content (Unchanged) ... */}
                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h3 className="text-lg font-normal text-[#333]">Edit Menu & Sub-Menu Profil</h3>
@@ -1373,21 +1471,142 @@ export const AdminDashboard: React.FC = () => {
                               <input type="text" value={profileTitle} onChange={(e) => setProfileTitle(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-r-sm focus:border-[#3c8dbc] outline-none font-bold text-[#333]" placeholder="Contoh: Sejarah Berdirinya JASNU" />
                           </div>
                        </div>
-                       <div className="border border-gray-300 rounded-sm">
-                             <div className="bg-[#f0f0f0] border-b border-gray-300 p-2 flex flex-wrap gap-1">
-                                <button type="button" onClick={() => execCmd('bold')} className="p-1 hover:bg-gray-200 rounded"><Bold size={16} /></button>
-                                <button type="button" onClick={() => execCmd('italic')} className="p-1 hover:bg-gray-200 rounded"><Italic size={16} /></button>
-                                <button type="button" onClick={() => execCmd('underline')} className="p-1 hover:bg-gray-200 rounded"><Underline size={16} /></button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button type="button" onClick={() => execCmd('insertUnorderedList')} className="p-1 hover:bg-gray-200 rounded"><List size={16} /></button>
-                                <button type="button" onClick={() => execCmd('insertOrderedList')} className="p-1 hover:bg-gray-200 rounded"><ListOrdered size={16} /></button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={16} /></button>
-                                <button type="button" onClick={handleInsertTable} className="p-1 hover:bg-gray-200 rounded flex items-center gap-1"><Table size={16} /></button>
-                                <input type="file" ref={imageInputRef} onChange={handleEditorImageUpload} accept="image/*" className="hidden" />
-                             </div>
-                             <div ref={editorRef} contentEditable className="min-h-[400px] p-4 outline-none prose max-w-none bg-white [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg" onInput={(e) => setProfileContent(e.currentTarget.innerHTML)}></div>
-                       </div>
+                       
+                       {/* CONDITIONAL RENDER: KORWIL TABLE EDITOR vs RICH TEXT EDITOR */}
+                       {selectedProfileSlug === 'korwil' ? (
+                          <div className="border border-gray-300 rounded-sm bg-gray-50/50 p-6">
+                              <div className="flex justify-between items-center mb-4">
+                                <h4 className="text-primary-900 font-bold text-lg flex items-center gap-2">
+                                  <Table className="text-primary-600" size={20} /> 
+                                  Manajemen Tabel Koordinator
+                                </h4>
+                                <span className="text-xs text-neutral-500 bg-white px-2 py-1 rounded border border-neutral-200">
+                                  Total: {korwilRows.length} Baris
+                                </span>
+                              </div>
+
+                              {/* Input Row for New Data */}
+                              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm border border-primary-100">
+                                  <div className="md:col-span-3">
+                                      <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Wilayah / Jabatan</label>
+                                      <input 
+                                        type="text" 
+                                        placeholder="Contoh: Kalirungkut" 
+                                        className="w-full px-3 py-2 border border-neutral-300 rounded focus:border-primary-500 outline-none text-sm"
+                                        value={newKorwilRow.wilayah}
+                                        onChange={(e) => setNewKorwilRow({...newKorwilRow, wilayah: e.target.value})}
+                                      />
+                                  </div>
+                                  <div className="md:col-span-4">
+                                      <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Nama Koordinator</label>
+                                      <input 
+                                        type="text" 
+                                        placeholder="Nama Lengkap" 
+                                        className="w-full px-3 py-2 border border-neutral-300 rounded focus:border-primary-500 outline-none text-sm"
+                                        value={newKorwilRow.nama}
+                                        onChange={(e) => setNewKorwilRow({...newKorwilRow, nama: e.target.value})}
+                                      />
+                                  </div>
+                                  <div className="md:col-span-3">
+                                      <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Kontak / Keterangan</label>
+                                      <input 
+                                        type="text" 
+                                        placeholder="No. HP / Ket." 
+                                        className="w-full px-3 py-2 border border-neutral-300 rounded focus:border-primary-500 outline-none text-sm"
+                                        value={newKorwilRow.kontak}
+                                        onChange={(e) => setNewKorwilRow({...newKorwilRow, kontak: e.target.value})}
+                                      />
+                                  </div>
+                                  <div className="md:col-span-2 flex items-end">
+                                      <button 
+                                        onClick={handleAddKorwilRow}
+                                        className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 rounded text-sm font-bold flex items-center justify-center gap-2 transition shadow-sm"
+                                      >
+                                          <Plus size={16} /> Tambah
+                                      </button>
+                                  </div>
+                              </div>
+
+                              {/* Interactive Table View */}
+                              <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
+                                  <table className="w-full text-left text-sm">
+                                      <thead className="bg-neutral-100 text-neutral-600 uppercase text-xs font-bold">
+                                          <tr>
+                                              <th className="px-4 py-3 border-b border-neutral-200">Wilayah</th>
+                                              <th className="px-4 py-3 border-b border-neutral-200">Nama</th>
+                                              <th className="px-4 py-3 border-b border-neutral-200">Kontak</th>
+                                              <th className="px-4 py-3 border-b border-neutral-200 text-right">Aksi</th>
+                                          </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-neutral-100">
+                                          {korwilRows.length === 0 ? (
+                                              <tr>
+                                                  <td colSpan={4} className="p-8 text-center text-neutral-400 italic">
+                                                      Belum ada data. Silakan tambahkan baris baru di atas.
+                                                  </td>
+                                              </tr>
+                                          ) : (
+                                              korwilRows.map((row, idx) => (
+                                                  <tr key={idx} className="hover:bg-neutral-50 group transition">
+                                                      <td className="px-4 py-3 font-medium text-primary-900">
+                                                          <input 
+                                                            className="bg-transparent border-none focus:ring-0 p-0 w-full font-bold text-primary-900" 
+                                                            value={row.wilayah} 
+                                                            onChange={(e) => handleUpdateKorwilRow(idx, 'wilayah', e.target.value)} 
+                                                          />
+                                                      </td>
+                                                      <td className="px-4 py-3">
+                                                          <input 
+                                                            className="bg-transparent border-none focus:ring-0 p-0 w-full" 
+                                                            value={row.nama} 
+                                                            onChange={(e) => handleUpdateKorwilRow(idx, 'nama', e.target.value)} 
+                                                          />
+                                                      </td>
+                                                      <td className="px-4 py-3 text-neutral-500">
+                                                          <input 
+                                                            className="bg-transparent border-none focus:ring-0 p-0 w-full font-mono text-xs" 
+                                                            value={row.kontak} 
+                                                            onChange={(e) => handleUpdateKorwilRow(idx, 'kontak', e.target.value)} 
+                                                          />
+                                                      </td>
+                                                      <td className="px-4 py-3 text-right">
+                                                          <button 
+                                                            onClick={() => handleDeleteKorwilRow(idx)}
+                                                            className="text-neutral-400 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition opacity-0 group-hover:opacity-100"
+                                                          >
+                                                              <Trash2 size={14} />
+                                                          </button>
+                                                      </td>
+                                                  </tr>
+                                              ))
+                                          )}
+                                      </tbody>
+                                  </table>
+                              </div>
+                              <p className="text-xs text-neutral-400 mt-2 flex items-center gap-1">
+                                  <AlertCircle size={12} />
+                                  Tips: Anda bisa mengedit langsung teks pada tabel di atas sebelum menyimpan.
+                              </p>
+                          </div>
+                       ) : (
+                          // STANDARD RICH TEXT EDITOR FOR OTHER PAGES
+                          <div className="border border-gray-300 rounded-sm">
+                               <div className="bg-[#f0f0f0] border-b border-gray-300 p-2 flex flex-wrap gap-1">
+                                  <button type="button" onClick={() => execCmd('bold')} className="p-1 hover:bg-gray-200 rounded"><Bold size={16} /></button>
+                                  <button type="button" onClick={() => execCmd('italic')} className="p-1 hover:bg-gray-200 rounded"><Italic size={16} /></button>
+                                  <button type="button" onClick={() => execCmd('underline')} className="p-1 hover:bg-gray-200 rounded"><Underline size={16} /></button>
+                                  <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                                  <button type="button" onClick={() => execCmd('insertUnorderedList')} className="p-1 hover:bg-gray-200 rounded"><List size={16} /></button>
+                                  <button type="button" onClick={() => execCmd('insertOrderedList')} className="p-1 hover:bg-gray-200 rounded"><ListOrdered size={16} /></button>
+                                  <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                                  <button type="button" onClick={() => imageInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={16} /></button>
+                                  <button type="button" onClick={handleInsertTable} className="p-1 hover:bg-gray-200 rounded flex items-center gap-1"><Table size={16} /></button>
+                                  <input type="file" ref={imageInputRef} onChange={handleEditorImageUpload} accept="image/*" className="hidden" />
+                               </div>
+                               <div ref={editorRef} contentEditable className="min-h-[400px] p-4 outline-none prose max-w-none bg-white [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg" onInput={(e) => setProfileContent(e.currentTarget.innerHTML)}></div>
+                          </div>
+                       )}
+
                        <div className="flex justify-end mt-4"><button onClick={handleSaveProfile} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Save size={18} /> Simpan Perubahan Halaman</button></div>
                     </div>
                  </div>
