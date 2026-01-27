@@ -51,6 +51,13 @@ export interface GalleryItem {
   caption: string;
 }
 
+export interface SliderItem {
+  id: number;
+  imageUrl: string;
+  title: string;
+  description: string;
+}
+
 export interface MediaPost {
   id: number;
   type: 'youtube' | 'instagram';
@@ -112,6 +119,7 @@ export interface AppState {
   registrations: (RegistrationInput & { id: number; status: MemberStatus; date: string })[];
   news: NewsItem[];
   gallery: GalleryItem[];
+  sliders: SliderItem[];
   mediaPosts: MediaPost[];
   profilePages: ProfilePage[];
   attendanceSessions: AttendanceSession[];
@@ -127,12 +135,14 @@ export interface AppContextType extends AppState {
   register: (data: RegistrationInput) => void;
   approveMember: (registrationId: number) => void;
   rejectMember: (registrationId: number) => void;
+  updateMember: (userId: number, data: Partial<User>) => void; // New Action
   deleteMember: (userId: number) => void;
   resetMemberPassword: (userId: number) => void;
   createSession: (name: string) => void;
+  updateSession: (sessionId: number, name: string) => void; 
+  deleteSession: (sessionId: number) => void; 
   toggleSession: (sessionId: number) => void;
   markAttendance: (sessionId: number, userId: number, photoUrl: string, location: string) => Promise<boolean>;
-  // New Actions
   updateAttendanceRecord: (recordId: string, data: Partial<AttendanceRecord>) => void;
   deleteAttendanceRecord: (recordId: string, sessionId: number, userId: number) => void;
   
@@ -141,6 +151,8 @@ export interface AppContextType extends AppState {
   deleteNews: (id: number) => void;
   addGalleryItem: (item: Omit<GalleryItem, 'id'>) => void;
   deleteGalleryItem: (id: number) => void;
+  addSliderItem: (item: Omit<SliderItem, 'id'>) => void;
+  deleteSliderItem: (id: number) => void;
   addMediaPost: (post: Omit<MediaPost, 'id' | 'createdAt'>) => void;
   deleteMediaPost: (id: number) => void;
   updateSiteConfig: (config: SiteConfig) => void;

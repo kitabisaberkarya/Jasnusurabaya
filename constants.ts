@@ -16,6 +16,7 @@ export const MOCK_INITIAL_STATE: AppState = {
   registrations: [],
   news: [],
   gallery: [],
+  sliders: [],
   mediaPosts: [],
   profilePages: [],
   attendanceSessions: [],

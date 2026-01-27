@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost, AppContextType, GalleryItem, Korwil } from '../types';
+import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost, AppContextType, GalleryItem, SliderItem, Korwil } from '../types';
 import { MOCK_INITIAL_STATE } from '../constants';
 import { supabase } from '../lib/supabase';
 
@@ -30,6 +30,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         { data: users }, 
         { data: news }, 
         { data: gallery }, 
+        { data: sliders },
         { data: media },
         { data: sessions }, 
         { data: registrations },
@@ -41,6 +42,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabase.from('users').select('*'),
         supabase.from('news').select('*').order('id', { ascending: false }),
         supabase.from('gallery').select('*').order('id', { ascending: false }),
+        supabase.from('sliders').select('*').order('id', { ascending: true }),
         supabase.from('media_posts').select('*').order('id', { ascending: false }),
         supabase.from('attendance_sessions').select('*').order('id', { ascending: false }),
         supabase.from('registrations').select('*').order('id', { ascending: false }),
@@ -71,6 +73,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         imageUrl: n.image_url
       }));
 
+      const mappedSliders = (sliders || []).map((s: any) => ({
+        id: s.id,
+        imageUrl: s.image_url,
+        title: s.title,
+        description: s.description
+      }));
+
       const mappedMedia = (media || []).map((m: any) => ({
         ...m,
         embedUrl: m.embed_url,
@@ -92,6 +101,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         users: users || [],
         news: mappedNews,
         gallery: gallery || [],
+        sliders: mappedSliders,
         mediaPosts: mappedMedia,
         profilePages: (profiles as ProfilePage[]) || [],
         attendanceSessions: mappedSessions,
@@ -224,6 +234,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateMember = async (userId: number, data: Partial<User>) => {
+    try {
+      // Filter out fields that shouldn't be updated loosely or map them correctly
+      const updates: any = {};
+      if (data.name) updates.name = data.name;
+      if (data.nik) updates.nik = data.nik;
+      if (data.phone) updates.phone = data.phone;
+      if (data.address) updates.address = data.address;
+      if (data.wilayah) updates.wilayah = data.wilayah;
+      if (data.email) updates.email = data.email;
+
+      const { error } = await supabase.from('users').update(updates).eq('id', userId);
+      if (error) throw error;
+
+      setState(prev => ({
+        ...prev,
+        users: prev.users.map(u => u.id === userId ? { ...u, ...data } : u)
+      }));
+      showToast("Data anggota berhasil diperbarui", "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Gagal memperbarui data anggota", "error");
+    }
+  };
+
   const deleteMember = async (userId: number) => {
     try {
       await supabase.from('attendance_records').delete().eq('user_id', userId);
@@ -264,6 +299,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast('Sesi absensi baru berhasil dibuat & dibuka', 'success');
     } catch (error) {
       showToast("Gagal membuat sesi", "error");
+    }
+  };
+
+  const updateSession = async (sessionId: number, name: string) => {
+    try {
+      const { error } = await supabase
+        .from('attendance_sessions')
+        .update({ name })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+      
+      setState(prev => ({
+        ...prev,
+        attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, name } : s)
+      }));
+      showToast("Data sesi berhasil diperbarui", "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Gagal memperbarui sesi", "error");
+    }
+  };
+
+  const deleteSession = async (sessionId: number) => {
+    try {
+      // 1. Delete associated records first (Manual Cascade for safety)
+      await supabase.from('attendance_records').delete().eq('session_id', sessionId);
+
+      // 2. Delete the session
+      const { error } = await supabase.from('attendance_sessions').delete().eq('id', sessionId);
+      if (error) throw error;
+
+      setState(prev => ({
+        ...prev,
+        attendanceSessions: prev.attendanceSessions.filter(s => s.id !== sessionId),
+        attendanceRecords: prev.attendanceRecords.filter(r => r.sessionId !== sessionId)
+      }));
+      showToast("Sesi absensi & data terkait berhasil dihapus", "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Gagal menghapus sesi", "error");
     }
   };
 
@@ -461,6 +537,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Slider Functions
+  const addSliderItem = async (item: Omit<SliderItem, 'id'>) => {
+    try {
+      const { error } = await supabase.from('sliders').insert([{
+        image_url: item.imageUrl,
+        title: item.title,
+        description: item.description
+      }]);
+      if (error) throw error;
+      fetchData(); 
+      showToast('Slider berhasil ditambahkan', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast("Gagal menambahkan slider", "error");
+    }
+  };
+
+  const deleteSliderItem = async (id: number) => {
+    try {
+      const { error } = await supabase.from('sliders').delete().eq('id', id);
+      if (error) throw error;
+      setState(prev => ({ ...prev, sliders: prev.sliders.filter(s => s.id !== id) }));
+      showToast('Slider berhasil dihapus', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast("Gagal menghapus slider", "error");
+    }
+  };
+
   const addMediaPost = async (post: Omit<MediaPost, 'id' | 'createdAt'>) => {
     try {
       const { error } = await supabase.from('media_posts').insert([{
@@ -558,7 +663,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, deleteMember, resetMemberPassword, createSession, toggleSession, markAttendance, updateAttendanceRecord, deleteAttendanceRecord, addNews, updateNews, deleteNews, addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, addKorwil, deleteKorwil, restoreData, showToast, removeToast, refreshData: fetchData, isLoading }}>
+    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, updateMember, deleteMember, resetMemberPassword, createSession, updateSession, deleteSession, toggleSession, markAttendance, updateAttendanceRecord, deleteAttendanceRecord, addNews, updateNews, deleteNews, addGalleryItem, deleteGalleryItem, addSliderItem, deleteSliderItem, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, addKorwil, deleteKorwil, restoreData, showToast, removeToast, refreshData: fetchData, isLoading }}>
       {children}
     </AppContext.Provider>
   );

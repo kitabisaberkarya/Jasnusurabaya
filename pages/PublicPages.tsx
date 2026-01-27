@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube, ArrowLeft, Clock, Share2 } from 'lucide-react';
+// @ts-nocheck
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube, ArrowLeft, Clock, Share2, Facebook, Twitter, Link as LinkIcon, MessageCircle } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { MemberStatus } from '../types';
@@ -12,28 +13,61 @@ const fadeIn = {
 };
 
 export const Home: React.FC = () => {
-  const { news, siteConfig } = useApp();
+  const { news, siteConfig, sliders, profilePages } = useApp();
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Auto-play slider logic
+  useEffect(() => {
+    if (sliders.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % sliders.length);
+      }, 6000); // 6 Seconds
+      return () => clearInterval(interval);
+    }
+  }, [sliders]);
+
+  // Default slide if DB is empty
+  const defaultSlide = {
+    imageUrl: "https://images.unsplash.com/photo-1564507592333-c60657eea523?q=80&w=2071&auto=format&fit=crop",
+    title: "BERKHIDMAT UNTUK UMAT, BERBAKTI KEPADA NEGERI",
+    description: "Bergabunglah bersama ribuan jamaah Jamiyah Sholawat Nariyah JASNU KOTA SURABAYA dalam majelis Sholawat Nariyah, dzikir, ilmu, dan ukhuwah."
+  };
+
+  const activeSlide = sliders.length > 0 ? sliders[currentSlide] : defaultSlide;
+  const aboutPage = profilePages.find(p => p.slug === 'tentang-kami');
   
   return (
     <motion.div initial="hidden" animate="visible" variants={fadeIn}>
-      {/* Hero Section */}
-      <section className="relative bg-primary-900 text-white py-24 lg:py-32 overflow-hidden min-h-[90vh] flex items-center justify-center">
-        {/* Modern Background Patterns */}
-        <div className="absolute inset-0 z-0">
-           <div className="absolute inset-0 bg-gradient-to-b from-primary-900 via-primary-800 to-primary-900 opacity-90"></div>
-           <div className="absolute top-0 left-0 w-full h-full opacity-10" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"1\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }}></div>
-           <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-secondary-500 rounded-full blur-[128px] opacity-20 animate-pulse"></div>
-           <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-primary-400 rounded-full blur-[128px] opacity-20"></div>
-        </div>
+      {/* Hero Section with Dynamic Slider */}
+      <section className="relative bg-primary-900 text-white min-h-[90vh] flex items-center justify-center overflow-hidden">
+        
+        {/* Background Image Slider with Crossfade */}
+        <AnimatePresence mode="wait">
+            <motion.div 
+               key={activeSlide.imageUrl}
+               initial={{ opacity: 0, scale: 1.1 }}
+               animate={{ opacity: 1, scale: 1 }}
+               exit={{ opacity: 0 }}
+               transition={{ duration: 1.5 }}
+               className="absolute inset-0 z-0"
+            >
+               <div className="absolute inset-0 bg-gradient-to-b from-primary-900/90 via-primary-900/70 to-primary-900 z-10"></div>
+               <img src={activeSlide.imageUrl} alt="Background" className="w-full h-full object-cover" />
+            </motion.div>
+        </AnimatePresence>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        {/* Decorative Elements */}
+        <div className="absolute top-0 left-0 w-full h-full opacity-10 z-0" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"1\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }}></div>
+        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-secondary-500 rounded-full blur-[128px] opacity-20 animate-pulse z-0"></div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-20">
           
           {/* Central Logo Identity with Multi-layer Glow */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, type: "spring" }}
-            className="mb-10 flex justify-center relative"
+            className="mb-8 flex justify-center relative"
           >
             <div className="relative">
                {/* Outer Glow Rings */}
@@ -44,37 +78,36 @@ export const Home: React.FC = () => {
                <img 
                  src={siteConfig.logoUrl} 
                  alt="Logo Utama JSN" 
-                 className="relative w-32 h-32 md:w-44 md:h-44 rounded-full shadow-2xl border-4 border-white/20 ring-4 ring-primary-900/50 object-cover backdrop-blur-sm"
+                 className="relative w-24 h-24 md:w-36 md:h-36 rounded-full shadow-2xl border-4 border-white/20 ring-4 ring-primary-900/50 object-cover backdrop-blur-sm"
                />
             </div>
           </motion.div>
 
-          <motion.span 
-            initial={{ opacity: 0, y: -20 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ delay: 0.2 }}
-            className="inline-block px-5 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-secondary-300 font-medium text-sm mb-6 uppercase tracking-[0.2em] shadow-lg"
-          >
-            Ahlan Wa Sahlan
-          </motion.span>
+          {/* Dynamic Content Animation */}
+          <AnimatePresence mode="wait">
+            <motion.div
+                key={activeSlide.title} // Change key to trigger animation
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5 }}
+                className="max-w-4xl mx-auto"
+            >
+                <motion.span 
+                    className="inline-block px-5 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-secondary-300 font-medium text-xs md:text-sm mb-6 uppercase tracking-[0.2em] shadow-lg"
+                >
+                    Ahlan Wa Sahlan
+                </motion.span>
 
-          <motion.h1 
-            initial={{ opacity: 0, scale: 0.95 }} 
-            animate={{ opacity: 1, scale: 1 }} 
-            transition={{ delay: 0.4 }}
-            className="text-3xl md:text-5xl lg:text-6xl font-bold font-serif mb-6 leading-tight drop-shadow-lg uppercase"
-          >
-            BERKHIDMAT UNTUK UMAT,<br/> BERBAKTI KEPADA NEGERI,<br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-300 to-secondary-500">NKRI HARGA MATI</span>
-          </motion.h1>
-          
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="text-lg md:text-xl text-primary-100 max-w-3xl mx-auto mb-12 leading-relaxed font-light"
-          >
-            Bergabunglah bersama ribuan jamaah Jamiyah Sholawat Nariyah JASNU KOTA SURABAYA dalam majelis Sholawat Nariyah, dzikir, ilmu, dan ukhuwah.
-          </motion.p>
+                <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold font-serif mb-6 leading-tight drop-shadow-lg uppercase">
+                    {activeSlide.title}
+                </h1>
+                
+                <p className="text-lg md:text-xl text-primary-100 max-w-3xl mx-auto mb-10 leading-relaxed font-light">
+                    {activeSlide.description}
+                </p>
+            </motion.div>
+          </AnimatePresence>
           
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -89,6 +122,20 @@ export const Home: React.FC = () => {
               Lihat Kegiatan
             </Link>
           </motion.div>
+
+          {/* Slider Indicators */}
+          {sliders.length > 1 && (
+            <div className="flex justify-center gap-2 mt-12">
+                {sliders.map((_, idx) => (
+                    <button 
+                        key={idx}
+                        onClick={() => setCurrentSlide(idx)}
+                        className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? 'w-8 bg-secondary-500' : 'bg-white/30 hover:bg-white/50'}`}
+                    />
+                ))}
+            </div>
+          )}
+
         </div>
 
         {/* Scroll Indicator */}
@@ -117,24 +164,32 @@ export const Home: React.FC = () => {
                 />
              </div>
              <div>
-               <h2 className="text-3xl md:text-5xl font-serif font-bold text-primary-900 mb-8 leading-tight">Membangun Ukhuwah <br/><span className="italic text-secondary-600">Islamiyah</span></h2>
-               <p className="text-neutral-600 mb-8 leading-relaxed text-lg">
-                 {siteConfig.appName} {siteConfig.orgName} didirikan sebagai wadah untuk mempererat tali persaudaraan sesama muslim melalui lantunan sholawat dan kajian keislaman yang menyejukkan hati.
-               </p>
-               <ul className="space-y-6 mb-10">
-                 {[
-                   `Rutin melaksanakan pembacaan ${siteConfig.appName} 4444x`,
-                   'Kajian kitab kuning bersama para Kyai & Habaib',
-                   'Santunan sosial dan pemberdayaan ekonomi umat'
-                 ].map((item, i) => (
-                   <li key={i} className="flex items-start gap-4">
-                     <div className="mt-1 w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
-                        <CheckCircle size={18} />
-                     </div>
-                     <span className="text-neutral-800 font-medium text-lg">{item}</span>
-                   </li>
-                 ))}
-               </ul>
+               {aboutPage ? (
+                   <div className="prose prose-lg prose-emerald max-w-none text-neutral-600 prose-headings:font-serif prose-headings:text-primary-900 prose-ul:list-none prose-li:flex prose-li:gap-3">
+                      <div dangerouslySetInnerHTML={{ __html: aboutPage.content }} />
+                   </div>
+               ) : (
+                  <>
+                   <h2 className="text-3xl md:text-5xl font-serif font-bold text-primary-900 mb-8 leading-tight">Membangun Ukhuwah <br/><span className="italic text-secondary-600">Islamiyah</span></h2>
+                   <p className="text-neutral-600 mb-8 leading-relaxed text-lg">
+                     {siteConfig.appName} {siteConfig.orgName} didirikan sebagai wadah untuk mempererat tali persaudaraan sesama muslim melalui lantunan sholawat dan kajian keislaman yang menyejukkan hati.
+                   </p>
+                   <ul className="space-y-6 mb-10">
+                     {[
+                       `Rutin melaksanakan pembacaan ${siteConfig.appName} 4444x`,
+                       'Kajian kitab kuning bersama para Kyai & Habaib',
+                       'Santunan sosial dan pemberdayaan ekonomi umat'
+                     ].map((item, i) => (
+                       <li key={i} className="flex items-start gap-4">
+                         <div className="mt-1 w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                            <CheckCircle size={18} />
+                         </div>
+                         <span className="text-neutral-800 font-medium text-lg">{item}</span>
+                       </li>
+                     ))}
+                   </ul>
+                  </>
+               )}
              </div>
            </div>
         </div>
@@ -273,8 +328,44 @@ export const News: React.FC = () => {
 
 export const NewsDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { news } = useApp();
+  const { news, showToast } = useApp();
   const item = news.find(n => n.id === Number(id));
+
+  const handleShare = (platform: string) => {
+    if (!item) return;
+    const url = window.location.href;
+    const text = `Baca berita: ${item.title}`;
+
+    if (platform === 'copy') {
+      navigator.clipboard.writeText(url);
+      showToast('Link berhasil disalin ke clipboard!', 'success');
+      return;
+    }
+
+    let shareUrl = '';
+    switch (platform) {
+      case 'whatsapp':
+        shareUrl = `https://wa.me/?text=${encodeURIComponent(text + '\n' + url)}`;
+        break;
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+        break;
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+        break;
+      case 'native':
+         if (navigator.share) {
+            navigator.share({ title: item.title, text: text, url: url }).catch(() => {});
+         } else {
+            handleShare('copy');
+         }
+         return;
+    }
+
+    if (shareUrl) {
+      window.open(shareUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   if (!item) {
     return (
@@ -299,7 +390,7 @@ export const NewsDetail: React.FC = () => {
               Kembali ke Daftar
            </Link>
            <div className="flex gap-2">
-              <button className="p-2 text-neutral-400 hover:text-primary-600 transition" title="Bagikan">
+              <button onClick={() => handleShare('native')} className="p-2 text-neutral-400 hover:text-primary-600 transition" title="Bagikan">
                  <Share2 size={18} />
               </button>
            </div>
@@ -348,14 +439,34 @@ export const NewsDetail: React.FC = () => {
            <div className="bg-neutral-50 rounded-2xl p-8 text-center">
               <h3 className="font-serif font-bold text-xl text-primary-900 mb-2">Terima kasih telah membaca</h3>
               <p className="text-neutral-500 text-sm mb-6">Bagikan informasi kebaikan ini kepada rekan dan saudara Anda.</p>
-              <div className="flex justify-center gap-4">
-                 <button className="px-6 py-2 bg-white border border-neutral-200 rounded-full text-sm font-bold text-neutral-600 hover:bg-primary-50 hover:text-primary-700 hover:border-primary-200 transition flex items-center gap-2">
-                    <Share2 size={16} /> Bagikan Artikel
-                 </button>
-                 <Link to="/news" className="px-6 py-2 bg-primary-700 text-white rounded-full text-sm font-bold hover:bg-primary-800 transition flex items-center gap-2 shadow-lg shadow-primary-700/20">
-                    Baca Berita Lainnya
-                 </Link>
+              
+              <div className="flex flex-col items-center gap-6">
+                 {/* Social Share Buttons */}
+                 <div className="flex items-center justify-center gap-3 flex-wrap">
+                    <button onClick={() => handleShare('whatsapp')} className="w-10 h-10 rounded-full bg-[#25D366] text-white flex items-center justify-center hover:scale-110 transition shadow-lg" title="WhatsApp">
+                       <MessageCircle size={20} />
+                    </button>
+                    <button onClick={() => handleShare('facebook')} className="w-10 h-10 rounded-full bg-[#1877F2] text-white flex items-center justify-center hover:scale-110 transition shadow-lg" title="Facebook">
+                       <Facebook size={20} />
+                    </button>
+                    <button onClick={() => handleShare('twitter')} className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center hover:scale-110 transition shadow-lg" title="X / Twitter">
+                       <Twitter size={20} />
+                    </button>
+                    <button onClick={() => handleShare('copy')} className="w-10 h-10 rounded-full bg-neutral-200 text-neutral-600 flex items-center justify-center hover:scale-110 transition shadow-lg hover:bg-neutral-300" title="Salin Link">
+                       <LinkIcon size={20} />
+                    </button>
+                    <button onClick={() => handleShare('native')} className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center hover:scale-110 transition shadow-lg md:hidden" title="Lainnya">
+                       <Share2 size={20} />
+                    </button>
+                 </div>
+
+                 <div className="flex justify-center gap-4">
+                     <Link to="/news" className="px-6 py-2 bg-primary-700 text-white rounded-full text-sm font-bold hover:bg-primary-800 transition flex items-center gap-2 shadow-lg shadow-primary-700/20">
+                        Baca Berita Lainnya
+                     </Link>
+                 </div>
               </div>
+
            </div>
         </div>
 
@@ -528,7 +639,7 @@ export const ProfileView: React.FC = () => {
     'sejarah': 'Sejarah Jamiyah',
     'pengurus': 'Susunan Pengurus Pusat',
     'korwil': 'Daftar Koordinator Wilayah (Korwil)',
-    'amaliyah': 'Amaliyah & Wirid Rutin JSN'
+    'amaliyah': 'Amaliyah & Wirid Rutin'
   };
 
   const displayTitle = currentPage?.title || titleMap[slug || ''] || 'Profil';

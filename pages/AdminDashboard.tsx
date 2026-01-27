@@ -8,23 +8,25 @@ import {
   Undo, Redo, Strikethrough, Quote, Link as LinkIcon, Video, Plus, Table,
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
-  User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon, Lock
+  User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon, Lock, LayoutTemplate, ArrowLeft, Clock
 } from 'lucide-react';
-import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord } from '../types';
+import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord, User } from '../types';
 import XLSX from 'xlsx-js-style';
+import { motion, AnimatePresence } from 'framer-motion';
+import { KORWIL_LIST } from '../constants';
 
 export const AdminDashboard: React.FC = () => {
   const { 
-    users, registrations, approveMember, rejectMember, deleteMember, resetMemberPassword, attendanceSessions, attendanceRecords, 
-    createSession, toggleSession, markAttendance, updateAttendanceRecord, deleteAttendanceRecord, news, gallery, mediaPosts, addNews, updateNews, deleteNews, 
-    addGalleryItem, deleteGalleryItem, addMediaPost, deleteMediaPost, 
+    users, registrations, approveMember, rejectMember, deleteMember, updateMember, resetMemberPassword, attendanceSessions, attendanceRecords, 
+    createSession, updateSession, deleteSession, toggleSession, markAttendance, updateAttendanceRecord, deleteAttendanceRecord, news, gallery, sliders, mediaPosts, addNews, updateNews, deleteNews, 
+    addGalleryItem, deleteGalleryItem, addSliderItem, deleteSliderItem, addMediaPost, deleteMediaPost, 
     showToast, currentUser, logout, 
     siteConfig, updateSiteConfig, restoreData, profilePages, updateProfilePage, 
     korwils, addKorwil, deleteKorwil, 
     ...fullState 
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'members' | 'attendance' | 'news' | 'gallery' | 'media' | 'recap' | 'settings' | 'backup' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'members' | 'attendance' | 'news' | 'gallery' | 'slider' | 'media' | 'recap' | 'settings' | 'backup' | 'profile'>('overview');
   const [newSessionName, setNewSessionName] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
@@ -33,6 +35,15 @@ export const AdminDashboard: React.FC = () => {
   
   // Member Management State
   const [memberSearch, setMemberSearch] = useState('');
+  const [editingMember, setEditingMember] = useState<User | null>(null);
+  const [editMemberForm, setEditMemberForm] = useState({ name: '', nik: '', email: '', phone: '', address: '', wilayah: '' });
+  const [isCustomWilayahEdit, setIsCustomWilayahEdit] = useState(false);
+
+  // Member Delete & Reset Password State (Modern Popups)
+  const [deleteMemberData, setDeleteMemberData] = useState<{id: number, name: string} | null>(null);
+  const [isDeletingMember, setIsDeletingMember] = useState(false);
+  const [resetPasswordData, setResetPasswordData] = useState<{id: number, name: string} | null>(null);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   // Attendance Detail State
   const [viewingSession, setViewingSession] = useState<AttendanceSession | null>(null);
@@ -44,6 +55,13 @@ export const AdminDashboard: React.FC = () => {
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
   const [editRecordForm, setEditRecordForm] = useState({ userName: '', location: '', timestamp: '' });
 
+  // Session Edit State
+  const [editingSession, setEditingSession] = useState<AttendanceSession | null>(null);
+  const [editSessionName, setEditSessionName] = useState('');
+  // Session Delete State (New)
+  const [deleteSessionData, setDeleteSessionData] = useState<{id: number, name: string} | null>(null);
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
+
   // News Form State
   const [newsForm, setNewsForm] = useState({ title: '', excerpt: '', content: '', imageUrl: '' });
   const [editingNewsId, setEditingNewsId] = useState<number | null>(null);
@@ -52,6 +70,10 @@ export const AdminDashboard: React.FC = () => {
   // Gallery Form State
   const [galleryForm, setGalleryForm] = useState({ imageUrl: '', caption: '' });
   const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  // Slider Form State
+  const [sliderForm, setSliderForm] = useState({ imageUrl: '', title: '', description: '' });
+  const sliderInputRef = useRef<HTMLInputElement>(null);
 
   // Media Form State
   const [mediaForm, setMediaForm] = useState({ type: 'youtube' as 'youtube' | 'instagram', url: '', caption: '' });
@@ -83,7 +105,8 @@ export const AdminDashboard: React.FC = () => {
         'sejarah': 'Sejarah Jamiyah',
         'pengurus': 'Susunan Pengurus Pusat',
         'korwil': 'Daftar Koordinator Wilayah',
-        'amaliyah': 'Amaliyah & Wirid Rutin'
+        'amaliyah': 'Amaliyah & Wirid Rutin',
+        'tentang-kami': 'Membangun Ukhuwah Islamiyah'
     };
     
     setProfileTitle(page ? page.title : defaultTitles[selectedProfileSlug] || '');
@@ -120,6 +143,34 @@ export const AdminDashboard: React.FC = () => {
     if (newSessionName) {
       createSession(newSessionName);
       setNewSessionName('');
+    }
+  };
+
+  const handleEditSession = (session: AttendanceSession) => {
+    setEditingSession(session);
+    setEditSessionName(session.name);
+  };
+
+  const handleUpdateSessionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingSession && editSessionName.trim()) {
+      updateSession(editingSession.id, editSessionName);
+      setEditingSession(null);
+    }
+  };
+
+  // Trigger Modal Popup instead of window.confirm
+  const handleDeleteSession = (id: number, name: string) => {
+    setDeleteSessionData({ id, name });
+  };
+
+  // Confirm Action inside Modal
+  const confirmDeleteSession = async () => {
+    if (deleteSessionData) {
+      setIsDeletingSession(true);
+      await deleteSession(deleteSessionData.id);
+      setIsDeletingSession(false);
+      setDeleteSessionData(null);
     }
   };
 
@@ -230,15 +281,93 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleDeleteMember = (id: number, name: string) => {
-    if (window.confirm(`PERHATIAN: Apakah Anda yakin ingin menghapus anggota ${name}? Data kehadiran dan akun akan dihapus permanen.`)) {
-      deleteMember(id);
+  // Slider Handlers
+  const handleSliderSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sliderForm.imageUrl) {
+      showToast("Silakan pilih gambar terlebih dahulu", "error");
+      return;
+    }
+    addSliderItem({
+      imageUrl: sliderForm.imageUrl,
+      title: sliderForm.title,
+      description: sliderForm.description
+    });
+    setSliderForm({ imageUrl: '', title: '', description: '' });
+    if (sliderInputRef.current) sliderInputRef.current.value = '';
+  };
+
+  const handleSliderImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        showToast("Ukuran gambar terlalu besar (Maks 2MB)", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+           setSliderForm(prev => ({ ...prev, imageUrl: reader.result as string }));
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
+
+  // Trigger Delete Member Modal
+  const handleDeleteMember = (id: number, name: string) => {
+    setDeleteMemberData({ id, name });
+  };
+
+  const confirmDeleteMember = async () => {
+    if (deleteMemberData) {
+      setIsDeletingMember(true);
+      await deleteMember(deleteMemberData.id);
+      setIsDeletingMember(false);
+      setDeleteMemberData(null);
+    }
+  };
+
+  const handleEditMember = (member: User) => {
+    setEditingMember(member);
+    setEditMemberForm({
+      name: member.name,
+      nik: member.nik || '',
+      email: member.email || '',
+      phone: member.phone || '',
+      address: member.address || '',
+      wilayah: member.wilayah || ''
+    });
+    setIsCustomWilayahEdit(false);
+  };
+
+  const handleUpdateMemberSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingMember) {
+      updateMember(editingMember.id, {
+        name: editMemberForm.name,
+        nik: editMemberForm.nik,
+        email: editMemberForm.email,
+        phone: editMemberForm.phone,
+        address: editMemberForm.address,
+        wilayah: editMemberForm.wilayah
+      });
+      setEditingMember(null);
+    }
+  };
+
+  // Trigger Reset Password Modal
   const handleResetPassword = (id: number, name: string) => {
-    if (window.confirm(`Reset password untuk ${name} menjadi '12345678'?`)) {
-      resetMemberPassword(id);
+    setResetPasswordData({ id, name });
+  };
+
+  const confirmResetPassword = async () => {
+    if (resetPasswordData) {
+      setIsResettingPassword(true);
+      await resetMemberPassword(resetPasswordData.id);
+      setIsResettingPassword(false);
+      setResetPasswordData(null);
     }
   };
 
@@ -449,7 +578,7 @@ export const AdminDashboard: React.FC = () => {
 
   const handleBackup = () => {
     const backupData: AppState = {
-      users, registrations, news, gallery, mediaPosts, profilePages, attendanceSessions, attendanceRecords, siteConfig, korwils,
+      users, registrations, news, gallery, sliders, mediaPosts, profilePages, attendanceSessions, attendanceRecords, siteConfig, korwils,
       currentUser: null, toasts: [] 
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
@@ -632,6 +761,9 @@ export const AdminDashboard: React.FC = () => {
     showToast("Absensi sesi berhasil diunduh (Styled XLSX)", "success");
   }
 
+  // Use korwils from DB if available, otherwise fallback to static list
+  const displayKorwils = korwils.length > 0 ? korwils : KORWIL_LIST.map((k, i) => ({ id: i, name: k }));
+
   const activeMembersCount = users.filter(u => u.status === MemberStatus.ACTIVE && u.role !== 'admin').length;
   const pendingCount = registrations.length;
   const totalSessions = attendanceSessions.length;
@@ -698,6 +830,7 @@ export const AdminDashboard: React.FC = () => {
                  { id: 'approval', icon: UserCheck, label: 'Approval Anggota', badge: pendingCount, badgeColor: 'bg-[#00c0ef]' },
                  { id: 'members', icon: Users, label: 'Data Anggota', badge: null }, 
                  { id: 'profile', icon: UserIcon, label: 'Manajemen Profil', badge: null },
+                 { id: 'slider', icon: LayoutTemplate, label: 'Slider Beranda', badge: null },
                  { id: 'media', icon: PlayCircle, label: 'Manajemen Media', badge: null },
                  { id: 'gallery', icon: ImageIcon, label: 'Manajemen Galeri', badge: null },
                  { id: 'attendance', icon: Calendar, label: 'Absensi Majelis', badge: null },
@@ -740,6 +873,7 @@ export const AdminDashboard: React.FC = () => {
                   {activeTab === 'approval' && 'Approval Anggota'}
                   {activeTab === 'members' && 'Data Anggota'}
                   {activeTab === 'profile' && 'Manajemen Profil Organisasi'}
+                  {activeTab === 'slider' && 'Manajemen Slider Beranda'}
                   {activeTab === 'media' && 'Manajemen Media & Video'}
                   {activeTab === 'gallery' && 'Manajemen Galeri Foto'}
                   {activeTab === 'attendance' && 'Absensi Majelis'}
@@ -775,9 +909,179 @@ export const AdminDashboard: React.FC = () => {
               </div>
             )}
 
+            {/* Approval Tab (Restored) */}
+            {activeTab === 'approval' && (
+               <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
+                  <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Permohonan Anggota Baru</h3></div>
+                  <div className="p-0">
+                     {registrations.length === 0 ? <div className="p-4 text-center text-gray-500">Tidak ada permohonan baru.</div> : (
+                        <div className="overflow-x-auto">
+                           <table className="w-full text-left">
+                              <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
+                                 <tr><th className="px-4 py-3 border-b">Nama</th><th className="px-4 py-3 border-b">NIK</th><th className="px-4 py-3 border-b">Kontak</th><th className="px-4 py-3 border-b">Wilayah</th><th className="px-4 py-3 border-b text-right">Aksi</th></tr>
+                              </thead>
+                              <tbody>
+                                 {registrations.map(reg => (
+                                    <tr key={reg.id} className="hover:bg-gray-50 border-b last:border-0">
+                                       <td className="px-4 py-3 font-bold text-[#333]">{reg.name}</td>
+                                       <td className="px-4 py-3 font-mono text-sm text-gray-600">{reg.nik}</td>
+                                       <td className="px-4 py-3 text-sm">{reg.phone}<br/><span className="text-gray-400 text-xs">{reg.email}</span></td>
+                                       <td className="px-4 py-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs border border-gray-200 text-gray-600">{reg.wilayah}</span></td>
+                                       <td className="px-4 py-3 text-right">
+                                          <div className="flex justify-end gap-2">
+                                             <button onClick={() => approveMember(reg.id)} className="bg-[#00a65a] text-white px-2 py-1 rounded-sm text-xs font-bold hover:bg-[#008d4c] shadow-sm">Terima</button>
+                                             <button onClick={() => rejectMember(reg.id)} className="bg-[#dd4b39] text-white px-2 py-1 rounded-sm text-xs font-bold hover:bg-[#d73925] shadow-sm">Tolak</button>
+                                          </div>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     )}
+                  </div>
+               </div>
+            )}
+
+            {/* Attendance Tab (Restored) */}
+            {activeTab === 'attendance' && (
+               <div className="space-y-6">
+                  {!viewingSession ? (
+                     <>
+                        {/* Create Session Form */}
+                        <div className="bg-white border-t-[3px] border-[#00a65a] shadow-sm rounded-sm">
+                           <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Buat Sesi Absensi Baru</h3></div>
+                           <div className="p-4">
+                              <form onSubmit={handleCreateSession} className="flex gap-4">
+                                 <input type="text" placeholder="Nama Kegiatan (Misal: Rutinan Malam Jumat)" className="flex-1 px-4 py-2 border border-gray-300 rounded-sm focus:border-[#00a65a] outline-none transition" value={newSessionName} onChange={e => setNewSessionName(e.target.value)} required />
+                                 <button type="submit" className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Plus size={16} /> Buat Sesi</button>
+                              </form>
+                           </div>
+                        </div>
+
+                        {/* Session List */}
+                        <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
+                           <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Daftar Sesi Absensi</h3></div>
+                           <div className="p-0">
+                              <div className="overflow-x-auto">
+                                 <table className="w-full text-left">
+                                    <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
+                                       <tr><th className="px-4 py-3 border-b">Tanggal</th><th className="px-4 py-3 border-b">Nama Kegiatan</th><th className="px-4 py-3 border-b text-center">Status</th><th className="px-4 py-3 border-b text-center">Hadir</th><th className="px-4 py-3 border-b text-right">Aksi</th></tr>
+                                    </thead>
+                                    <tbody>
+                                       {attendanceSessions.map(session => (
+                                          <tr key={session.id} className="hover:bg-gray-50 border-b last:border-0">
+                                             <td className="px-4 py-3 text-gray-600 w-32"><div className="flex items-center gap-2"><Calendar size={14} /> {session.date}</div></td>
+                                             <td className="px-4 py-3 font-bold text-[#333]">{session.name}</td>
+                                             <td className="px-4 py-3 text-center">
+                                                <button onClick={() => toggleSession(session.id)} className={`px-2 py-1 rounded text-xs font-bold uppercase transition ${session.isOpen ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>
+                                                   {session.isOpen ? 'DIBUKA' : 'DITUTUP'}
+                                                </button>
+                                             </td>
+                                             <td className="px-4 py-3 text-center font-mono font-bold text-[#3c8dbc]">{session.attendees.length}</td>
+                                             <td className="px-4 py-3 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                   <button onClick={() => setViewingSession(session)} className="bg-[#3c8dbc] text-white p-1.5 rounded-sm hover:bg-[#367fa9] shadow-sm" title="Lihat Data"><ListIcon size={16} /></button>
+                                                   <button onClick={() => handleEditSession(session)} className="bg-[#f39c12] text-white p-1.5 rounded-sm hover:bg-[#e08e0b] shadow-sm" title="Edit Nama"><Edit3 size={16} /></button>
+                                                   <button onClick={() => downloadSessionReport(session)} className="bg-[#00a65a] text-white p-1.5 rounded-sm hover:bg-[#008d4c] shadow-sm" title="Download Excel"><Download size={16} /></button>
+                                                   <button onClick={() => handleDeleteSession(session.id, session.name)} className="bg-[#dd4b39] text-white p-1.5 rounded-sm hover:bg-[#d73925] shadow-sm" title="Hapus"><Trash2 size={16} /></button>
+                                                </div>
+                                             </td>
+                                          </tr>
+                                       ))}
+                                    </tbody>
+                                 </table>
+                              </div>
+                           </div>
+                        </div>
+                     </>
+                  ) : (
+                     /* Session Detail View */
+                     <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm animate-fade-in-up">
+                         {/* Header with Back button */}
+                         <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                               <button onClick={() => setViewingSession(null)} className="text-gray-500 hover:text-[#3c8dbc] p-1 rounded-full hover:bg-gray-100 transition"><ArrowLeft size={20} /></button>
+                               <div>
+                                  <h3 className="text-lg font-bold text-[#333]">{viewingSession.name}</h3>
+                                  <p className="text-xs text-gray-500 flex items-center gap-2"><Calendar size={12}/> {viewingSession.date} • <UserIcon size={12}/> {viewingSession.attendees.length} Hadir</p>
+                               </div>
+                            </div>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                               <div className="relative flex-grow sm:flex-grow-0">
+                                  <input type="text" placeholder="Cari peserta..." className="w-full sm:w-64 pl-8 pr-3 py-1.5 border border-gray-300 rounded-sm text-sm focus:border-[#3c8dbc] outline-none" value={attendanceSearch} onChange={e => setAttendanceSearch(e.target.value)} />
+                                  <Search size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
+                               </div>
+                               <div className="flex bg-gray-100 p-1 rounded-sm border border-gray-200">
+                                  <button onClick={() => setAttendanceViewMode('list')} className={`p-1 rounded-sm transition ${attendanceViewMode === 'list' ? 'bg-white shadow-sm text-[#3c8dbc]' : 'text-gray-500 hover:text-gray-700'}`}><ListIcon size={16} /></button>
+                                  <button onClick={() => setAttendanceViewMode('grid')} className={`p-1 rounded-sm transition ${attendanceViewMode === 'grid' ? 'bg-white shadow-sm text-[#3c8dbc]' : 'text-gray-500 hover:text-gray-700'}`}><Grid size={16} /></button>
+                               </div>
+                            </div>
+                         </div>
+                         
+                         {/* List/Grid View Logic */}
+                         <div className="p-4 bg-gray-50 min-h-[300px]">
+                            {getFilteredAttendance().length === 0 ? (
+                               <div className="text-center py-10 text-gray-400">Belum ada data absensi yang sesuai.</div>
+                            ) : attendanceViewMode === 'list' ? (
+                               <div className="bg-white border border-gray-200 rounded-sm overflow-hidden shadow-sm">
+                                  <div className="overflow-x-auto">
+                                      <table className="w-full text-left">
+                                         <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
+                                            <tr><th className="px-4 py-3 border-b">Waktu</th><th className="px-4 py-3 border-b">Nama</th><th className="px-4 py-3 border-b">Lokasi</th><th className="px-4 py-3 border-b text-right">Foto</th><th className="px-4 py-3 border-b text-right">Aksi</th></tr>
+                                         </thead>
+                                         <tbody>
+                                            {getFilteredAttendance().map(record => (
+                                               <tr key={record.id} className="hover:bg-gray-50 border-b last:border-0 text-sm">
+                                                  <td className="px-4 py-3 text-gray-500 font-mono text-xs">{record.timestamp.split(',')[1]}</td>
+                                                  <td className="px-4 py-3 font-bold text-[#333]">{record.userName}</td>
+                                                  <td className="px-4 py-3 text-gray-600 truncate max-w-xs">{record.location}</td>
+                                                  <td className="px-4 py-3 text-right">
+                                                     <button onClick={() => setPreviewImage(record.photoUrl)} className="text-[#3c8dbc] hover:underline text-xs flex items-center justify-end gap-1"><ImageIcon size={12} /> Lihat Foto</button>
+                                                  </td>
+                                                  <td className="px-4 py-3 text-right">
+                                                      <div className="flex justify-end gap-2">
+                                                         <button onClick={() => handleEditRecord(record)} className="text-amber-500 hover:text-amber-600 p-1"><Edit3 size={14}/></button>
+                                                         <button onClick={() => handleDeleteRecord(record)} className="text-red-500 hover:text-red-600 p-1"><Trash2 size={14}/></button>
+                                                      </div>
+                                                  </td>
+                                               </tr>
+                                            ))}
+                                         </tbody>
+                                      </table>
+                                  </div>
+                               </div>
+                            ) : (
+                               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                  {getFilteredAttendance().map(record => (
+                                     <div key={record.id} className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition group">
+                                        <div className="aspect-square bg-gray-100 relative cursor-pointer" onClick={() => setPreviewImage(record.photoUrl)}>
+                                           <img src={record.photoUrl} alt={record.userName} className="w-full h-full object-cover" />
+                                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
+                                              <Eye size={24} className="text-white opacity-0 group-hover:opacity-100 drop-shadow-md" />
+                                           </div>
+                                        </div>
+                                        <div className="p-3">
+                                           <h4 className="font-bold text-[#333] text-sm truncate" title={record.userName}>{record.userName}</h4>
+                                           <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><Clock size={10} /> {record.timestamp.split(',')[1]}</p>
+                                           <div className="flex justify-between items-center mt-2 border-t pt-2 border-gray-100">
+                                              <button onClick={() => handleEditRecord(record)} className="text-xs text-amber-600 font-bold hover:underline">Edit</button>
+                                              <button onClick={() => handleDeleteRecord(record)} className="text-xs text-red-600 font-bold hover:underline">Hapus</button>
+                                           </div>
+                                        </div>
+                                     </div>
+                                  ))}
+                               </div>
+                            )}
+                         </div>
+                     </div>
+                  )}
+               </div>
+            )}
+
             {activeTab === 'news' && (
                <div className="space-y-6">
-                 {/* ... News Content ... */}
+                 {/* ... News UI (Existing code) ... */}
                  <div ref={formRef} className={`bg-white border-t-[3px] ${editingNewsId ? 'border-[#f39c12]' : 'border-[#dd4b39]'} shadow-sm rounded-sm`}>
                     <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center">
                        <h3 className="text-lg font-normal text-[#333]">{editingNewsId ? 'Edit Berita' : 'Tulis Berita Baru'}</h3>
@@ -852,9 +1156,67 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
+            {/* Slider Management Tab */}
+            {activeTab === 'slider' && (
+               <div className="space-y-6">
+                 <div className="bg-white border-t-[3px] border-[#605ca8] shadow-sm rounded-sm">
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Tambah Slide Halaman Utama</h3></div>
+                    <div className="p-4">
+                       <form onSubmit={handleSliderSubmit} className="space-y-4">
+                          <div className="flex flex-col md:flex-row gap-4">
+                             <div className="w-full md:w-1/3">
+                                <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Gambar Banner (Landscape)</label>
+                                <div className="border-2 border-dashed border-gray-300 rounded-sm p-4 text-center hover:bg-gray-50 transition cursor-pointer relative" onClick={() => sliderInputRef.current?.click()}>
+                                   {sliderForm.imageUrl ? <img src={sliderForm.imageUrl} alt="Preview" className="max-h-40 mx-auto object-cover w-full" /> : <div className="py-8 text-gray-400"><ImageIcon size={32} className="mx-auto mb-2" /><span className="text-xs">Klik untuk pilih gambar</span></div>}
+                                   <input type="file" ref={sliderInputRef} onChange={handleSliderImageUpload} accept="image/*" className="hidden" />
+                                </div>
+                             </div>
+                             <div className="w-full md:w-2/3 flex flex-col gap-4">
+                                <div>
+                                   <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Judul Utama (Headline)</label>
+                                   <input type="text" placeholder="Contoh: BERKHIDMAT UNTUK UMAT" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#605ca8] outline-none" value={sliderForm.title} onChange={e => setSliderForm({...sliderForm, title: e.target.value})} />
+                                </div>
+                                <div>
+                                   <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Deskripsi Singkat (Sub-heading)</label>
+                                   <input type="text" placeholder="Contoh: Mari bergabung bersama kami..." className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#605ca8] outline-none" value={sliderForm.description} onChange={e => setSliderForm({...sliderForm, description: e.target.value})} />
+                                </div>
+                                <div className="flex justify-end mt-2">
+                                   <button type="submit" className="bg-[#605ca8] hover:bg-[#4b478d] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Upload size={16} /> Tambah Slide</button>
+                                </div>
+                             </div>
+                          </div>
+                       </form>
+                    </div>
+                 </div>
+                 
+                 <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
+                    <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Daftar Slide Aktif</h3></div>
+                    <div className="p-4">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {sliders.map(item => (
+                             <div key={item.id} className="group relative border border-gray-200 rounded-sm overflow-hidden shadow-sm hover:shadow-md transition">
+                                <div className="aspect-video bg-gray-100 overflow-hidden relative">
+                                    <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/40 flex flex-col justify-end p-4">
+                                        <h4 className="text-white font-bold text-lg">{item.title}</h4>
+                                        <p className="text-white/80 text-sm">{item.description}</p>
+                                    </div>
+                                </div>
+                                <div className="absolute top-2 right-2 flex gap-2">
+                                    <button onClick={() => deleteSliderItem(item.id)} className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 shadow-lg"><Trash2 size={16} /></button>
+                                </div>
+                             </div>
+                          ))}
+                       </div>
+                       {sliders.length === 0 && <div className="p-10 text-center text-gray-400 border-2 border-dashed border-gray-200 rounded"><ImageIcon size={48} className="mx-auto mb-2 opacity-20" />Belum ada slide. Halaman depan akan menggunakan tampilan default.</div>}
+                    </div>
+                 </div>
+               </div>
+            )}
+
+            {/* Gallery Tab */}
             {activeTab === 'gallery' && (
                <div className="space-y-6">
-                 {/* ... Gallery Content ... */}
                  <div className="bg-white border-t-[3px] border-[#605ca8] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Upload Foto Galeri</h3></div>
                     <div className="p-4">
@@ -898,146 +1260,47 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {activeTab === 'attendance' && (
+            {/* Media Tab (Restored) */}
+            {activeTab === 'media' && (
                <div className="space-y-6">
-                  {/* ... Attendance Logic ... */}
-                  {viewingSession ? (
-                    <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm animate-fade-in-up">
-                       <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col md:flex-row justify-between items-center gap-4">
-                          <div className="flex items-center gap-3">
-                             <button onClick={() => setViewingSession(null)} className="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-full transition"><ChevronRight className="rotate-180" size={20} /></button>
-                             <div><h3 className="text-lg font-bold text-[#333]">{viewingSession.name}</h3><p className="text-xs text-gray-500 flex items-center gap-2"><Calendar size={12} /> {viewingSession.date} <span className="w-1 h-1 bg-gray-300 rounded-full"></span> <Users size={12} /> {viewingSession.attendees.length} Hadir</p></div>
-                          </div>
-                          <div className="flex items-center gap-3 w-full md:w-auto">
-                             <div className="flex bg-gray-100 rounded-sm p-1 border border-gray-200">
-                                <button onClick={() => setAttendanceViewMode('list')} className={`p-1.5 rounded-sm ${attendanceViewMode === 'list' ? 'bg-white shadow-sm text-[#3c8dbc]' : 'text-gray-500'}`}><ListIcon size={16} /></button>
-                                <button onClick={() => setAttendanceViewMode('grid')} className={`p-1.5 rounded-sm ${attendanceViewMode === 'grid' ? 'bg-white shadow-sm text-[#3c8dbc]' : 'text-gray-500'}`}><Grid size={16} /></button>
-                             </div>
-                             <div className="relative flex-grow md:flex-grow-0"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} /><input type="text" placeholder="Cari Nama..." value={attendanceSearch} onChange={(e) => setAttendanceSearch(e.target.value)} className="pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none w-full md:w-48" /></div>
-                             <button onClick={() => downloadSessionReport(viewingSession)} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-3 py-1.5 rounded-sm text-xs font-bold shadow-sm flex items-center gap-2 whitespace-nowrap"><FileSpreadsheet size={14} /> Export XLS</button>
-                          </div>
-                       </div>
-                       <div className="p-4 bg-gray-50 min-h-[400px]">
-                          {getFilteredAttendance().length === 0 ? <div className="flex flex-col items-center justify-center h-64 text-gray-400"><Users size={48} className="mb-2 opacity-20" /><p>Tidak ada data kehadiran ditemukan.</p></div> : (
-                             <>
-                             {attendanceViewMode === 'list' ? (
-                                <div className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden">
-                                   <table className="w-full text-left">
-                                      <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
-                                         <tr><th className="px-4 py-3 border-b">Foto</th><th className="px-4 py-3 border-b">Nama Anggota</th><th className="px-4 py-3 border-b">Waktu & Lokasi</th><th className="px-4 py-3 border-b text-right">Aksi</th></tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-gray-100">
-                                         {getFilteredAttendance().map(record => (
-                                            <tr key={record.id} className="hover:bg-[#f9fafc]">
-                                               <td className="px-4 py-2 w-16"><img src={record.photoUrl} alt="Bukti" onClick={() => setPreviewImage(record.photoUrl)} className="w-10 h-10 rounded-full object-cover border border-gray-200 cursor-pointer hover:scale-110 transition" /></td>
-                                               <td className="px-4 py-2"><div className="font-bold text-[#333]">{record.userName}</div><div className="text-xs text-gray-500">ID: {record.userId}</div></td>
-                                               <td className="px-4 py-2 text-sm"><div className="flex items-center gap-1 text-gray-700 font-medium"><Calendar size={12} /> {record.timestamp}</div><div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1 truncate max-w-xs" title={record.location}><MapPin size={10} className="text-red-500" /> {record.location}</div></td>
-                                               <td className="px-4 py-2 text-right">
-                                                   <div className="flex justify-end gap-2">
-                                                       <button onClick={() => handleEditRecord(record)} className="text-[#f39c12] hover:text-[#e08e0b] p-1.5 rounded hover:bg-orange-50 transition" title="Edit Data"><Edit3 size={16} /></button>
-                                                       <button onClick={() => handleDeleteRecord(record)} className="text-[#dd4b39] hover:text-[#c23321] p-1.5 rounded hover:bg-red-50 transition" title="Hapus Data"><Trash2 size={16} /></button>
-                                                   </div>
-                                               </td>
-                                            </tr>
-                                         ))}
-                                      </tbody>
-                                   </table>
-                                </div>
-                             ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                   {getFilteredAttendance().map(record => (
-                                      <div key={record.id} className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden hover:shadow-md transition group relative">
-                                         <div className="aspect-[4/5] bg-gray-100 relative overflow-hidden cursor-pointer" onClick={() => setPreviewImage(record.photoUrl)}>
-                                            <img src={record.photoUrl} alt={record.userName} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                                            <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent text-white"><div className="font-bold text-sm truncate">{record.userName}</div><div className="text-[10px] opacity-80">{record.timestamp}</div></div>
-                                         </div>
-                                         <div className="p-2 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-500 flex justify-between items-center"><span className="truncate max-w-[100px]" title={record.location}>{record.location}</span><MapPin size={10} /></div>
-                                         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                             <button onClick={() => handleEditRecord(record)} className="bg-white/90 text-[#f39c12] p-1.5 rounded-full shadow hover:bg-white"><Edit3 size={14} /></button>
-                                             <button onClick={() => handleDeleteRecord(record)} className="bg-white/90 text-[#dd4b39] p-1.5 rounded-full shadow hover:bg-white"><Trash2 size={14} /></button>
-                                         </div>
-                                      </div>
-                                   ))}
-                                </div>
-                             )}
-                             </>
-                          )}
-                       </div>
-                    </div>
-                  ) : (
-                    <>
-                    <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm p-4">
-                       <h3 className="text-lg font-normal text-[#333] mb-4">Buat Sesi Absensi Baru</h3>
-                       <form onSubmit={handleCreateSession} className="flex gap-2">
-                          <div className="flex-grow"><input type="text" placeholder="Nama Kegiatan (Misal: Majelis Rutin 1 Muharram)" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none transition" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} required /></div>
-                          <button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-4 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Plus size={16} /> Buat Sesi</button>
-                       </form>
-                    </div>
-                    <div className="bg-white border-t-[3px] border-[#00a65a] shadow-sm rounded-sm">
-                       <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Riwayat Sesi & Laporan</h3></div>
-                       <div className="overflow-x-auto">
-                          <table className="w-full text-left">
-                             <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
-                                <tr><th className="px-4 py-3 border-b">Tanggal</th><th className="px-4 py-3 border-b">Nama Kegiatan</th><th className="px-4 py-3 border-b text-center">Hadir</th><th className="px-4 py-3 border-b text-center">Status</th><th className="px-4 py-3 border-b text-center">Open/Close</th><th className="px-4 py-3 border-b text-right">Detail</th></tr>
-                             </thead>
-                             <tbody>
-                                {attendanceSessions.map(session => (
-                                   <tr key={session.id} className="hover:bg-gray-50 border-b last:border-0 group">
-                                      <td className="px-4 py-3 text-sm text-gray-600">{session.date}</td>
-                                      <td className="px-4 py-3 font-bold text-[#333]">{session.name}</td>
-                                      <td className="px-4 py-3 text-center text-sm"><span className="bg-[#f39c12] text-white px-2 py-0.5 rounded text-xs font-bold">{session.attendees.length}</span></td>
-                                      <td className="px-4 py-3 text-center"><span className={`px-2 py-0.5 rounded text-xs font-bold text-white ${session.isOpen ? 'bg-[#00a65a]' : 'bg-[#dd4b39]'}`}>{session.isOpen ? 'OPEN' : 'CLOSED'}</span></td>
-                                      <td className="px-4 py-3 text-center">
-                                         <label className="inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" className="sr-only peer" checked={session.isOpen} onChange={() => toggleSession(session.id)} />
-                                            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#3c8dbc]"></div>
-                                         </label>
-                                      </td>
-                                      <td className="px-4 py-3 text-right"><button onClick={() => setViewingSession(session)} className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-1 rounded-sm text-xs font-bold shadow-sm inline-flex items-center gap-1 transition"><Eye size={14} /> Lihat Data</button></td>
-                                   </tr>
-                                ))}
-                             </tbody>
-                          </table>
-                          {attendanceSessions.length === 0 && <div className="p-8 text-center text-gray-400">Belum ada sesi yang dibuat.</div>}
-                       </div>
-                    </div>
-                    </>
-                  )}
+                  {/* Add Media Form */}
+                  <div className="bg-white border-t-[3px] border-[#605ca8] shadow-sm rounded-sm">
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Tambah Media</h3></div>
+                     <div className="p-4">
+                        <form onSubmit={handleAddMedia} className="flex flex-col md:flex-row gap-4">
+                           <select className="px-3 py-2 border border-gray-300 rounded-sm bg-white" value={mediaForm.type} onChange={(e: any) => setMediaForm({...mediaForm, type: e.target.value})}>
+                              <option value="youtube">YouTube</option>
+                              <option value="instagram">Instagram</option>
+                           </select>
+                           <input type="text" placeholder="URL Video / Post" className="flex-1 px-3 py-2 border border-gray-300 rounded-sm" value={mediaForm.url} onChange={e => setMediaForm({...mediaForm, url: e.target.value})} required />
+                           <input type="text" placeholder="Caption / Judul" className="flex-1 px-3 py-2 border border-gray-300 rounded-sm" value={mediaForm.caption} onChange={e => setMediaForm({...mediaForm, caption: e.target.value})} />
+                           <button type="submit" className="bg-[#605ca8] text-white px-6 py-2 rounded-sm font-bold flex items-center gap-2"><Plus size={16} /> Tambah</button>
+                        </form>
+                     </div>
+                  </div>
+                  {/* Media List */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {mediaPosts.map(post => (
+                        <div key={post.id} className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden relative group">
+                           {/* Iframe Logic */}
+                           <div className="relative pt-[56.25%] bg-black">
+                              <iframe src={post.embedUrl} className="absolute inset-0 w-full h-full" allowFullScreen></iframe>
+                           </div>
+                           <div className="p-4">
+                              <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase text-gray-500">
+                                 {post.type === 'youtube' ? <Youtube size={14} className="text-red-600" /> : <Instagram size={14} className="text-pink-600" />}
+                                 {post.type}
+                              </div>
+                              <p className="font-bold text-[#333] line-clamp-2">{post.caption || 'Tanpa Judul'}</p>
+                           </div>
+                           <button onClick={() => deleteMediaPost(post.id)} className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition shadow-lg"><Trash2 size={16} /></button>
+                        </div>
+                     ))}
+                  </div>
+                  {mediaPosts.length === 0 && <div className="p-10 text-center text-gray-400">Belum ada media yang ditambahkan.</div>}
                </div>
             )}
 
-            {activeTab === 'approval' && (
-               <div className="bg-white border-t-[3px] border-[#f39c12] shadow-sm rounded-sm">
-                  <div className="px-4 py-3 border-b border-[#f4f4f4] flex justify-between items-center"><h3 className="text-lg font-normal text-[#333]">Data Pendaftaran Baru</h3></div>
-                  <div className="p-0">
-                     {registrations.length === 0 ? <div className="p-10 text-center text-gray-500">Tidak ada data pendaftaran pending.</div> : (
-                        <div className="overflow-x-auto">
-                           <table className="w-full text-left border-collapse">
-                              <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
-                                 <tr><th className="px-4 py-3 border-b">Nama</th><th className="px-4 py-3 border-b">Kontak</th><th className="px-4 py-3 border-b">Wilayah</th><th className="px-4 py-3 border-b text-right">Aksi</th></tr>
-                              </thead>
-                              <tbody>
-                                 {registrations.map(reg => (
-                                    <tr key={reg.id} className="hover:bg-gray-50 border-b last:border-0">
-                                       <td className="px-4 py-3"><div className="font-bold text-[#333]">{reg.name}</div><div className="text-xs text-gray-500">NIK: {reg.nik}</div><div className="text-xs text-gray-500 mt-1 flex items-center gap-1"><MapPin size={10} /> {reg.address}</div></td>
-                                       <td className="px-4 py-3 text-sm"><div>{reg.email}</div><div className="text-gray-500">{reg.phone}</div></td>
-                                       <td className="px-4 py-3 text-sm">{reg.wilayah}</td>
-                                       <td className="px-4 py-3 text-right">
-                                          <div className="flex justify-end gap-2">
-                                             <button onClick={() => approveMember(reg.id)} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-3 py-1 rounded-sm text-xs font-bold shadow-sm">Approve</button>
-                                             <button onClick={() => rejectMember(reg.id)} className="bg-[#dd4b39] hover:bg-[#d73925] text-white px-3 py-1 rounded-sm text-xs font-bold shadow-sm">Reject</button>
-                                          </div>
-                                       </td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
-                        </div>
-                     )}
-                  </div>
-               </div>
-            )}
-            
             {activeTab === 'members' && (
                <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
                   <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -1060,19 +1323,19 @@ export const AdminDashboard: React.FC = () => {
                                        <td className="px-4 py-3 text-gray-500 text-center">{idx + 1}</td>
                                        <td className="px-4 py-3">
                                           <div className="font-bold text-[#333]">{member.name}</div>
-                                          <div className="flex gap-2 mt-1">
-                                             <div className="text-xs text-[#3c8dbc] font-mono bg-blue-50 inline-block px-1 rounded border border-blue-100">NIA: {member.nia}</div>
-                                             {member.nik && (
-                                                <div className="text-xs text-gray-500 font-mono bg-gray-50 inline-block px-1 rounded border border-gray-200" title="Nomor Induk Kependudukan">
-                                                   NIK: {member.nik}
-                                                </div>
-                                             )}
+                                          <div className="flex flex-col gap-1 mt-1">
+                                             <div className="text-xs text-[#3c8dbc] font-mono bg-blue-50 inline-block px-1 rounded border border-blue-100 w-fit">NIA: {member.nia}</div>
+                                             {/* NIK Display */}
+                                             <div className="text-xs text-gray-600 font-mono bg-gray-50 inline-block px-1 rounded border border-gray-200 w-fit" title="Nomor Induk Kependudukan">
+                                                NIK: {member.nik || '-'}
+                                             </div>
                                           </div>
                                        </td>
                                        <td className="px-4 py-3 text-sm"><div className="flex items-center gap-1 text-gray-600"><Phone size={12} /> {member.phone || '-'}</div><div className="text-xs text-gray-500 mt-1 max-w-xs">{member.address || '-'}</div></td>
                                        <td className="px-4 py-3 text-sm"><span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs border border-gray-200">{member.wilayah}</span></td>
                                        <td className="px-4 py-3 text-right">
                                           <div className="flex justify-end gap-2">
+                                             <button onClick={() => handleEditMember(member)} className="bg-amber-50 hover:bg-amber-100 text-amber-600 p-1.5 rounded-sm border border-amber-200 transition" title="Edit Anggota"><Edit3 size={14} /></button>
                                              <button onClick={() => handleResetPassword(member.id, member.name)} className="bg-gray-100 hover:bg-gray-200 text-gray-600 p-1.5 rounded-sm border border-gray-300 transition" title="Reset Password (12345678)"><Key size={14} /></button>
                                              <button onClick={() => handleDeleteMember(member.id, member.name)} className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-sm border border-red-200 transition" title="Hapus Anggota Permanen"><Trash2 size={14} /></button>
                                           </div>
@@ -1087,17 +1350,18 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {/* Profile, Media, Backup (Unchanged logic) */}
-            
+            {/* Profile Tab (Keep existing) */}
             {activeTab === 'profile' && (
                 <div className="space-y-6">
                  {/* ... Profile Content (Unchanged) ... */}
                  <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
                     <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h3 className="text-lg font-normal text-[#333]">Edit Menu & Sub-Menu Profil</h3>
-                        <div className="flex gap-2">
-                            {['sejarah', 'pengurus', 'korwil', 'amaliyah'].map(slug => (
-                                <button key={slug} onClick={() => setSelectedProfileSlug(slug)} className={`px-3 py-1 text-sm rounded-sm font-bold transition uppercase ${selectedProfileSlug === slug ? 'bg-[#3c8dbc] text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{slug === 'sejarah' ? 'Sejarah' : slug === 'pengurus' ? 'Pengurus' : slug === 'korwil' ? 'Daftar Korwil' : 'Amaliyah'}</button>
+                        <div className="flex gap-2 flex-wrap">
+                            {['sejarah', 'pengurus', 'korwil', 'amaliyah', 'tentang-kami'].map(slug => (
+                                <button key={slug} onClick={() => setSelectedProfileSlug(slug)} className={`px-3 py-1 text-sm rounded-sm font-bold transition uppercase ${selectedProfileSlug === slug ? 'bg-[#3c8dbc] text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                                   {slug === 'sejarah' ? 'Sejarah' : slug === 'pengurus' ? 'Pengurus' : slug === 'korwil' ? 'Daftar Korwil' : slug === 'amaliyah' ? 'Amaliyah' : 'Tentang Kami (Beranda)'}
+                                </button>
                             ))}
                         </div>
                     </div>
@@ -1130,126 +1394,131 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
             
-            {activeTab === 'media' && (
-               <div className="space-y-6">
-                 {/* ... Media Content ... */}
-                 <div className="bg-white border-t-[3px] border-[#dd4b39] shadow-sm rounded-sm">
-                    <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Tambah Video Baru</h3></div>
-                    <div className="p-4">
-                       <form onSubmit={handleAddMedia} className="space-y-4">
-                          <div className="flex gap-4">
-                             <div className="w-1/4">
-                                <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Platform</label>
-                                <select className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none" value={mediaForm.type} onChange={e => setMediaForm({...mediaForm, type: e.target.value as any})}>
-                                   <option value="youtube">YouTube</option>
-                                   <option value="instagram">Instagram</option>
-                                </select>
-                             </div>
-                             <div className="w-3/4">
-                                <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Link Video (URL)</label>
-                                <input type="text" placeholder="https://www.instagram.com/reel/..." className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none" required value={mediaForm.url} onChange={e => setMediaForm({...mediaForm, url: e.target.value})} />
-                             </div>
-                          </div>
-                          <div>
-                             <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Judul / Keterangan</label>
-                             <input type="text" placeholder="Dokumentasi Majelis..." className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#dd4b39] outline-none" required value={mediaForm.caption} onChange={e => setMediaForm({...mediaForm, caption: e.target.value})} />
-                          </div>
-                          <div className="flex justify-end"><button type="submit" className="bg-[#dd4b39] hover:bg-[#c23321] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Plus size={16} /> Tambah Media</button></div>
-                       </form>
-                    </div>
-                 </div>
-                 <div className="bg-white border-t-[3px] border-[#00c0ef] shadow-sm rounded-sm">
-                    <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Daftar Media</h3></div>
-                    <div className="p-0">
-                       {mediaPosts.map(post => (
-                         <div key={post.id} className="p-4 border-b last:border-0 hover:bg-gray-50 flex gap-4 items-center">
-                            <div className="w-32 h-20 bg-gray-100 flex items-center justify-center rounded overflow-hidden relative">
-                               {post.type === 'youtube' ? <img src={`https://img.youtube.com/vi/${post.embedUrl.split('/').pop()}/mqdefault.jpg`} className="w-full h-full object-cover" /> : <Instagram className="text-pink-600" size={32} />}
-                               <div className="absolute inset-0 flex items-center justify-center bg-black/20"><PlayCircle className="text-white drop-shadow-md" /></div>
-                            </div>
-                            <div className="flex-grow">
-                               <div className="flex items-center gap-2 mb-1"><span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${post.type === 'youtube' ? 'bg-red-600' : 'bg-pink-600'}`}>{post.type.toUpperCase()}</span><span className="text-xs text-gray-500">{post.createdAt}</span></div>
-                               <h4 className="font-bold text-gray-800">{post.caption}</h4><a href={post.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline truncate block max-w-md">{post.url}</a>
-                            </div>
-                            <button onClick={() => deleteMediaPost(post.id)} className="p-2 text-red-500 hover:bg-red-50 rounded transition" title="Hapus Media"><Trash2 size={18} /></button>
-                         </div>
-                       ))}
-                       {mediaPosts.length === 0 && <div className="p-8 text-center text-gray-400">Belum ada data media.</div>}
-                    </div>
-                 </div>
+            {/* Recap Tab (Restored) */}
+            {activeTab === 'recap' && (
+               <div className="bg-white border-t-[3px] border-[#00a65a] shadow-sm rounded-sm p-8 text-center">
+                  <FileSpreadsheet size={64} className="mx-auto text-[#00a65a] mb-4" />
+                  <h2 className="text-2xl font-normal text-[#333] mb-2">Rekapitulasi Laporan</h2>
+                  <p className="text-gray-500 mb-8">Unduh laporan data anggota atau absensi dalam format Excel (.xlsx)</p>
+                  
+                  <div className="flex justify-center gap-4 mb-6">
+                     <button onClick={() => setRecapType('attendance')} className={`px-4 py-2 rounded-sm border ${recapType === 'attendance' ? 'bg-[#00a65a] text-white border-[#00a65a]' : 'bg-white text-gray-600 border-gray-300'}`}>Laporan Absensi</button>
+                     <button onClick={() => setRecapType('members')} className={`px-4 py-2 rounded-sm border ${recapType === 'members' ? 'bg-[#00a65a] text-white border-[#00a65a]' : 'bg-white text-gray-600 border-gray-300'}`}>Database Anggota</button>
+                  </div>
+                  
+                  <button onClick={downloadReport} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-8 py-3 rounded-sm font-bold text-lg shadow-md flex items-center gap-3 mx-auto">
+                     <Download size={24} /> Download File Excel
+                  </button>
                </div>
             )}
 
+            {/* Settings Tab (Restored) */}
             {activeTab === 'settings' && (
                <div className="space-y-6">
-                  {/* ... Settings Content ... */}
                   <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Pengaturan Aplikasi</h3></div>
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Identitas Aplikasi</h3></div>
                      <div className="p-4">
-                        <form onSubmit={handleSaveConfig} className="space-y-4">
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Aplikasi</label><input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" value={configForm.appName} onChange={(e) => setConfigForm({...configForm, appName: e.target.value})} /></div>
-                              <div><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Organisasi</label><input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" value={configForm.orgName} onChange={(e) => setConfigForm({...configForm, orgName: e.target.value})} /></div>
-                              <div className="md:col-span-2"><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Deskripsi Singkat</label><textarea className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none h-20" value={configForm.description} onChange={(e) => setConfigForm({...configForm, description: e.target.value})}></textarea></div>
-                              <div><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Email Kontak</label><input type="email" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" value={configForm.email} onChange={(e) => setConfigForm({...configForm, email: e.target.value})} /></div>
-                              <div><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nomor Telepon</label><input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" value={configForm.phone} onChange={(e) => setConfigForm({...configForm, phone: e.target.value})} /></div>
-                              <div className="md:col-span-2"><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Alamat Lengkap</label><input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#3c8dbc] outline-none" value={configForm.address} onChange={(e) => setConfigForm({...configForm, address: e.target.value})} /></div>
-                              <div className="md:col-span-2"><label className="block text-xs uppercase font-bold text-gray-500 mb-1">Upload Logo Baru</label><div className="flex items-center gap-4"><img src={configForm.logoUrl} alt="Preview" className="w-16 h-16 object-cover rounded-full border border-gray-200" /><input type="file" accept="image/*" ref={logoInputRef} onChange={handleLogoUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#3c8dbc] file:text-white hover:file:bg-[#367fa9]" /></div></div>
+                        <form onSubmit={handleSaveConfig} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-4">
+                              <div>
+                                 <label className="block text-sm font-bold text-gray-700 mb-1">Nama Aplikasi</label>
+                                 <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm" value={configForm.appName} onChange={e => setConfigForm({...configForm, appName: e.target.value})} />
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold text-gray-700 mb-1">Nama Organisasi</label>
+                                 <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm" value={configForm.orgName} onChange={e => setConfigForm({...configForm, orgName: e.target.value})} />
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold text-gray-700 mb-1">Deskripsi Singkat</label>
+                                 <textarea className="w-full px-3 py-2 border border-gray-300 rounded-sm h-24" value={configForm.description} onChange={e => setConfigForm({...configForm, description: e.target.value})}></textarea>
+                              </div>
                            </div>
-                           <div className="flex justify-end pt-4 border-t border-gray-100"><button type="submit" className="bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Save size={16} /> Simpan Pengaturan</button></div>
+                           <div className="space-y-4">
+                              <div>
+                                 <label className="block text-sm font-bold text-gray-700 mb-1">Alamat Sekretariat</label>
+                                 <textarea className="w-full px-3 py-2 border border-gray-300 rounded-sm h-20" value={configForm.address} onChange={e => setConfigForm({...configForm, address: e.target.value})}></textarea>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Email</label>
+                                    <input type="email" className="w-full px-3 py-2 border border-gray-300 rounded-sm" value={configForm.email} onChange={e => setConfigForm({...configForm, email: e.target.value})} />
+                                 </div>
+                                 <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">No. Telepon</label>
+                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm" value={configForm.phone} onChange={e => setConfigForm({...configForm, phone: e.target.value})} />
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold text-gray-700 mb-1">Logo URL (Upload)</label>
+                                 <div className="flex gap-4 items-center">
+                                    <div className="w-16 h-16 border border-gray-300 p-1 bg-gray-50 rounded-sm">
+                                       <img src={configForm.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                                    </div>
+                                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="text-sm text-gray-500" />
+                                 </div>
+                              </div>
+                              <div className="flex justify-end pt-4">
+                                 <button type="submit" className="bg-[#3c8dbc] text-white px-6 py-2 rounded-sm font-bold shadow-sm flex items-center gap-2"><Save size={16} /> Simpan Pengaturan</button>
+                              </div>
+                           </div>
                         </form>
                      </div>
                   </div>
-                  <div className="bg-white border-t-[3px] border-[#00a65a] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Manajemen Data Master (Korwil)</h3></div>
+
+                  <div className="bg-white border-t-[3px] border-[#f39c12] shadow-sm rounded-sm">
+                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Manajemen Wilayah (Korwil)</h3></div>
                      <div className="p-4">
-                        <div className="flex flex-col md:flex-row gap-6">
-                          <div className="flex-1">
-                             <h4 className="font-bold text-gray-600 mb-3 text-xs uppercase">Daftar Wilayah (Korwil)</h4>
-                             <div className="border border-gray-200 rounded-sm h-60 overflow-y-auto bg-gray-50">
-                                {korwils.length > 0 ? (
-                                  <ul className="divide-y divide-gray-200">
-                                    {korwils.map(korwil => (
-                                      <li key={korwil.id} className="px-4 py-2 flex justify-between items-center hover:bg-white transition"><span className="text-sm text-gray-700">{korwil.name}</span><button onClick={() => handleDeleteKorwil(korwil.id, korwil.name)} className="text-red-500 hover:text-red-700 p-1"><Trash2 size={14} /></button></li>
-                                    ))}
-                                  </ul>
-                                ) : <div className="p-4 text-center text-gray-400 text-sm">Belum ada data wilayah.</div>}
-                             </div>
-                          </div>
-                          <div className="md:w-1/3">
-                             <h4 className="font-bold text-gray-600 mb-3 text-xs uppercase">Tambah Wilayah Baru</h4>
-                             <form onSubmit={handleAddKorwil} className="space-y-3">
-                                <div><label className="block text-xs font-bold text-gray-500 mb-1">Nama Wilayah / Kecamatan</label><input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:border-[#00a65a] outline-none" placeholder="Contoh: Rungkut" value={newKorwilName} onChange={(e) => setNewKorwilName(e.target.value)} required /></div>
-                                <button type="submit" className="w-full bg-[#00a65a] hover:bg-[#008d4c] text-white px-4 py-2 rounded-sm font-bold shadow-sm flex items-center justify-center gap-2"><Plus size={16} /> Tambah Wilayah</button>
-                             </form>
-                          </div>
+                        <form onSubmit={handleAddKorwil} className="flex gap-2 mb-6 max-w-md">
+                           <input type="text" placeholder="Nama Wilayah Baru" className="flex-1 px-3 py-2 border border-gray-300 rounded-sm" value={newKorwilName} onChange={e => setNewKorwilName(e.target.value)} />
+                           <button type="submit" className="bg-[#f39c12] text-white px-4 py-2 rounded-sm font-bold"><Plus size={16} /></button>
+                        </form>
+                        <div className="flex flex-wrap gap-2">
+                           {displayKorwils.map(k => (
+                              <div key={k.id || k.name} className="bg-gray-100 px-3 py-1 rounded-full border border-gray-200 text-sm flex items-center gap-2 group">
+                                 {k.name}
+                                 {/* Only show delete for DB items (have id) */}
+                                 {k.id && (
+                                    <button onClick={() => handleDeleteKorwil(k.id, k.name)} className="text-gray-400 hover:text-red-500"><X size={14} /></button>
+                                 )}
+                              </div>
+                           ))}
                         </div>
                      </div>
                   </div>
                </div>
             )}
 
+            {/* Backup Tab (Restored) */}
             {activeTab === 'backup' && (
-               <div className="space-y-6">
-                  {/* ... Backup Content ... */}
-                  <div className="bg-white border-t-[3px] border-[#f39c12] shadow-sm rounded-sm">
-                     <div className="px-4 py-3 border-b border-[#f4f4f4]"><h3 className="text-lg font-normal text-[#333]">Backup & Restore Database</h3></div>
-                     <div className="p-8">
-                        <div className="grid md:grid-cols-2 gap-8">
-                           <div className="border border-gray-200 rounded p-6 text-center hover:shadow-lg transition">
-                              <div className="w-16 h-16 bg-[#00a65a] rounded-full flex items-center justify-center mx-auto mb-4 text-white"><Download size={32} /></div>
-                              <h4 className="font-bold text-lg mb-2">Backup Data</h4>
-                              <p className="text-gray-500 text-sm mb-6">Unduh seluruh data aplikasi (Anggota, Berita, Absensi) dalam format JSON.</p>
-                              <button onClick={handleBackup} className="bg-[#00a65a] hover:bg-[#008d4c] text-white px-6 py-2 rounded-sm font-bold shadow-sm inline-flex items-center gap-2">Download Backup</button>
-                           </div>
-                           <div className="border border-gray-200 rounded p-6 text-center hover:shadow-lg transition">
-                              <div className="w-16 h-16 bg-[#dd4b39] rounded-full flex items-center justify-center mx-auto mb-4 text-white"><Upload size={32} /></div>
-                              <h4 className="font-bold text-lg mb-2">Restore Data</h4>
-                              <p className="text-gray-500 text-sm mb-6">Kembalikan data dari file backup JSON. <span className="text-red-500 font-bold">Perhatian: Data saat ini akan ditimpa!</span></p>
-                              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                              <button onClick={handleRestoreClick} className="bg-[#dd4b39] hover:bg-[#c23321] text-white px-6 py-2 rounded-sm font-bold shadow-sm inline-flex items-center gap-2">Upload File Backup</button>
-                           </div>
-                        </div>
+               <div className="bg-white border-t-[3px] border-[#f39c12] shadow-sm rounded-sm p-8 text-center max-w-2xl mx-auto mt-10">
+                  <Database size={64} className="mx-auto text-[#f39c12] mb-4" />
+                  <h2 className="text-2xl font-normal text-[#333] mb-2">Backup & Restore Database</h2>
+                  <p className="text-gray-500 mb-8">
+                     Fitur ini memungkinkan Anda untuk mengunduh seluruh data aplikasi (JSON) sebagai cadangan, 
+                     atau memulihkan data dari file cadangan sebelumnya.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div className="p-6 border border-gray-200 rounded-sm bg-gray-50">
+                        <h4 className="font-bold text-gray-700 mb-2">Backup Data</h4>
+                        <p className="text-xs text-gray-500 mb-4">Unduh semua data ke komputer Anda.</p>
+                        <button onClick={handleBackup} className="w-full bg-[#3c8dbc] hover:bg-[#367fa9] text-white px-4 py-2 rounded-sm font-bold flex items-center justify-center gap-2">
+                           <Download size={16} /> Download Backup
+                        </button>
+                     </div>
+                     <div className="p-6 border border-gray-200 rounded-sm bg-gray-50">
+                        <h4 className="font-bold text-gray-700 mb-2">Restore Data</h4>
+                        <p className="text-xs text-gray-500 mb-4">Upload file backup (.json) untuk memulihkan.</p>
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
+                        <button onClick={handleRestoreClick} className="w-full bg-[#dd4b39] hover:bg-[#c23321] text-white px-4 py-2 rounded-sm font-bold flex items-center justify-center gap-2">
+                           <Upload size={16} /> Upload & Restore
+                        </button>
+                     </div>
+                  </div>
+                  <div className="mt-8 p-4 bg-yellow-50 text-yellow-800 text-sm border border-yellow-100 rounded text-left flex gap-3">
+                     <AlertTriangle size={20} className="flex-shrink-0" />
+                     <div>
+                        <strong>Peringatan Penting:</strong> Proses Restore akan <u>menghapus seluruh data saat ini</u> dan menggantinya dengan data dari file backup. Pastikan Anda melakukan backup data saat ini terlebih dahulu sebelum melakukan restore.
                      </div>
                   </div>
                </div>
@@ -1268,6 +1537,86 @@ export const AdminDashboard: React.FC = () => {
          </div>
       )}
 
+      {/* --- Edit Member Modal (NEW) --- */}
+      {editingMember && (
+        <div className="fixed inset-0 z-[99] bg-black/50 flex items-center justify-center p-4">
+           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+              <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                 <h3 className="font-bold text-gray-700 flex items-center gap-2"><Edit3 size={18} /> Edit Data Anggota</h3>
+                 <button onClick={() => setEditingMember(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              </div>
+              <form onSubmit={handleUpdateMemberSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                 <div className="p-3 bg-amber-50 text-amber-800 rounded text-sm mb-2 border border-amber-100 flex items-center gap-2">
+                    <UserIcon size={16} />
+                    <div>
+                      <p className="font-bold">NIA: {editingMember.nia}</p>
+                    </div>
+                 </div>
+                 
+                 <div>
+                    <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Lengkap</label>
+                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-[#3c8dbc] outline-none" value={editMemberForm.name} onChange={(e) => setEditMemberForm({...editMemberForm, name: e.target.value})} required />
+                 </div>
+                 
+                 <div>
+                    <label className="block text-xs uppercase font-bold text-gray-500 mb-1">NIK (Nomor Induk Kependudukan)</label>
+                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-[#3c8dbc] outline-none font-mono" value={editMemberForm.nik} onChange={(e) => setEditMemberForm({...editMemberForm, nik: e.target.value})} placeholder="16 digit NIK" />
+                 </div>
+
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs uppercase font-bold text-gray-500 mb-1">No. HP / WA</label>
+                        <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-[#3c8dbc] outline-none" value={editMemberForm.phone} onChange={(e) => setEditMemberForm({...editMemberForm, phone: e.target.value})} />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Email</label>
+                        <input type="email" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-[#3c8dbc] outline-none" value={editMemberForm.email} onChange={(e) => setEditMemberForm({...editMemberForm, email: e.target.value})} />
+                    </div>
+                 </div>
+
+                 <div>
+                    <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Wilayah (Korwil)</label>
+                    {!isCustomWilayahEdit ? (
+                        <select 
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:border-[#3c8dbc] outline-none bg-white"
+                            value={editMemberForm.wilayah}
+                            onChange={(e) => {
+                                if (e.target.value === 'Lainnya') {
+                                    setIsCustomWilayahEdit(true);
+                                    setEditMemberForm({...editMemberForm, wilayah: ''});
+                                } else {
+                                    setEditMemberForm({...editMemberForm, wilayah: e.target.value});
+                                }
+                            }}
+                        >
+                            <option value="">Pilih Wilayah</option>
+                            {(korwils.length > 0 ? korwils : KORWIL_LIST.map((k,i) => ({id: i, name: k}))).map(k => (
+                                <option key={k.id || k.name} value={k.name}>{k.name}</option>
+                            ))}
+                            <option value="Lainnya" className="font-bold">+ Lainnya (Manual)</option>
+                        </select>
+                    ) : (
+                        <div className="flex gap-2">
+                             <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-[#3c8dbc] outline-none" value={editMemberForm.wilayah} onChange={(e) => setEditMemberForm({...editMemberForm, wilayah: e.target.value})} placeholder="Ketik nama wilayah..." autoFocus />
+                             <button type="button" onClick={() => setIsCustomWilayahEdit(false)} className="text-red-500 hover:text-red-700 font-bold px-2">Batal</button>
+                        </div>
+                    )}
+                 </div>
+
+                 <div>
+                    <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Alamat Lengkap</label>
+                    <textarea className="w-full px-3 py-2 border border-gray-300 rounded focus:border-[#3c8dbc] outline-none h-20 text-sm" value={editMemberForm.address} onChange={(e) => setEditMemberForm({...editMemberForm, address: e.target.value})}></textarea>
+                 </div>
+
+                 <div className="flex justify-end pt-4 border-t border-gray-100 gap-2">
+                    <button type="button" onClick={() => setEditingMember(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded text-sm font-bold">Batal</button>
+                    <button type="submit" className="px-6 py-2 bg-[#3c8dbc] hover:bg-[#367fa9] text-white rounded text-sm font-bold shadow-sm flex items-center gap-2"><Save size={16} /> Simpan Data</button>
+                 </div>
+              </form>
+           </div>
+        </div>
+      )}
+
       {/* --- Edit Attendance Record Modal --- */}
       {editingRecord && (
         <div className="fixed inset-0 z-[99] bg-black/50 flex items-center justify-center p-4">
@@ -1281,23 +1630,19 @@ export const AdminDashboard: React.FC = () => {
                     <p className="font-bold">ID: {editingRecord.id}</p>
                     <p className="text-xs mt-1">Mengedit data absensi secara manual.</p>
                  </div>
-                 
                  <div>
                     <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Anggota (Tampilan)</label>
                     <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-blue-500 outline-none" value={editRecordForm.userName} onChange={(e) => setEditRecordForm({...editRecordForm, userName: e.target.value})} required />
                  </div>
-                 
                  <div>
                     <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Lokasi Tercatat</label>
                     <textarea className="w-full px-3 py-2 border border-gray-300 rounded focus:border-blue-500 outline-none h-20 text-sm" value={editRecordForm.location} onChange={(e) => setEditRecordForm({...editRecordForm, location: e.target.value})} required></textarea>
                  </div>
-
                  <div>
                     <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Waktu Kehadiran</label>
                     <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-blue-500 outline-none text-sm" value={editRecordForm.timestamp} onChange={(e) => setEditRecordForm({...editRecordForm, timestamp: e.target.value})} required />
                     <p className="text-[10px] text-gray-400 mt-1">Format: DD/MM/YYYY, HH.mm.ss</p>
                  </div>
-
                  <div className="flex justify-end pt-2 border-t border-gray-100 gap-2">
                     <button type="button" onClick={() => setEditingRecord(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded text-sm font-bold">Batal</button>
                     <button type="submit" className="px-4 py-2 bg-[#3c8dbc] hover:bg-[#367fa9] text-white rounded text-sm font-bold shadow-sm flex items-center gap-2"><Save size={16} /> Simpan Perubahan</button>
@@ -1306,6 +1651,205 @@ export const AdminDashboard: React.FC = () => {
            </div>
         </div>
       )}
+
+      {/* --- Edit Session Modal --- */}
+      {editingSession && (
+        <div className="fixed inset-0 z-[99] bg-black/50 flex items-center justify-center p-4">
+           <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
+              <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                 <h3 className="font-bold text-gray-700">Edit Nama Sesi</h3>
+                 <button onClick={() => setEditingSession(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              </div>
+              <form onSubmit={handleUpdateSessionSubmit} className="p-4 space-y-4">
+                 <div>
+                    <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Nama Kegiatan</label>
+                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-[#f39c12] outline-none" value={editSessionName} onChange={(e) => setEditSessionName(e.target.value)} required />
+                 </div>
+                 <div className="flex justify-end pt-2 border-t border-gray-100 gap-2">
+                    <button type="button" onClick={() => setEditingSession(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded text-sm font-bold">Batal</button>
+                    <button type="submit" className="px-4 py-2 bg-[#f39c12] hover:bg-[#db8b0b] text-white rounded text-sm font-bold shadow-sm flex items-center gap-2"><Save size={16} /> Simpan</button>
+                 </div>
+              </form>
+           </div>
+        </div>
+      )}
+
+      {/* --- Delete Session Confirmation Modal --- */}
+      <AnimatePresence>
+        {deleteSessionData && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+             <motion.div 
+               initial={{ scale: 0.9, opacity: 0, y: 20 }}
+               animate={{ scale: 1, opacity: 1, y: 0 }}
+               exit={{ scale: 0.9, opacity: 0, y: 20 }}
+               className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+             >
+                <div className="p-6 text-center">
+                   <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <AlertTriangle size={32} className="text-red-600" />
+                   </div>
+                   <h3 className="text-xl font-serif font-bold text-neutral-900 mb-2">Hapus Sesi Absensi?</h3>
+                   <p className="text-neutral-500 text-sm mb-6 leading-relaxed">
+                      Anda akan menghapus sesi <span className="font-bold text-neutral-800">"{deleteSessionData.name}"</span>. 
+                      <br/>
+                      <span className="text-red-600 font-bold block mt-2">PERINGATAN: Semua data kehadiran anggota pada sesi ini akan hilang permanen!</span>
+                   </p>
+                   
+                   <div className="flex gap-3">
+                      <button 
+                        onClick={() => setDeleteSessionData(null)}
+                        className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition"
+                      >
+                         Batal
+                      </button>
+                      <button 
+                        onClick={confirmDeleteSession}
+                        disabled={isDeletingSession}
+                        className="flex-1 py-3 px-4 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2"
+                      >
+                         {isDeletingSession ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              Menghapus...
+                            </>
+                         ) : (
+                            <>
+                              <Trash2 size={18} />
+                              Ya, Hapus
+                            </>
+                         )}
+                      </button>
+                   </div>
+                </div>
+             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- Delete Member Confirmation Modal --- */}
+      <AnimatePresence>
+        {deleteMemberData && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+             <motion.div 
+               initial={{ scale: 0.9, opacity: 0, y: 20 }}
+               animate={{ scale: 1, opacity: 1, y: 0 }}
+               exit={{ scale: 0.9, opacity: 0, y: 20 }}
+               className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-red-100"
+             >
+                <div className="p-6 text-center">
+                   <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100 shadow-inner">
+                      <Trash2 size={32} className="text-red-500" />
+                   </div>
+                   <h3 className="text-xl font-serif font-bold text-neutral-900 mb-2">Hapus Anggota?</h3>
+                   <div className="bg-red-50 border border-red-100 rounded-lg p-3 mb-4 text-left">
+                       <p className="text-neutral-700 text-xs font-bold mb-1">Anggota yang akan dihapus:</p>
+                       <p className="text-neutral-900 font-bold text-sm">{deleteMemberData.name}</p>
+                   </div>
+                   <p className="text-neutral-500 text-sm mb-6 leading-relaxed">
+                      Tindakan ini tidak dapat dibatalkan. Semua data kehadiran dan akses akun anggota ini akan <strong>dihapus permanen</strong> dari database.
+                   </p>
+                   
+                   <div className="flex gap-3">
+                      <button 
+                        onClick={() => setDeleteMemberData(null)}
+                        className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition"
+                      >
+                         Batal
+                      </button>
+                      <button 
+                        onClick={confirmDeleteMember}
+                        disabled={isDeletingMember}
+                        className="flex-1 py-3 px-4 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2"
+                      >
+                         {isDeletingMember ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              Menghapus...
+                            </>
+                         ) : (
+                            <>
+                              <Trash2 size={18} />
+                              Hapus Permanen
+                            </>
+                         )}
+                      </button>
+                   </div>
+                </div>
+             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- Reset Password Confirmation Modal --- */}
+      <AnimatePresence>
+        {resetPasswordData && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+             <motion.div 
+               initial={{ scale: 0.9, opacity: 0, y: 20 }}
+               animate={{ scale: 1, opacity: 1, y: 0 }}
+               exit={{ scale: 0.9, opacity: 0, y: 20 }}
+               className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-amber-100"
+             >
+                <div className="p-6 text-center">
+                   <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100 shadow-inner">
+                      <Key size={32} className="text-amber-500" />
+                   </div>
+                   <h3 className="text-xl font-serif font-bold text-neutral-900 mb-2">Reset Password?</h3>
+                   <p className="text-neutral-500 text-sm mb-4 leading-relaxed">
+                      Anda akan mereset password untuk akun:
+                   </p>
+                   <div className="bg-neutral-50 border border-neutral-100 rounded-lg p-3 mb-4">
+                       <p className="text-neutral-900 font-bold text-sm mb-1">{resetPasswordData.name}</p>
+                       <p className="text-xs text-neutral-400">Password baru akan menjadi:</p>
+                       <p className="text-lg font-mono font-bold text-amber-600 tracking-widest mt-1 bg-amber-50 inline-block px-2 rounded border border-amber-100">12345678</p>
+                   </div>
+                   
+                   <div className="flex gap-3">
+                      <button 
+                        onClick={() => setResetPasswordData(null)}
+                        className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition"
+                      >
+                         Batal
+                      </button>
+                      <button 
+                        onClick={confirmResetPassword}
+                        disabled={isResettingPassword}
+                        className="flex-1 py-3 px-4 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2"
+                      >
+                         {isResettingPassword ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              Memproses...
+                            </>
+                         ) : (
+                            <>
+                              <RefreshCcw size={18} />
+                              Reset Password
+                            </>
+                         )}
+                      </button>
+                   </div>
+                </div>
+             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };

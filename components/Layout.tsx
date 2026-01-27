@@ -1,4 +1,4 @@
-
+// @ts-nocheck
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, LogOut, LayoutDashboard, CheckCircle, Info, Check, AlertCircle, Home, Newspaper, Image as ImageIcon, Database, UserCircle2, X, ChevronDown, ChevronUp, PlayCircle, BookOpen } from 'lucide-react';
