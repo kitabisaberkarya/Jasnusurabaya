@@ -2,12 +2,16 @@
 // @ts-nocheck
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { RegistrationInput, UserRole } from '../types';
 import { KORWIL_LIST } from '../constants';
+import { User, ShieldCheck, Users, Lock } from 'lucide-react';
+
+type LoginTab = 'member' | 'staff' | 'super';
 
 export const Login: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<LoginTab>('member');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -23,18 +27,47 @@ export const Login: React.FC = () => {
   const attemptLogin = async (id: string, pass: string) => {
     setLoading(true);
     setError('');
+    
+    // Attempt login
     const user = await login(id, pass);
     
     if (user) {
-      // Check for any admin role to redirect to dashboard
-      if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN_KORWIL || user.role === UserRole.ADMIN_PENGURUS) {
+      // Role Validation based on Active Tab (Optional strictness, here used for better UX redirection)
+      const isSuper = user.role === UserRole.SUPER_ADMIN;
+      const isStaff = user.role === UserRole.ADMIN_KORWIL || user.role === UserRole.ADMIN_PENGURUS;
+      const isMember = user.role === UserRole.MEMBER;
+
+      // Smart Redirect Logic
+      if (isSuper || isStaff) {
         navigate('/admin');
       } else {
         navigate('/member');
       }
     } else {
-      setError('NIA/Email atau Password salah.');
+      // Custom error message based on tab
+      if (activeTab === 'member') setError('NIA atau Password salah.');
+      else setError('Email atau Password salah.');
+      
       setLoading(false);
+    }
+  };
+
+  // Dynamic UI Text based on Tab
+  const getInputLabel = () => {
+    switch (activeTab) {
+      case 'member': return 'Nomor Induk Anggota (NIA)';
+      case 'staff': return 'Email Pengurus / Korwil';
+      case 'super': return 'Email Super Admin';
+      default: return 'Identifier';
+    }
+  };
+
+  const getPlaceholder = () => {
+    switch (activeTab) {
+      case 'member': return 'Contoh: JSN-2024-xxx';
+      case 'staff': return 'nama@jsn-surabaya.com';
+      case 'super': return 'admin.master@jsn.com';
+      default: return '...';
     }
   };
 
@@ -45,35 +78,77 @@ export const Login: React.FC = () => {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-2xl relative z-10"
+        className="max-w-md w-full space-y-6 bg-white p-8 rounded-3xl shadow-2xl relative z-10"
       >
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-serif font-bold text-primary-900">Selamat Datang</h2>
-          <p className="mt-2 text-sm text-neutral-600">
-            Masuk untuk mengakses layanan anggota
+          <h2 className="text-2xl font-serif font-bold text-primary-900">Selamat Datang</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Silakan pilih jenis akun Anda untuk masuk
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center">{error}</div>}
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-neutral-700 mb-1">NIA atau Email</label>
-              <input
-                type="text"
-                required
-                className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-neutral-300 placeholder-neutral-500 text-neutral-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Contoh: JSN-2024-001"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-              />
-            </div>
+
+        {/* Custom Tab Selector */}
+        <div className="bg-neutral-100 p-1.5 rounded-xl flex relative">
+           {/* Animated Background Pill */}
+           <motion.div 
+             className="absolute top-1.5 bottom-1.5 bg-white rounded-lg shadow-sm z-0"
+             initial={false}
+             animate={{
+               left: activeTab === 'member' ? '6px' : activeTab === 'staff' ? '33.3%' : '66.6%',
+               width: '32%' // slightly less than 33% for spacing
+             }}
+             transition={{ type: "spring", stiffness: 300, damping: 30 }}
+           />
+
+           <button 
+             onClick={() => { setActiveTab('member'); setError(''); }}
+             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-lg relative z-10 transition-colors ${activeTab === 'member' ? 'text-primary-800' : 'text-neutral-500 hover:text-neutral-700'}`}
+           >
+             <Users size={14} /> Anggota
+           </button>
+           <button 
+             onClick={() => { setActiveTab('staff'); setError(''); }}
+             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-lg relative z-10 transition-colors ${activeTab === 'staff' ? 'text-secondary-600' : 'text-neutral-500 hover:text-neutral-700'}`}
+           >
+             <ShieldCheck size={14} /> Pengurus
+           </button>
+           <button 
+             onClick={() => { setActiveTab('super'); setError(''); }}
+             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-lg relative z-10 transition-colors ${activeTab === 'super' ? 'text-red-600' : 'text-neutral-500 hover:text-neutral-700'}`}
+           >
+             <Lock size={14} /> Master
+           </button>
+        </div>
+
+        <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+          {error && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-red-50 text-red-600 text-xs font-medium rounded-xl text-center border border-red-100 flex items-center justify-center gap-2">
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> {error}
+            </motion.div>
+          )}
+          
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Password</label>
+              <label className="block text-xs font-bold uppercase text-neutral-500 mb-1.5 ml-1">{getInputLabel()}</label>
+              <div className="relative">
+                 <input
+                  type="text"
+                  required
+                  className="appearance-none rounded-xl block w-full px-4 py-3.5 border border-neutral-200 placeholder-neutral-400 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm transition-all"
+                  placeholder={getPlaceholder()}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold uppercase text-neutral-500 mb-1.5 ml-1">Password</label>
               <input
                 type="password"
                 required
-                className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-neutral-300 placeholder-neutral-500 text-neutral-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                className="appearance-none rounded-xl block w-full px-4 py-3.5 border border-neutral-200 placeholder-neutral-400 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm transition-all"
+                placeholder="Masukkan kata sandi"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -84,11 +159,27 @@ export const Login: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white ${loading ? 'bg-neutral-400' : 'bg-primary-700 hover:bg-primary-800'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition shadow-lg shadow-primary-700/20`}
+              className={`group relative w-full flex justify-center py-3.5 px-4 border border-transparent text-sm font-bold rounded-xl text-white transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5
+                ${activeTab === 'super' 
+                    ? 'bg-neutral-800 hover:bg-neutral-900 shadow-neutral-900/20' 
+                    : activeTab === 'staff'
+                    ? 'bg-secondary-600 hover:bg-secondary-700 shadow-secondary-600/20'
+                    : 'bg-primary-700 hover:bg-primary-800 shadow-primary-700/20'
+                }
+                ${loading ? 'opacity-70 cursor-not-allowed' : ''}
+              `}
             >
-              {loading ? 'Memproses...' : 'Masuk'}
+              {loading ? 'Memproses...' : 'Masuk Sekarang'}
             </button>
           </div>
+          
+          {activeTab === 'member' && (
+             <div className="text-center pt-2">
+                <p className="text-xs text-neutral-500">
+                   Belum punya akun? <a href="#/register" className="font-bold text-primary-700 hover:underline">Daftar Anggota Baru</a>
+                </p>
+             </div>
+          )}
         </form>
       </motion.div>
     </div>
