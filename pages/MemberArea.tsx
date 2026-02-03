@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi, AlertCircle, RefreshCcw, Navigation } from 'lucide-react';
+import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi, AlertCircle, RefreshCcw, Navigation, ChevronRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const MemberArea: React.FC = () => {
@@ -245,43 +246,56 @@ export const MemberArea: React.FC = () => {
     }
   };
 
-  // Card Rendering code remains the same... (omitted for brevity, assume existing card logic is here)
   const renderCard = () => (
-      // ... Reusing the exact Card Code from previous file ...
       <div className="w-full max-w-sm mx-auto h-[230px] md:h-[250px] cursor-pointer group" onClick={() => setIsFlipped(!isFlipped)} style={{ perspective: '1200px' }}>
-         <motion.div className="relative w-full h-full shadow-2xl rounded-2xl" initial={false} animate={{ rotateY: isFlipped ? 180 : 0 }} style={{ transformStyle: 'preserve-3d' }}>
+         <motion.div className="relative w-full h-full shadow-2xl rounded-2xl" initial={false} animate={{ rotateY: isFlipped ? 180 : 0 }} style={{ transformStyle: 'preserve-3d', transition: 'all 0.6s' }}>
             {/* Front */}
-            <div className="absolute inset-0 w-full h-full rounded-2xl bg-gradient-to-br from-[#064e3b] to-[#022c22] p-6 text-white backface-hidden" style={{ backfaceVisibility: 'hidden' }}>
-                <div className="flex justify-between items-start">
+            <div className="absolute inset-0 w-full h-full rounded-2xl bg-gradient-to-br from-[#064e3b] to-[#022c22] p-6 text-white backface-hidden border border-amber-500/30 overflow-hidden" style={{ backfaceVisibility: 'hidden' }}>
+                {/* Pattern Overlay */}
+                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"1\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }}></div>
+                
+                <div className="relative z-10 flex justify-between items-start">
                    <div>
-                      <h3 className="font-serif font-bold text-amber-400">JSN SURABAYA</h3>
-                      <p className="text-[10px] tracking-widest text-emerald-200">KARTU ANGGOTA</p>
+                      <h3 className="font-serif font-bold text-amber-400 text-lg tracking-wide">JSN SURABAYA</h3>
+                      <p className="text-[10px] tracking-[0.2em] text-emerald-200 uppercase">Kartu Anggota Resmi</p>
                    </div>
                    <Wifi className="text-white/20 rotate-90" />
                 </div>
-                <div className="mt-8">
-                   <p className="text-xs text-emerald-300">Nomor Anggota</p>
-                   <p className="font-mono text-xl tracking-widest">{currentUser.nia || 'PENDING'}</p>
+                <div className="mt-8 relative z-10">
+                   <p className="text-[10px] text-emerald-300 uppercase tracking-widest mb-1">Nomor Induk Anggota</p>
+                   <p className="font-mono text-xl tracking-widest text-white drop-shadow-md">{currentUser.nia || 'PENDING'}</p>
                 </div>
-                <div className="mt-auto pt-6 flex justify-between items-end">
+                <div className="absolute bottom-6 left-6 right-6 z-10 flex justify-between items-end">
                    <div>
-                      <p className="text-lg font-bold font-serif">{currentUser.name}</p>
-                      <p className="text-xs text-emerald-300">{currentUser.wilayah}</p>
+                      <p className="text-lg font-bold font-serif text-white">{currentUser.name}</p>
+                      <p className="text-xs text-emerald-300 uppercase tracking-wide">{currentUser.wilayah}</p>
                    </div>
-                   <div className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center bg-white/10 backdrop-blur-sm">
-                      <span className="text-[8px] font-bold">JSN</span>
+                   <div className="w-12 h-12 rounded-full border-2 border-amber-400/50 flex items-center justify-center bg-gradient-to-tr from-amber-500 to-amber-300 shadow-lg">
+                      <span className="text-[10px] font-bold text-primary-900">JSN</span>
                    </div>
                 </div>
             </div>
             {/* Back */}
-            <div className="absolute inset-0 w-full h-full rounded-2xl bg-[#1a1c1c] p-6 text-white" style={{ transform: "rotateY(180deg)", backfaceVisibility: 'hidden' }}>
-               <div className="w-full h-10 bg-black -mx-6 mb-4"></div>
-               <div className="flex gap-4">
+            <div className="absolute inset-0 w-full h-full rounded-2xl bg-neutral-900 p-6 text-white overflow-hidden" style={{ transform: "rotateY(180deg)", backfaceVisibility: 'hidden' }}>
+               <div className="w-full h-12 bg-black -mx-6 mb-6 mt-2 relative">
+                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+               </div>
+               <div className="flex gap-4 items-center">
                   <div className="flex-grow">
-                     <div className="h-8 bg-white/10 mb-2"></div>
-                     <p className="text-[8px] text-gray-500">Kartu ini adalah bukti keanggotaan sah.</p>
+                     <div className="h-8 bg-white/10 rounded mb-2"></div>
+                     <div className="h-2 w-2/3 bg-white/5 rounded"></div>
+                     <p className="text-[8px] text-neutral-500 mt-4 leading-relaxed">
+                        Kartu ini adalah bukti keanggotaan sah Jamiyah Sholawat Nariyah Surabaya. 
+                        Barang siapa menemukan kartu ini harap mengembalikan ke sekretariat JSN.
+                     </p>
                   </div>
-                  <QrCode size={48} className="text-white" />
+                  <div className="bg-white p-1 rounded-lg shadow-sm">
+                     <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentUser.nia || currentUser.email)}`} 
+                        alt="Kode Anggota" 
+                        className="w-16 h-16 object-contain"
+                     />
+                  </div>
                </div>
             </div>
          </motion.div>
@@ -292,73 +306,171 @@ export const MemberArea: React.FC = () => {
   const totalAttendance = attendanceSessions.filter(s => s.attendees.includes(currentUser.id)).length;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-6xl mx-auto px-4 py-8 lg:py-12 pb-24 lg:pb-12">
-      {/* Existing Profile Card Code ... */}
-       <div className="bg-white rounded-3xl shadow-lg border border-neutral-100 overflow-hidden mb-8 p-8 relative">
-          <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-               <div className="w-24 h-24 bg-emerald-900 text-white rounded-full flex items-center justify-center font-serif text-4xl border-4 border-amber-400 shadow-xl">
-                  {currentUser.name.charAt(0)}
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto px-4 py-8 lg:py-12 pb-24 lg:pb-12 min-h-screen">
+      
+      {/* 1. HERO PROFILE CARD */}
+      <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white shadow-2xl p-8 mb-12 border border-primary-700/50 group">
+          {/* Pattern Background */}
+          <div className="absolute inset-0 opacity-10 pattern-bg mix-blend-overlay"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500 rounded-full blur-[100px] opacity-20 group-hover:opacity-30 transition duration-1000"></div>
+          
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
+               <div className="relative">
+                   <div className="absolute inset-0 bg-amber-400 blur-lg opacity-30 rounded-full animate-pulse"></div>
+                   <div className="relative w-28 h-28 rounded-full border-[3px] border-amber-400 p-1 shadow-2xl">
+                       <img 
+                         src={`https://ui-avatars.com/api/?name=${currentUser.name}&background=064e3b&color=fff&size=200`} 
+                         className="w-full h-full rounded-full object-cover"
+                         alt="Avatar"
+                       />
+                   </div>
+                   <div className="absolute -bottom-2 -right-2 bg-amber-400 text-primary-900 text-[10px] font-bold px-2 py-1 rounded-full shadow-lg border-2 border-primary-900 uppercase tracking-wider">
+                      Member
+                   </div>
                </div>
-               <div className="text-center md:text-left flex-grow">
-                  <h1 className="text-2xl md:text-3xl font-serif font-bold text-emerald-900">{currentUser.name}</h1>
-                  <p className="text-amber-600 font-bold tracking-wider text-sm mt-1">{currentUser.nia || 'NIA BELUM TERBIT'}</p>
-                  <p className="text-neutral-500 text-sm">{currentUser.wilayah}</p>
+               
+               <div className="flex-grow space-y-2">
+                  <h1 className="text-3xl md:text-4xl font-serif font-bold text-white tracking-tight leading-none">
+                    {currentUser.name}
+                  </h1>
+                  <div className="flex flex-col md:flex-row items-center gap-3 text-primary-100/90 text-sm">
+                     <span className="flex items-center gap-1.5 px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm border border-white/10">
+                        <CreditCard size={14} className="text-amber-400" /> 
+                        <span className="font-mono tracking-wider">{currentUser.nia || 'NIA PROSES'}</span>
+                     </span>
+                     <span className="hidden md:block w-1 h-1 bg-primary-500 rounded-full"></span>
+                     <span className="flex items-center gap-1.5">
+                        <MapPin size={14} className="text-emerald-400" /> {currentUser.wilayah}
+                     </span>
+                  </div>
                </div>
-               <button onClick={() => setIsCardOpen(true)} className="px-6 py-2 bg-emerald-600 text-white rounded-xl shadow-lg hover:bg-emerald-700 transition flex items-center gap-2">
-                  <CreditCard size={18} /> E-KTA
-               </button>
-          </div>
-       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-         <div className="lg:col-span-2">
-            <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden">
-               <div className="p-6 border-b border-neutral-100 bg-neutral-50/50 flex justify-between items-center">
-                  <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2"><Calendar size={18} /> Sesi Absensi Aktif</h2>
-                  <button onClick={handleRefresh} className={`p-1.5 rounded-full hover:bg-neutral-200 text-neutral-500 ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={16} /></button>
+               <div className="flex flex-col gap-3 w-full md:w-auto">
+                   <button 
+                     onClick={() => setIsCardOpen(true)} 
+                     className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-primary-900 font-bold rounded-2xl shadow-lg shadow-amber-900/20 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 text-sm"
+                   >
+                      <CreditCard size={18} /> Buka E-KTA
+                   </button>
+                   <div className="text-[10px] text-center text-primary-300/80">
+                      *Tunjukkan E-KTA saat hadir di majelis
+                   </div>
                </div>
-               <div className="p-6">
-                  {activeSessions.length > 0 ? (
-                     <div className="grid gap-4">
-                        {activeSessions.map(session => {
-                           const hasAttended = session.attendees.includes(currentUser.id);
-                           return (
-                              <div key={session.id} className="border border-neutral-100 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white hover:shadow-lg transition-all duration-300 group">
-                                 <div>
-                                    <h3 className="font-bold text-xl text-[#064e3b]">{session.name}</h3>
-                                    <div className="flex items-center gap-4 mt-2 text-sm text-neutral-500">
-                                       <span className="flex items-center gap-1"><Clock size={16} /> {session.date}</span>
-                                       {session.latitude ? (
-                                          <span className="text-amber-600 flex items-center gap-1"><MapPin size={14}/> Wajib di Lokasi (Max {session.radius}m)</span>
-                                       ) : <span className="text-green-600 flex items-center gap-1"><MapPin size={14}/> Bebas Lokasi</span>}
-                                    </div>
-                                 </div>
-                                 {hasAttended ? (
-                                    <div className="flex items-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-700 rounded-xl font-bold border border-emerald-100"><CheckCircle2 size={20} /> Sudah Hadir</div>
-                                 ) : (
-                                    <button onClick={() => startAttendanceProcess(session.id)} className="px-6 py-3 rounded-xl font-bold flex items-center gap-2 bg-gradient-to-r from-[#064e3b] to-[#047857] text-white shadow-lg hover:-translate-y-0.5 transition-all">
-                                       <Camera size={20} /> Absen Sekarang
-                                    </button>
-                                 )}
-                              </div>
-                           );
-                        })}
-                     </div>
-                  ) : (
-                     <div className="text-center py-10 text-neutral-400">Tidak ada sesi aktif.</div>
-                  )}
-               </div>
-            </div>
-         </div>
+          </div>
       </div>
 
-      {/* MODALS */}
+      {/* 2. ATTENDANCE SECTION */}
+      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+         <div>
+            <h2 className="text-2xl font-serif font-bold text-primary-900 flex items-center gap-2">
+               <Sparkles className="text-amber-500" size={24} />
+               Sesi Absensi Aktif
+            </h2>
+            <p className="text-neutral-500 text-sm mt-1">Silakan lakukan absensi saat sesi dibuka oleh admin.</p>
+         </div>
+         <button onClick={handleRefresh} className={`flex items-center gap-2 px-4 py-2 bg-white border border-neutral-200 rounded-xl text-neutral-600 text-xs font-bold hover:bg-neutral-50 transition ${isRefreshing ? 'opacity-70' : ''}`}>
+             <RefreshCcw size={14} className={isRefreshing ? 'animate-spin' : ''} /> Refresh Data
+         </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6">
+         {activeSessions.length > 0 ? (
+            activeSessions.map(session => {
+               const hasAttended = session.attendees.includes(currentUser.id);
+               return (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    key={session.id} 
+                    className={`relative overflow-hidden rounded-3xl border transition-all duration-300 group ${hasAttended ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-neutral-100 shadow-sm hover:shadow-xl'}`}
+                  >
+                     {/* Decoration */}
+                     <div className="absolute top-0 right-0 p-8 opacity-5 transform group-hover:scale-110 transition duration-700 pointer-events-none">
+                        <QrCode size={120} />
+                     </div>
+
+                     <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+                        <div className="flex-grow space-y-4">
+                           <div className="flex items-center gap-3">
+                              <span className="px-3 py-1 bg-primary-100 text-primary-700 text-[10px] font-bold uppercase tracking-widest rounded-full">
+                                 Kegiatan
+                              </span>
+                              <span className="text-xs font-mono text-neutral-400 flex items-center gap-1">
+                                 <Calendar size={12} /> {session.date}
+                              </span>
+                           </div>
+                           
+                           <h3 className="text-2xl font-bold text-primary-900 leading-tight">
+                              {session.name}
+                           </h3>
+                           
+                           <div className="flex flex-wrap items-center gap-4 text-sm">
+                              {session.latitude ? (
+                                  <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">
+                                      <Navigation size={16} />
+                                      <span className="font-bold">Wajib di Lokasi</span>
+                                      <span className="text-xs opacity-70">(Max {session.radius}m)</span>
+                                  </div>
+                              ) : (
+                                  <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                                      <MapPin size={16} />
+                                      <span className="font-bold">Bebas Lokasi</span>
+                                  </div>
+                              )}
+                           </div>
+                        </div>
+
+                        <div className="flex-shrink-0 w-full md:w-auto">
+                           {hasAttended ? (
+                              <div className="flex flex-col items-center justify-center p-4 bg-emerald-100/50 rounded-2xl border border-emerald-200 text-emerald-800 w-full md:w-48">
+                                 <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center mb-2 shadow-lg shadow-emerald-600/20">
+                                    <CheckCircle2 size={24} />
+                                 </div>
+                                 <span className="font-bold text-sm">Sudah Hadir</span>
+                                 <span className="text-[10px] opacity-70 mt-1">Terima kasih</span>
+                              </div>
+                           ) : (
+                              <button 
+                                onClick={() => startAttendanceProcess(session.id)} 
+                                className="w-full md:w-auto px-8 py-4 bg-primary-900 hover:bg-primary-800 text-white font-bold rounded-2xl shadow-xl shadow-primary-900/20 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3 group/btn"
+                              >
+                                 <div className="p-1.5 bg-white/20 rounded-lg group-hover/btn:rotate-12 transition">
+                                    <Camera size={20} />
+                                 </div>
+                                 <div className="text-left">
+                                    <span className="block text-xs font-normal text-primary-200">Klik untuk</span>
+                                    <span className="block leading-none">Absen Sekarang</span>
+                                 </div>
+                                 <ChevronRight className="ml-2 opacity-50 group-hover/btn:translate-x-1 transition" />
+                              </button>
+                           )}
+                        </div>
+                     </div>
+                  </motion.div>
+               );
+            })
+         ) : (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-[2rem] p-12 text-center border border-dashed border-neutral-300">
+               <div className="w-20 h-20 bg-neutral-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Calendar size={40} className="text-neutral-300" />
+               </div>
+               <h3 className="text-xl font-serif font-bold text-neutral-800">Belum Ada Sesi Aktif</h3>
+               <p className="text-neutral-500 mt-2 max-w-md mx-auto">Admin belum membuka sesi absensi baru. Silakan kembali lagi nanti atau hubungi pengurus.</p>
+               <button onClick={handleRefresh} className="mt-6 text-primary-600 font-bold text-sm hover:underline">
+                  Coba Refresh Halaman
+               </button>
+            </motion.div>
+         )}
+      </div>
+
+      {/* MODALS (E-KTA & Camera) */}
       <AnimatePresence>
         {isCardOpen && (
            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-              <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="relative max-w-md w-full">
-                 <div className="flex justify-end mb-4"><button onClick={() => setIsCardOpen(false)} className="p-2 bg-white/10 rounded-full text-white"><X size={24} /></button></div>
+              <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="relative max-w-md w-full">
+                 <div className="flex justify-end mb-4"><button onClick={() => setIsCardOpen(false)} className="p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition"><X size={24} /></button></div>
                  {renderCard()}
+                 <p className="text-center text-white/50 text-xs mt-6">Ketuk kartu untuk membalik</p>
               </motion.div>
            </motion.div>
         )}
@@ -368,34 +480,58 @@ export const MemberArea: React.FC = () => {
         {isCameraOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
             <motion.div className="bg-neutral-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative border border-neutral-700">
-              <div className="absolute top-0 left-0 right-0 p-4 z-20 flex justify-between bg-black/50 backdrop-blur-md">
+              <div className="absolute top-0 left-0 right-0 p-4 z-20 flex justify-between bg-gradient-to-b from-black/80 to-transparent">
                 <div>
-                    <h3 className="text-white font-bold">Ambil Foto</h3>
+                    <h3 className="text-white font-bold text-lg drop-shadow-md">Ambil Foto</h3>
                     {/* Distance Indicator */}
                     <div className="text-xs mt-1 flex items-center gap-2">
-                        {locationStatus === 'loading' && <span className="text-amber-400">Mencari Lokasi...</span>}
+                        {locationStatus === 'loading' && <span className="text-amber-400 animate-pulse flex items-center gap-1"><Navigation size={10} /> Mencari Lokasi...</span>}
                         {locationStatus === 'success' && (
-                             <span className={calculatedDistance && calculatedDistance > 100 ? "text-red-400 font-bold" : "text-emerald-400 font-bold"}>
-                                {locationName} {calculatedDistance !== null ? `(${Math.round(calculatedDistance)}m)` : ''}
+                             <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm ${calculatedDistance && calculatedDistance > 100 ? "text-red-400 font-bold border border-red-500/50" : "text-emerald-400 font-bold border border-emerald-500/50"}`}>
+                                <MapPin size={10} /> {locationName} {calculatedDistance !== null ? `(${Math.round(calculatedDistance)}m)` : ''}
                              </span>
                         )}
+                        {locationStatus === 'error' && <span className="text-red-400">Gagal Lokasi</span>}
                     </div>
                 </div>
-                <button onClick={closeCameraModal} className="text-white"><X size={24} /></button>
+                <button onClick={closeCameraModal} className="text-white bg-black/20 p-2 rounded-full backdrop-blur-md"><X size={24} /></button>
               </div>
+              
               <div className="relative aspect-[3/4] bg-black">
-                {!capturedImage ? <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" /> : <img src={capturedImage} className="w-full h-full object-cover" />}
+                {!capturedImage ? (
+                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                ) : (
+                    <img src={capturedImage} className="w-full h-full object-cover" />
+                )}
                 <canvas ref={canvasRef} className="hidden" />
+                
+                {/* Visual Guides */}
+                {!capturedImage && (
+                    <div className="absolute inset-0 border-[30px] border-black/30 pointer-events-none">
+                        <div className="absolute top-8 left-8 w-16 h-16 border-t-4 border-l-4 border-white/50 rounded-tl-3xl"></div>
+                        <div className="absolute top-8 right-8 w-16 h-16 border-t-4 border-r-4 border-white/50 rounded-tr-3xl"></div>
+                        <div className="absolute bottom-8 left-8 w-16 h-16 border-b-4 border-l-4 border-white/50 rounded-bl-3xl"></div>
+                        <div className="absolute bottom-8 right-8 w-16 h-16 border-b-4 border-r-4 border-white/50 rounded-br-3xl"></div>
+                    </div>
+                )}
               </div>
-              <div className="bg-neutral-900 p-6 flex justify-center">
+
+              <div className="bg-neutral-900 p-8 flex justify-center pb-10">
                  {!capturedImage ? (
-                   <button onClick={takePhoto} disabled={locationStatus !== 'success'} className={`w-20 h-20 rounded-full border-4 flex items-center justify-center ${locationStatus === 'success' ? 'border-white' : 'border-gray-600 opacity-50'}`}>
-                      <div className="w-16 h-16 bg-white rounded-full"></div>
+                   <button 
+                     onClick={takePhoto} 
+                     disabled={locationStatus !== 'success'} 
+                     className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all duration-300 ${locationStatus === 'success' ? 'border-white hover:scale-105 active:scale-95' : 'border-gray-600 opacity-50 cursor-not-allowed'}`}
+                   >
+                      <div className={`w-16 h-16 bg-white rounded-full transition-all ${locationStatus === 'success' ? 'scale-100' : 'scale-75 bg-gray-400'}`}></div>
                    </button>
                  ) : (
                    <div className="flex gap-4 w-full">
-                      <button onClick={retakePhoto} className="flex-1 py-3 bg-neutral-800 text-white rounded-xl">Ulangi</button>
-                      <button onClick={submitAttendance} disabled={isSubmitting} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl">{isSubmitting ? 'Mengirim...' : 'Kirim'}</button>
+                      <button onClick={retakePhoto} className="flex-1 py-4 bg-neutral-800 text-white font-bold rounded-2xl hover:bg-neutral-700 transition">Ulangi</button>
+                      <button onClick={submitAttendance} disabled={isSubmitting} className="flex-1 py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2">
+                        {isSubmitting ? <RefreshCw className="animate-spin" /> : <CheckCircle2 />} 
+                        {isSubmitting ? 'Mengirim...' : 'Kirim Bukti'}
+                      </button>
                    </div>
                  )}
               </div>
