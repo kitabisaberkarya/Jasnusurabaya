@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -25,7 +26,8 @@ export const Login: React.FC = () => {
     const user = await login(id, pass);
     
     if (user) {
-      if (user.role === UserRole.ADMIN) {
+      // Check for any admin role to redirect to dashboard
+      if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN_KORWIL || user.role === UserRole.ADMIN_PENGURUS) {
         navigate('/admin');
       } else {
         navigate('/member');
