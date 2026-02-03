@@ -87,6 +87,7 @@ export interface AttendanceSession {
   latitude?: number;
   longitude?: number;
   radius?: number; // in meters
+  mapsUrl?: string; // Link Google Maps
 }
 
 export interface AttendanceRecord {
@@ -151,8 +152,8 @@ export interface AppContextType extends AppState {
   resetMemberPassword: (userId: number) => void;
   
   // Session with Geo
-  createSession: (name: string, lat?: number, lng?: number, rad?: number) => void;
-  updateSession: (sessionId: number, name: string, lat?: number, lng?: number, rad?: number) => void; 
+  createSession: (name: string, lat?: number, lng?: number, rad?: number, mapsUrl?: string) => void;
+  updateSession: (sessionId: number, name: string, lat?: number, lng?: number, rad?: number, mapsUrl?: string) => void; 
   deleteSession: (sessionId: number) => void; 
   toggleSession: (sessionId: number) => void;
   

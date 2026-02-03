@@ -77,7 +77,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data) {
         const mapped = data.map((s: any) => ({
             ...s, isOpen: s.is_open, attendees: Array.isArray(s.attendees) ? s.attendees : [],
-            latitude: s.latitude, longitude: s.longitude, radius: s.radius
+            latitude: s.latitude, longitude: s.longitude, radius: s.radius, mapsUrl: s.maps_url
         }));
         setState(prev => ({ ...prev, attendanceSessions: mapped }));
       }
@@ -151,7 +151,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         attendees: Array.isArray(s.attendees) ? s.attendees : [],
         latitude: s.latitude,
         longitude: s.longitude,
-        radius: s.radius
+        radius: s.radius,
+        mapsUrl: s.maps_url
       }));
 
       const mappedNews = (news || []).map((n: any) => ({
@@ -418,7 +419,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // SESSION MANAGEMENT WITH GEO
-  const createSession = async (name: string, lat?: number, lng?: number, rad?: number) => {
+  const createSession = async (name: string, lat?: number, lng?: number, rad?: number, mapsUrl?: string) => {
     try {
       const { error } = await supabase.from('attendance_sessions').insert([{
         name,
@@ -427,7 +428,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         attendees: [],
         latitude: lat || null,
         longitude: lng || null,
-        radius: rad || 100
+        radius: rad || 100,
+        maps_url: mapsUrl || null
       }]);
       if (error) throw error;
       refreshSessions();
@@ -437,12 +439,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateSession = async (sessionId: number, name: string, lat?: number, lng?: number, rad?: number) => {
+  const updateSession = async (sessionId: number, name: string, lat?: number, lng?: number, rad?: number, mapsUrl?: string) => {
     try {
       const updates: any = { name };
       if (lat !== undefined) updates.latitude = lat;
       if (lng !== undefined) updates.longitude = lng;
       if (rad !== undefined) updates.radius = rad;
+      if (mapsUrl !== undefined) updates.maps_url = mapsUrl;
 
       const { error } = await supabase
         .from('attendance_sessions')
@@ -453,7 +456,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       setState(prev => ({
         ...prev,
-        attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, name, latitude: lat, longitude: lng, radius: rad } : s)
+        attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, name, latitude: lat, longitude: lng, radius: rad, mapsUrl } : s)
       }));
       showToast("Data sesi berhasil diperbarui", "success");
     } catch (error) {

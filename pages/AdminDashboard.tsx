@@ -9,7 +9,7 @@ import {
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
   User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon, Lock, LayoutTemplate, ArrowLeft, Clock,
-  LayoutDashboard, CheckCircle2, Map, CreditCard, MonitorPlay
+  LayoutDashboard, CheckCircle2, Map, CreditCard, MonitorPlay, HelpCircle
 } from 'lucide-react';
 import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord, User, UserRole } from '../types';
 import XLSX from 'xlsx-js-style';
@@ -41,6 +41,7 @@ export const AdminDashboard: React.FC = () => {
   const [geoLat, setGeoLat] = useState<string>('');
   const [geoLng, setGeoLng] = useState<string>('');
   const [geoRadius, setGeoRadius] = useState<string>('100');
+  const [geoMapsUrl, setGeoMapsUrl] = useState<string>('');
   
   // Recap State
   const [recapType, setRecapType] = useState<'attendance' | 'members'>('attendance');
@@ -65,7 +66,7 @@ export const AdminDashboard: React.FC = () => {
   // Session Edit State
   const [editingSession, setEditingSession] = useState<AttendanceSession | null>(null);
   const [editSessionName, setEditSessionName] = useState('');
-  const [editSessionGeo, setEditSessionGeo] = useState({ lat: '', lng: '', rad: '100' });
+  const [editSessionGeo, setEditSessionGeo] = useState({ lat: '', lng: '', rad: '100', mapsUrl: '' });
 
   // Session Delete State
   const [deleteSessionData, setDeleteSessionData] = useState<{id: number, name: string} | null>(null);
@@ -164,6 +165,47 @@ export const AdminDashboard: React.FC = () => {
         { enableHighAccuracy: true }
     );
   };
+  
+  // Helper to parse Google Maps URL
+  const extractCoordsFromUrl = (url: string) => {
+    // Regex for: @lat,lng
+    const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (atMatch) return { lat: atMatch[1], lng: atMatch[2] };
+
+    // Regex for: !3d...!4d (Standard in Long Place URLs)
+    const dataMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+    if (dataMatch) return { lat: dataMatch[1], lng: dataMatch[2] };
+    
+    // Regex for: search/lat,lng
+    const searchMatch = url.match(/search\/(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (searchMatch) return { lat: searchMatch[1], lng: searchMatch[2] };
+
+    // Regex for: ?q=lat,lng
+    const qMatch = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (qMatch) return { lat: qMatch[1], lng: qMatch[2] };
+
+    return null;
+  };
+
+  const handleMapsLinkChange = (val: string, isEdit: boolean = false) => {
+    const coords = extractCoordsFromUrl(val);
+    
+    if (isEdit) {
+        setEditSessionGeo(prev => ({ 
+            ...prev, 
+            mapsUrl: val,
+            lat: coords ? coords.lat : prev.lat,
+            lng: coords ? coords.lng : prev.lng
+        }));
+    } else {
+        setGeoMapsUrl(val);
+        if (coords) {
+            setGeoLat(coords.lat);
+            setGeoLng(coords.lng);
+            showToast("Koordinat berhasil diekstrak dari link!", "success");
+        }
+    }
+  };
 
   const handleCreateSession = (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,9 +213,9 @@ export const AdminDashboard: React.FC = () => {
       const lat = geoLat ? parseFloat(geoLat) : undefined;
       const lng = geoLng ? parseFloat(geoLng) : undefined;
       const rad = geoRadius ? parseFloat(geoRadius) : undefined;
-      createSession(newSessionName, lat, lng, rad);
+      createSession(newSessionName, lat, lng, rad, geoMapsUrl);
       setNewSessionName('');
-      setGeoLat(''); setGeoLng(''); setGeoRadius('100');
+      setGeoLat(''); setGeoLng(''); setGeoRadius('100'); setGeoMapsUrl('');
     }
   };
 
@@ -183,7 +225,8 @@ export const AdminDashboard: React.FC = () => {
     setEditSessionGeo({
        lat: session.latitude?.toString() || '',
        lng: session.longitude?.toString() || '',
-       rad: session.radius?.toString() || '100'
+       rad: session.radius?.toString() || '100',
+       mapsUrl: session.mapsUrl || ''
     });
   };
 
@@ -193,7 +236,7 @@ export const AdminDashboard: React.FC = () => {
       const lat = editSessionGeo.lat ? parseFloat(editSessionGeo.lat) : undefined;
       const lng = editSessionGeo.lng ? parseFloat(editSessionGeo.lng) : undefined;
       const rad = editSessionGeo.rad ? parseFloat(editSessionGeo.rad) : 100;
-      updateSession(editingSession.id, editSessionName, lat, lng, rad);
+      updateSession(editingSession.id, editSessionName, lat, lng, rad, editSessionGeo.mapsUrl);
       setEditingSession(null);
     }
   };
@@ -692,23 +735,48 @@ export const AdminDashboard: React.FC = () => {
 
             {/* ATTENDANCE TAB */}
             {activeTab === 'attendance' && !viewingSession && (
-               /* ... (Create Session Form & List Logic from previous turn - kept intact) ... */
-               /* Simplified for brevity in this response but functionally identical */
                <div className="space-y-8">
                   <div id="session-form" className="bg-white border border-neutral-200 shadow-sm rounded-2xl overflow-hidden p-6 md:p-8">
                       <h3 className="text-lg font-bold text-neutral-800 mb-6 flex items-center gap-2"><MapPin size={20} className="text-secondary-500"/> Buat Sesi & Geofencing</h3>
                       <form onSubmit={handleCreateSession} className="grid grid-cols-1 md:grid-cols-12 gap-6">
                             <div className="md:col-span-12 lg:col-span-5">
-                            <label className="block text-xs uppercase font-bold text-neutral-500 mb-2">Nama Kegiatan</label>
-                            <input type="text" placeholder="Contoh: Rutinan Malam Jumat" className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:border-primary-500 outline-none" value={newSessionName} onChange={e => setNewSessionName(e.target.value)} required />
+                                <div className="mb-4">
+                                    <label className="block text-xs uppercase font-bold text-neutral-500 mb-2">Nama Kegiatan</label>
+                                    <input type="text" placeholder="Contoh: Rutinan Malam Jumat" className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:border-primary-500 outline-none" value={newSessionName} onChange={e => setNewSessionName(e.target.value)} required />
+                                </div>
+                                
+                                {/* GOOGLE MAPS LINK INPUT */}
+                                <div className="mb-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                    <div className="flex items-start gap-2 mb-2">
+                                        <label className="block text-xs uppercase font-bold text-blue-700 mt-0.5">Link Google Maps (Auto-Detect)</label>
+                                        <div className="group relative">
+                                            <HelpCircle size={14} className="text-blue-400 cursor-help" />
+                                            <div className="absolute left-0 bottom-full mb-2 w-64 bg-neutral-800 text-white text-xs p-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none z-50">
+                                                Paste link dari address bar browser (contoh: google.com/maps/@-7.25...) untuk otomatis mengisi Latitude & Longitude.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Paste link maps di sini..." 
+                                        className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none" 
+                                        value={geoMapsUrl} 
+                                        onChange={e => handleMapsLinkChange(e.target.value)} 
+                                    />
+                                    <p className="text-[10px] text-blue-500 mt-1.5 leading-snug">
+                                        * Gunakan link lengkap dari browser, bukan link pendek "Share".<br/>
+                                        * Sistem akan otomatis mengekstrak koordinat jika format link valid.
+                                    </p>
+                                </div>
                             </div>
+
                             <div className="md:col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4 bg-neutral-50 p-4 rounded-xl border border-neutral-100">
-                                <div><label className="block text-xs uppercase font-bold text-neutral-400 mb-2">Latitude</label><input type="number" step="any" className="w-full px-3 py-2 border rounded-lg" value={geoLat} onChange={e => setGeoLat(e.target.value)} /></div>
-                                <div><label className="block text-xs uppercase font-bold text-neutral-400 mb-2">Longitude</label><input type="number" step="any" className="w-full px-3 py-2 border rounded-lg" value={geoLng} onChange={e => setGeoLng(e.target.value)} /></div>
-                                <div><label className="block text-xs uppercase font-bold text-neutral-400 mb-2">Radius (m)</label><input type="number" className="w-full px-3 py-2 border rounded-lg" value={geoRadius} onChange={e => setGeoRadius(e.target.value)} /></div>
-                                <div className="sm:col-span-3 mt-2 flex justify-end"><button type="button" onClick={() => handleGetCurrentLocation(false)} className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"><MapPin size={12} /> Ambil Lokasi Saya</button></div>
+                                <div><label className="block text-xs uppercase font-bold text-neutral-400 mb-2">Latitude</label><input type="number" step="any" className="w-full px-3 py-2 border rounded-lg bg-white" value={geoLat} onChange={e => setGeoLat(e.target.value)} placeholder="-7.xxxxx" /></div>
+                                <div><label className="block text-xs uppercase font-bold text-neutral-400 mb-2">Longitude</label><input type="number" step="any" className="w-full px-3 py-2 border rounded-lg bg-white" value={geoLng} onChange={e => setGeoLng(e.target.value)} placeholder="112.xxxxx" /></div>
+                                <div><label className="block text-xs uppercase font-bold text-neutral-400 mb-2">Radius (m)</label><input type="number" className="w-full px-3 py-2 border rounded-lg bg-white" value={geoRadius} onChange={e => setGeoRadius(e.target.value)} /></div>
+                                <div className="sm:col-span-3 mt-2 flex justify-end"><button type="button" onClick={() => handleGetCurrentLocation(false)} className="text-xs bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 hover:bg-emerald-100 transition"><MapPin size={12} /> Ambil Lokasi Saya (GPS)</button></div>
                             </div>
-                            <div className="md:col-span-12 flex justify-end"><button type="submit" className="px-8 py-3 bg-primary-700 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus size={18} /> Buat Sesi Baru</button></div>
+                            <div className="md:col-span-12 flex justify-end"><button type="submit" className="px-8 py-3 bg-primary-700 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 hover:bg-primary-800 transition"><Plus size={18} /> Buat Sesi Baru</button></div>
                         </form>
                   </div>
                   <div className="bg-white border border-neutral-200 shadow-sm rounded-2xl overflow-hidden">
@@ -720,7 +788,18 @@ export const AdminDashboard: React.FC = () => {
                                 {attendanceSessions.map(session => (
                                     <tr key={session.id} className="hover:bg-neutral-50">
                                         <td className="px-6 py-4 text-xs font-mono">{session.date}</td><td className="px-6 py-4 font-bold">{session.name}</td>
-                                        <td className="px-6 py-4">{session.latitude ? <span className="text-amber-700 text-xs font-bold bg-amber-50 px-2 py-1 rounded border border-amber-100">Radius {session.radius}m</span> : <span className="text-neutral-400 text-xs">Bebas</span>}</td>
+                                        <td className="px-6 py-4">
+                                            {session.latitude ? (
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-amber-700 text-xs font-bold bg-amber-50 px-2 py-1 rounded border border-amber-100 w-fit">Radius {session.radius}m</span>
+                                                    {session.mapsUrl && (
+                                                        <a href={session.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-[10px] flex items-center gap-1">
+                                                            <ExternalLink size={10} /> Lihat Peta
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            ) : <span className="text-neutral-400 text-xs">Bebas</span>}
+                                        </td>
                                         <td className="px-6 py-4 text-center"><button onClick={() => toggleSession(session.id)} className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${session.isOpen ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{session.isOpen ? 'DIBUKA' : 'DITUTUP'}</button></td>
                                         <td className="px-6 py-4 text-center font-bold text-primary-600">{session.attendees.length}</td>
                                         <td className="px-6 py-4 text-right flex justify-end gap-2">
@@ -803,9 +882,24 @@ export const AdminDashboard: React.FC = () => {
                       <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50"><h3 className="font-bold text-lg">Edit Sesi</h3><button onClick={() => setEditingSession(null)}><X size={20}/></button></div>
                       <form onSubmit={handleUpdateSessionSubmit} className="p-6 space-y-4">
                          <input type="text" className="w-full border rounded-lg p-3" value={editSessionName} onChange={e => setEditSessionName(e.target.value)} required />
+                         
+                         {/* Edit Google Maps Input */}
+                         <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                             <label className="block text-xs uppercase font-bold text-blue-700 mb-1">Link Google Maps</label>
+                             <input 
+                                type="text" 
+                                placeholder="Paste link untuk auto-update koordinat" 
+                                className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white outline-none" 
+                                value={editSessionGeo.mapsUrl} 
+                                onChange={e => handleMapsLinkChange(e.target.value, true)} 
+                             />
+                         </div>
+
                          <div className="grid grid-cols-3 gap-2"><input type="number" placeholder="Lat" className="border rounded-lg p-2" value={editSessionGeo.lat} onChange={e=>setEditSessionGeo({...editSessionGeo, lat:e.target.value})}/><input type="number" placeholder="Lng" className="border rounded-lg p-2" value={editSessionGeo.lng} onChange={e=>setEditSessionGeo({...editSessionGeo, lng:e.target.value})}/><input type="number" placeholder="Rad" className="border rounded-lg p-2" value={editSessionGeo.rad} onChange={e=>setEditSessionGeo({...editSessionGeo, rad:e.target.value})}/></div>
-                         <button type="button" onClick={() => handleGetCurrentLocation(true)} className="text-xs text-blue-600 font-bold flex items-center gap-1"><MapPin size={12}/> Set Lokasi Saya</button>
-                         <button type="submit" className="w-full bg-secondary-500 text-white py-2 rounded-lg font-bold">Simpan</button>
+                         <div className="flex justify-between items-center">
+                             <button type="button" onClick={() => handleGetCurrentLocation(true)} className="text-xs text-emerald-600 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded"><MapPin size={12}/> Ambil Lokasi Saya</button>
+                             <button type="submit" className="bg-secondary-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-secondary-600">Simpan</button>
+                         </div>
                       </form>
                    </div>
                 </div>
