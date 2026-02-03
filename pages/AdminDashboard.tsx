@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -153,21 +152,43 @@ export const AdminDashboard: React.FC = () => {
   // Filter Registrations Based on Role
   const getPendingRegistrations = () => {
      if (isKorwil) {
-        // Korwil sees PENDING only
-        // Ideal: Filter by currentUser.wilayah match. Current: All Pending.
         return registrations.filter(r => r.status === MemberStatus.PENDING);
      } else if (isPengurus) {
-        // Pengurus sees VERIFIED_KORWIL (ready for NIA)
         return registrations.filter(r => r.status === MemberStatus.VERIFIED_KORWIL);
      } else {
-        // Super Admin sees ALL incomplete
         return registrations.filter(r => r.status === MemberStatus.PENDING || r.status === MemberStatus.VERIFIED_KORWIL);
      }
   };
 
   const filteredRegistrations = getPendingRegistrations();
 
-  // --- HANDLERS --- (Simplified)
+  // --- HANDLERS ---
+  const handleGetCurrentLocation = (isEdit: boolean = false) => {
+    if (!navigator.geolocation) {
+        showToast("Browser tidak mendukung Geolokasi", "error");
+        return;
+    }
+    showToast("Mendeteksi lokasi saat ini...", "info");
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            const lat = pos.coords.latitude.toString();
+            const lng = pos.coords.longitude.toString();
+            if (isEdit) {
+                 setEditSessionGeo(prev => ({ ...prev, lat, lng }));
+            } else {
+                 setGeoLat(lat);
+                 setGeoLng(lng);
+            }
+            showToast("Lokasi ditemukan!", "success");
+        },
+        (err) => {
+             console.error(err);
+             showToast("Gagal mengambil lokasi: " + err.message, "error");
+        },
+        { enableHighAccuracy: true }
+    );
+  };
+
   const handleCreateSession = (e: React.FormEvent) => {
     e.preventDefault();
     if (newSessionName) {
@@ -201,12 +222,11 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Korwil Table Logic (Same as existing)
+  // Korwil Table Logic
   const handleAddKorwilRow = () => { if (newKorwilRow.wilayah && newKorwilRow.nama) { setKorwilRows([...korwilRows, newKorwilRow]); setNewKorwilRow({ wilayah: '', nama: '', kontak: '' }); } };
   const handleDeleteKorwilRow = (i: number) => { const n = [...korwilRows]; n.splice(i, 1); setKorwilRows(n); };
   const handleUpdateKorwilRow = (i: number, f: keyof KorwilRow, v: string) => { const n = [...korwilRows]; n[i] = { ...n[i], [f]: v }; setKorwilRows(n); };
-  const generateKorwilHTML = () => { /* Same HTML generation */ return `<div class="w-full overflow-hidden rounded-xl border border-neutral-200 shadow-lg my-6 bg-white font-sans"><table class="w-full text-left border-collapse"><thead><tr class="bg-gradient-to-r from-primary-900 to-primary-700 text-white"><th class="p-5 font-bold text-sm uppercase tracking-wider border-b border-primary-800">Wilayah / Jabatan</th><th class="p-5 font-bold text-sm uppercase tracking-wider border-b border-primary-800">Nama Koordinator</th><th class="p-5 font-bold text-sm uppercase tracking-wider border-b border-primary-800">Kontak / Keterangan</th></tr></thead><tbody class="divide-y divide-neutral-100">${korwilRows.map((row, idx) => `<tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50'} hover:bg-primary-50 transition-colors duration-200"><td class="p-5 font-bold text-primary-900">${row.wilayah}</td><td class="p-5 text-neutral-700 font-medium">${row.nama}</td><td class="p-5 text-neutral-600 font-mono text-sm">${row.kontak}</td></tr>`).join('')}</tbody></table></div>`; };
-
+  
   // Common delete handlers
   const handleDeleteSession = (id: number, name: string) => setDeleteSessionData({ id, name });
   const confirmDeleteSession = async () => { if (deleteSessionData) { setIsDeletingSession(true); await deleteSession(deleteSessionData.id); setIsDeletingSession(false); setDeleteSessionData(null); } };
@@ -218,8 +238,6 @@ export const AdminDashboard: React.FC = () => {
         await deleteAttendanceRecord(record.id, record.sessionId, record.userId);
     }
   };
-
-  // Other form handlers (News, Gallery, etc.) mostly unchanged except permission checks in render
 
   return (
     <div className="min-h-screen bg-[#ecf0f5] font-sans text-sm">
@@ -396,6 +414,11 @@ export const AdminDashboard: React.FC = () => {
                                  <div className="md:col-span-2 flex items-end">
                                     <button type="submit" className="w-full bg-[#00a65a] hover:bg-[#008d4c] text-white py-2 rounded-sm font-bold shadow-sm flex items-center justify-center gap-2"><Plus size={16} /> Buat Sesi</button>
                                  </div>
+                                 <div className="md:col-span-12 flex justify-end">
+                                    <button type="button" onClick={() => handleGetCurrentLocation(false)} className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 flex items-center gap-1 transition">
+                                       <MapPin size={12} /> Gunakan Lokasi Saya Saat Ini
+                                    </button>
+                                 </div>
                               </form>
                               <div className="mt-2 text-[10px] text-gray-400">
                                  *Biarkan Lat/Long kosong jika tidak ingin membatasi lokasi (Bebas Absen). Gunakan Google Maps untuk mendapatkan koordinat.
@@ -445,9 +468,8 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                      </>
                   ) : (
-                     /* Session Detail View (Unchanged Logic, reusing existing code) */
+                     /* Session Detail View */
                      <div className="bg-white border-t-[3px] border-[#3c8dbc] shadow-sm rounded-sm animate-fade-in-up">
-                        {/* ... Existing session detail code ... */}
                         <div className="px-4 py-3 border-b border-[#f4f4f4] flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3 w-full sm:w-auto">
                                <button onClick={() => setViewingSession(null)} className="text-gray-500 hover:text-[#3c8dbc] p-1 rounded-full hover:bg-gray-100 transition"><ArrowLeft size={20} /></button>
@@ -464,7 +486,6 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                          </div>
                          <div className="p-4 bg-gray-50 min-h-[300px]">
-                            {/* ... Existing table logic ... */}
                             <div className="bg-white border border-gray-200 rounded-sm overflow-hidden shadow-sm">
                                   <div className="overflow-x-auto">
                                       <table className="w-full text-left">
@@ -519,9 +540,6 @@ export const AdminDashboard: React.FC = () => {
                  </div>
               </div>
             )}
-
-            {/* Other tabs (News, Slider, Settings, etc) hidden if not Super Admin in render logic above */}
-            {/* ... Only render these if isSuperAdmin ... */}
             
             {/* Edit Session Modal with Geo */}
             {editingSession && (
@@ -546,6 +564,11 @@ export const AdminDashboard: React.FC = () => {
                                 <input type="number" step="any" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-[#f39c12] outline-none" value={editSessionGeo.lng} onChange={(e) => setEditSessionGeo({...editSessionGeo, lng: e.target.value})} />
                             </div>
                          </div>
+                         <div className="flex justify-end">
+                              <button type="button" onClick={() => handleGetCurrentLocation(true)} className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 flex items-center gap-1 transition">
+                                  <MapPin size={12} /> Gunakan Lokasi Saya
+                              </button>
+                         </div>
                          <div>
                             <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Radius (meter)</label>
                             <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded focus:border-[#f39c12] outline-none" value={editSessionGeo.rad} onChange={(e) => setEditSessionGeo({...editSessionGeo, rad: e.target.value})} />
@@ -559,8 +582,43 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
             
-            {/* Keep existing Image Preview, Delete Member, Delete Session Modals */}
-            {/* ... Same as original code ... */}
+            {/* Image Preview Modal */}
+            {previewImage && (
+                <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
+                    <div className="relative max-w-lg w-full bg-white rounded-lg p-2">
+                        <img src={previewImage} alt="Bukti Absensi" className="w-full h-auto rounded" />
+                        <button className="absolute -top-4 -right-4 bg-white rounded-full p-1 text-black shadow-lg hover:bg-gray-100" onClick={() => setPreviewImage(null)}><X size={20}/></button>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Session Confirmation */}
+            {deleteSessionData && (
+                <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg p-6 max-w-sm w-full animate-fade-in-up">
+                        <h3 className="text-lg font-bold text-gray-800 mb-2">Hapus Sesi?</h3>
+                        <p className="text-gray-600 mb-6">Anda akan menghapus sesi "<strong>{deleteSessionData.name}</strong>" beserta seluruh data absensinya. Tindakan ini tidak dapat dibatalkan.</p>
+                        <div className="flex justify-end gap-3">
+                            <button onClick={() => setDeleteSessionData(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium">Batal</button>
+                            <button onClick={confirmDeleteSession} disabled={isDeletingSession} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium">{isDeletingSession ? 'Menghapus...' : 'Ya, Hapus'}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Member Confirmation */}
+            {deleteMemberData && (
+                <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg p-6 max-w-sm w-full animate-fade-in-up">
+                        <h3 className="text-lg font-bold text-gray-800 mb-2">Hapus Anggota?</h3>
+                        <p className="text-gray-600 mb-6">Menghapus "<strong>{deleteMemberData.name}</strong>" akan menghilangkan data riwayat absensi mereka juga.</p>
+                        <div className="flex justify-end gap-3">
+                            <button onClick={() => setDeleteMemberData(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium">Batal</button>
+                            <button onClick={confirmDeleteMember} disabled={isDeletingMember} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium">{isDeletingMember ? 'Menghapus...' : 'Ya, Hapus'}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
          </div>
       </main>
     </div>

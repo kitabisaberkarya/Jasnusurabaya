@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi, AlertCircle, RefreshCcw, Navigation } from 'lucide-react';
@@ -330,7 +329,7 @@ export const MemberArea: React.FC = () => {
                                     <div className="flex items-center gap-4 mt-2 text-sm text-neutral-500">
                                        <span className="flex items-center gap-1"><Clock size={16} /> {session.date}</span>
                                        {session.latitude ? (
-                                          <span className="text-amber-600 flex items-center gap-1"><MapPin size={14}/> Wajib di Lokasi</span>
+                                          <span className="text-amber-600 flex items-center gap-1"><MapPin size={14}/> Wajib di Lokasi (Max {session.radius}m)</span>
                                        ) : <span className="text-green-600 flex items-center gap-1"><MapPin size={14}/> Bebas Lokasi</span>}
                                     </div>
                                  </div>
