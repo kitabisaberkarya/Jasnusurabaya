@@ -20,10 +20,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Initial Data Fetch & Realtime Setup
   useEffect(() => {
+    // Jalankan fetch data
     fetchData();
 
+    // Setup Timeout Safety: Jika dalam 3 detik data belum load (koneksi lambat), paksa buka UI
+    const safetyTimeout = setTimeout(() => {
+        setIsLoading(prev => {
+            if (prev) return false;
+            return prev;
+        });
+    }, 3000);
+
     // REALTIME SUBSCRIPTION setup
-    // This allows the app to update instantly when data changes in DB without refresh
     const channel = supabase.channel('db-changes')
       .on(
         'postgres_changes',
@@ -49,16 +57,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'attendance_sessions' },
-        () => { refreshSessions(); } // Refresh sessions on change
+        () => { refreshSessions(); }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'news' },
-        () => { refreshNews(); } // Refresh news on change
+        () => { refreshNews(); }
       )
       .subscribe();
 
     return () => {
+      clearTimeout(safetyTimeout);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -82,10 +91,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
   };
 
+  // PROGRESSIVE FETCH STRATEGY
   const fetchData = async () => {
-    // Force Loading State to ensure we don't show stale empty data
-    setIsLoading(true);
+    // 1. CRITICAL PHASE: Fetch Site Config ONLY
+    // Kita ambil ini duluan agar Navbar/Layout bisa langsung render
+    try {
+        const { data: config } = await supabase.from('site_config').select('*').single();
+        
+        if (config) {
+            const mappedConfig = {
+                appName: config.app_name,
+                orgName: config.org_name,
+                description: config.description,
+                address: config.address,
+                email: config.email,
+                phone: config.phone,
+                logoUrl: config.logo_url
+            };
+            setState(prev => ({ ...prev, siteConfig: mappedConfig }));
+        }
+    } catch (err) {
+        console.error("Config fetch error", err);
+    }
     
+    // UNBLOCK UI SEKARANG! Jangan tunggu data lain.
+    // User akan melihat Navbar & Footer, konten lain akan menyusul (pop-in).
+    setIsLoading(false);
+
+    // 2. BACKGROUND PHASE: Fetch Heavy Content
+    // Data ini berjalan paralel di background
     try {
       const [
         { data: users }, 
@@ -95,7 +129,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         { data: media },
         { data: sessions }, 
         { data: registrations },
-        { data: config },
         { data: records },
         { data: profiles },
         { data: korwils }
@@ -107,7 +140,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabase.from('media_posts').select('*').order('id', { ascending: false }),
         supabase.from('attendance_sessions').select('*').order('id', { ascending: false }),
         supabase.from('registrations').select('*').order('id', { ascending: false }),
-        supabase.from('site_config').select('*').single(),
         supabase.from('attendance_records').select('*').order('timestamp', { ascending: false }),
         supabase.from('profile_pages').select('*'),
         supabase.from('korwils').select('*').order('name', { ascending: true })
@@ -121,18 +153,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         longitude: s.longitude,
         radius: s.radius
       }));
-
-      const mappedConfig = config ? {
-        appName: config.app_name,
-        orgName: config.org_name,
-        description: config.description,
-        address: config.address,
-        email: config.email,
-        phone: config.phone,
-        logoUrl: config.logo_url
-      } : MOCK_INITIAL_STATE.siteConfig;
-
-      // REMOVED: localStorage.setItem (We want fresh data every time)
 
       const mappedNews = (news || []).map((n: any) => ({
         ...n,
@@ -173,15 +193,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         attendanceSessions: mappedSessions,
         registrations: registrations || [],
         attendanceRecords: mappedRecords || [],
-        siteConfig: mappedConfig as SiteConfig,
         korwils: (korwils as Korwil[]) || []
       }));
 
     } catch (error) {
-      console.error("Error fetching data:", error);
-      showToast("Gagal mengambil data dari server", "error");
-    } finally {
-      setIsLoading(false);
+      console.error("Error fetching background data:", error);
+      // Silent error for background tasks
     }
   };
 
@@ -322,7 +339,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       await supabase.from('registrations').delete().eq('id', regId);
       
-      fetchData(); 
+      // Refresh user data (background)
+      const { data: newUsers } = await supabase.from('users').select('*');
+      const { data: newRegs } = await supabase.from('registrations').select('*').order('id', { ascending: false });
+      
+      setState(prev => ({ 
+          ...prev, 
+          users: newUsers || prev.users, 
+          registrations: newRegs || [] 
+      }));
+      
       showToast(`Anggota ${candidate.name} resmi diterima. NIA: ${nia}`, 'success');
     } catch (error) {
       console.error(error);
@@ -404,7 +430,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         radius: rad || 100
       }]);
       if (error) throw error;
-      fetchData(); 
+      refreshSessions();
       showToast('Sesi absensi baru berhasil dibuat & dibuka', 'success');
     } catch (error) {
       showToast("Gagal membuat sesi", "error");
@@ -579,7 +605,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         title: newsData.title, excerpt: newsData.excerpt, content: newsData.content, date: newsData.date, image_url: newsData.imageUrl
       }]);
       if (error) throw error;
-      fetchData(); showToast('Berita berhasil dipublikasikan', 'success');
+      refreshNews(); showToast('Berita berhasil dipublikasikan', 'success');
     } catch (error) { showToast("Gagal mempublish berita", "error"); }
   };
 
@@ -589,7 +615,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (newsData.imageUrl) updates.image_url = newsData.imageUrl;
       const { error } = await supabase.from('news').update(updates).eq('id', id);
       if (error) throw error;
-      fetchData(); showToast('Berita berhasil diperbarui', 'success');
+      refreshNews(); showToast('Berita berhasil diperbarui', 'success');
     } catch (error) { showToast("Gagal memperbarui berita", "error"); }
   };
 
@@ -606,7 +632,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const { error } = await supabase.from('gallery').insert([{ type: item.type, url: item.url, caption: item.caption }]);
       if (error) throw error;
-      fetchData(); showToast('Foto berhasil ditambahkan ke galeri', 'success');
+      
+      // refresh gallery
+      const { data } = await supabase.from('gallery').select('*').order('id', { ascending: false });
+      setState(prev => ({ ...prev, gallery: data || [] }));
+      
+      showToast('Foto berhasil ditambahkan ke galeri', 'success');
     } catch (error) { showToast("Gagal menambahkan foto ke galeri", "error"); }
   };
 
@@ -623,7 +654,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const { error } = await supabase.from('sliders').insert([{ image_url: item.imageUrl, title: item.title, description: item.description }]);
       if (error) throw error;
-      fetchData(); showToast('Slider berhasil ditambahkan', 'success');
+      
+      // Refresh slider
+      const { data } = await supabase.from('sliders').select('*').order('id', { ascending: true });
+      const mapped = (data || []).map((s: any) => ({
+        id: s.id,
+        imageUrl: s.image_url,
+        title: s.title,
+        description: s.description
+      }));
+      setState(prev => ({ ...prev, sliders: mapped }));
+
+      showToast('Slider berhasil ditambahkan', 'success');
     } catch (error) { showToast("Gagal menambahkan slider", "error"); }
   };
 
@@ -640,7 +682,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const { error } = await supabase.from('media_posts').insert([{ type: post.type, url: post.url, embed_url: post.embedUrl, caption: post.caption }]);
       if (error) throw error;
-      fetchData(); showToast('Media berhasil ditambahkan', 'success');
+      
+      // refresh media
+      const { data } = await supabase.from('media_posts').select('*').order('id', { ascending: false });
+      const mapped = (data || []).map((m: any) => ({
+        ...m,
+        embedUrl: m.embed_url,
+        createdAt: m.created_at
+      }));
+      setState(prev => ({ ...prev, mediaPosts: mapped }));
+
+      showToast('Media berhasil ditambahkan', 'success');
     } catch (error) { showToast("Gagal menambahkan media", "error"); }
   };
 
@@ -677,7 +729,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
          error = err;
        }
        if (error) throw error;
-       fetchData(); showToast("Data profil berhasil disimpan", "success");
+       
+       // refresh profile
+       const { data } = await supabase.from('profile_pages').select('*');
+       setState(prev => ({ ...prev, profilePages: (data as ProfilePage[]) || [] }));
+       
+       showToast("Data profil berhasil disimpan", "success");
     } catch(err) { console.error(err); showToast("Gagal menyimpan profil", "error"); }
   };
 
@@ -685,7 +742,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const { error } = await supabase.from('korwils').insert([{ name }]);
       if (error) throw error;
-      fetchData(); showToast("Korwil berhasil ditambahkan", "success");
+      
+      const { data } = await supabase.from('korwils').select('*').order('name', { ascending: true });
+      setState(prev => ({ ...prev, korwils: (data as Korwil[]) || [] }));
+      
+      showToast("Korwil berhasil ditambahkan", "success");
     } catch (error) { showToast("Gagal menambahkan korwil", "error"); }
   };
 
