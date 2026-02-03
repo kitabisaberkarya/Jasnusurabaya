@@ -9,7 +9,7 @@ import {
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
   User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon, Lock, LayoutTemplate, ArrowLeft, Clock,
-  LayoutDashboard, CheckCircle2, Map, CreditCard, MonitorPlay, HelpCircle
+  LayoutDashboard, CheckCircle2, Map, CreditCard, MonitorPlay, HelpCircle, ShieldAlert
 } from 'lucide-react';
 import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord, User, UserRole } from '../types';
 import XLSX from 'xlsx-js-style';
@@ -49,7 +49,8 @@ export const AdminDashboard: React.FC = () => {
   // Member Management State
   const [memberSearch, setMemberSearch] = useState('');
   const [editingMember, setEditingMember] = useState<User | null>(null);
-  const [editMemberForm, setEditMemberForm] = useState({ name: '', nik: '', email: '', phone: '', address: '', wilayah: '' });
+  // Added 'role' to the form state
+  const [editMemberForm, setEditMemberForm] = useState({ name: '', nik: '', email: '', phone: '', address: '', wilayah: '', role: '' });
   const [isCustomWilayahEdit, setIsCustomWilayahEdit] = useState(false);
 
   // Member Delete & Reset Password State
@@ -257,8 +258,13 @@ export const AdminDashboard: React.FC = () => {
   const handleEditMember = (member: User) => {
     setEditingMember(member);
     setEditMemberForm({
-        name: member.name, nik: member.nik || '', email: member.email,
-        phone: member.phone || '', address: member.address || '', wilayah: member.wilayah || ''
+        name: member.name, 
+        nik: member.nik || '', 
+        email: member.email,
+        phone: member.phone || '', 
+        address: member.address || '', 
+        wilayah: member.wilayah || '',
+        role: member.role || 'member' // Populate current role
     });
     setIsCustomWilayahEdit(!korwils.some(k => k.name === member.wilayah));
   };
@@ -266,7 +272,15 @@ export const AdminDashboard: React.FC = () => {
   const handleUpdateMemberSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingMember) {
-        updateMember(editingMember.id, editMemberForm);
+        // Prepare data including role
+        const updateData: any = { ...editMemberForm };
+        
+        // If Role is Pengurus, usually Wilayah is 'Pusat' or inherited
+        if (updateData.role === 'pengurus' && !updateData.wilayah) {
+            updateData.wilayah = 'Pusat';
+        }
+
+        updateMember(editingMember.id, updateData);
         setEditingMember(null);
     }
   };
@@ -483,17 +497,30 @@ export const AdminDashboard: React.FC = () => {
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-white text-neutral-500 text-xs uppercase font-bold border-b border-neutral-100">
-                                <tr><th className="px-6 py-4">Nama</th><th className="px-6 py-4">NIA</th><th className="px-6 py-4">Wilayah</th><th className="px-6 py-4 text-right">Aksi</th></tr>
+                                <tr><th className="px-6 py-4">Nama</th><th className="px-6 py-4">Role</th><th className="px-6 py-4">Wilayah</th><th className="px-6 py-4 text-right">Aksi</th></tr>
                             </thead>
                             <tbody className="divide-y divide-neutral-50">
-                                {users.filter(u => u.role === UserRole.MEMBER && u.name.toLowerCase().includes(memberSearch.toLowerCase())).map(u => (
+                                {users.filter(u => u.name.toLowerCase().includes(memberSearch.toLowerCase())).map(u => (
                                     <tr key={u.id} className="hover:bg-neutral-50">
-                                        <td className="px-6 py-4 font-bold text-neutral-800">{u.name}</td>
-                                        <td className="px-6 py-4 font-mono text-xs">{u.nia}</td>
+                                        <td className="px-6 py-4 font-bold text-neutral-800">
+                                            {u.name}
+                                            <div className="text-xs text-neutral-400 font-mono font-normal">{u.nia}</div>
+                                        </td>
+                                        <td className="px-6 py-4 font-mono text-xs">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                                                u.role === 'admin' ? 'bg-neutral-800 text-white' : 
+                                                u.role === 'korwil' ? 'bg-blue-100 text-blue-700' :
+                                                u.role === 'pengurus' ? 'bg-secondary-100 text-secondary-700' :
+                                                'bg-neutral-100 text-neutral-600'
+                                            }`}>
+                                                {u.role}
+                                            </span>
+                                        </td>
                                         <td className="px-6 py-4 text-xs">{u.wilayah}</td>
                                         <td className="px-6 py-4 text-right flex justify-end gap-2">
                                             {isSuperAdmin && (
                                                 <>
+                                                    <button onClick={() => handleEditMember(u)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Edit / Ganti Role"><Edit3 size={16}/></button>
                                                     <button onClick={() => resetMemberPassword(u.id)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Reset Password"><Key size={16}/></button>
                                                     <button onClick={() => handleDeleteMember(u.id, u.name)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Hapus"><Trash2 size={16}/></button>
                                                 </>
@@ -899,6 +926,73 @@ export const AdminDashboard: React.FC = () => {
                          <div className="flex justify-between items-center">
                              <button type="button" onClick={() => handleGetCurrentLocation(true)} className="text-xs text-emerald-600 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded"><MapPin size={12}/> Ambil Lokasi Saya</button>
                              <button type="submit" className="bg-secondary-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-secondary-600">Simpan</button>
+                         </div>
+                      </form>
+                   </div>
+                </div>
+            )}
+
+            {/* EDIT MEMBER MODAL (NEW) */}
+            {editingMember && (
+                <div className="fixed inset-0 z-[99] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                   <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in">
+                      <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50"><h3 className="font-bold text-lg">Edit Data Anggota</h3><button onClick={() => setEditingMember(null)}><X size={20}/></button></div>
+                      <form onSubmit={handleUpdateMemberSubmit} className="p-6 space-y-4">
+                         
+                         <div className="bg-amber-50 p-3 rounded-lg border border-amber-100 mb-4">
+                             <label className="block text-xs uppercase font-bold text-amber-700 mb-2">Role / Hak Akses</label>
+                             <select 
+                                className="w-full border-2 border-amber-200 rounded-lg p-2 font-bold text-neutral-800 focus:border-amber-500 outline-none"
+                                value={editMemberForm.role}
+                                onChange={e => setEditMemberForm({...editMemberForm, role: e.target.value})}
+                             >
+                                 <option value="member">Member (Anggota Biasa)</option>
+                                 <option value="korwil">Admin Korwil (Koordinator)</option>
+                                 <option value="pengurus">Pengurus Pusat</option>
+                                 {isSuperAdmin && <option value="admin">Super Admin</option>}
+                             </select>
+                             <p className="text-[10px] text-amber-600 mt-2">
+                                * <strong>Korwil:</strong> Bisa verifikasi anggota baru.<br/>
+                                * <strong>Pengurus:</strong> Bisa terbit NIA & buka absensi.
+                             </p>
+                         </div>
+
+                         <div>
+                            <label className="text-xs font-bold text-neutral-500">Nama Lengkap</label>
+                            <input type="text" className="w-full border rounded-lg p-2" value={editMemberForm.name} onChange={e => setEditMemberForm({...editMemberForm, name: e.target.value})} required />
+                         </div>
+                         <div className="grid grid-cols-2 gap-4">
+                             <div>
+                                <label className="text-xs font-bold text-neutral-500">NIK</label>
+                                <input type="text" className="w-full border rounded-lg p-2" value={editMemberForm.nik} onChange={e => setEditMemberForm({...editMemberForm, nik: e.target.value})} />
+                             </div>
+                             <div>
+                                <label className="text-xs font-bold text-neutral-500">No. HP</label>
+                                <input type="text" className="w-full border rounded-lg p-2" value={editMemberForm.phone} onChange={e => setEditMemberForm({...editMemberForm, phone: e.target.value})} />
+                             </div>
+                         </div>
+                         <div>
+                            <label className="text-xs font-bold text-neutral-500">Alamat</label>
+                            <input type="text" className="w-full border rounded-lg p-2" value={editMemberForm.address} onChange={e => setEditMemberForm({...editMemberForm, address: e.target.value})} />
+                         </div>
+                         <div>
+                             <label className="text-xs font-bold text-neutral-500">Wilayah / Korwil</label>
+                             {isCustomWilayahEdit ? (
+                                <input type="text" className="w-full border rounded-lg p-2" value={editMemberForm.wilayah} onChange={e => setEditMemberForm({...editMemberForm, wilayah: e.target.value})} placeholder="Ketik manual..." />
+                             ) : (
+                                <select className="w-full border rounded-lg p-2" value={editMemberForm.wilayah} onChange={e => {
+                                    if(e.target.value === 'MANUAL') setIsCustomWilayahEdit(true);
+                                    else setEditMemberForm({...editMemberForm, wilayah: e.target.value});
+                                }}>
+                                    {korwils.map(k => <option key={k.id} value={k.name}>{k.name}</option>)}
+                                    <option value="Pusat">Pusat</option>
+                                    <option value="MANUAL">+ Ketik Manual</option>
+                                </select>
+                             )}
+                         </div>
+
+                         <div className="flex justify-end pt-4 border-t border-neutral-100">
+                             <button type="submit" className="bg-primary-700 text-white px-6 py-2 rounded-lg font-bold hover:bg-primary-800 shadow-lg">Simpan Perubahan</button>
                          </div>
                       </form>
                    </div>
