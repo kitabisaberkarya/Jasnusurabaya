@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -41,21 +42,21 @@ const AppContent: React.FC = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
-        {/* Protected Admin Routes */}
+        {/* Protected Admin Routes (Accessible by Super Admin, Korwil, Pengurus) */}
         <Route 
           path="/admin" 
           element={
-            <ProtectedRoute roles={[UserRole.ADMIN]}>
+            <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN_KORWIL, UserRole.ADMIN_PENGURUS]}>
               <AdminDashboard />
             </ProtectedRoute>
           } 
         />
 
-        {/* Protected Member Routes */}
+        {/* Protected Member Routes (Accessible by Member & Super Admin) */}
         <Route 
           path="/member" 
           element={
-            <ProtectedRoute roles={[UserRole.MEMBER, UserRole.ADMIN]}>
+            <ProtectedRoute roles={[UserRole.MEMBER, UserRole.SUPER_ADMIN]}>
               <MemberArea />
             </ProtectedRoute>
           } 

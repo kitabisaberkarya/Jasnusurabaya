@@ -1,12 +1,15 @@
 
 export enum UserRole {
-  ADMIN = 'admin',
+  SUPER_ADMIN = 'admin',       // Legacy 'admin' is now Super Admin
+  ADMIN_KORWIL = 'korwil',     // New Role
+  ADMIN_PENGURUS = 'pengurus', // New Role
   MEMBER = 'member'
 }
 
 export enum MemberStatus {
   PENDING = 'pending',
-  ACTIVE = 'active',
+  VERIFIED_KORWIL = 'verified_korwil', // Tahap 1 Approval
+  ACTIVE = 'active',                   // Tahap 2 Approval (Final)
   REJECTED = 'rejected'
 }
 
@@ -79,7 +82,11 @@ export interface AttendanceSession {
   name: string;
   date: string;
   isOpen: boolean;
-  attendees: number[]; // Array of User IDs (for backward compatibility/quick count)
+  attendees: number[]; 
+  // Geofencing fields
+  latitude?: number;
+  longitude?: number;
+  radius?: number; // in meters
 }
 
 export interface AttendanceRecord {
@@ -133,16 +140,23 @@ export interface AppContextType extends AppState {
   login: (identifier: string, password: string) => Promise<User | null>;
   logout: () => void;
   register: (data: RegistrationInput) => void;
-  approveMember: (registrationId: number) => void;
+  
+  // Approval Workflow
+  verifyMemberByKorwil: (registrationId: number) => void;
+  approveMemberFinal: (registrationId: number) => void;
   rejectMember: (registrationId: number) => void;
-  updateMember: (userId: number, data: Partial<User>) => void; // New Action
+  
+  updateMember: (userId: number, data: Partial<User>) => void; 
   deleteMember: (userId: number) => void;
   resetMemberPassword: (userId: number) => void;
-  createSession: (name: string) => void;
-  updateSession: (sessionId: number, name: string) => void; 
+  
+  // Session with Geo
+  createSession: (name: string, lat?: number, lng?: number, rad?: number) => void;
+  updateSession: (sessionId: number, name: string, lat?: number, lng?: number, rad?: number) => void; 
   deleteSession: (sessionId: number) => void; 
   toggleSession: (sessionId: number) => void;
-  markAttendance: (sessionId: number, userId: number, photoUrl: string, location: string) => Promise<boolean>;
+  
+  markAttendance: (sessionId: number, userId: number, photoUrl: string, location: string, distance?: number) => Promise<boolean>;
   updateAttendanceRecord: (recordId: string, data: Partial<AttendanceRecord>) => void;
   deleteAttendanceRecord: (recordId: string, sessionId: number, userId: number) => void;
   

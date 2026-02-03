@@ -55,7 +55,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const mappedSessions = (sessions || []).map((s: any) => ({
         ...s,
         isOpen: s.is_open,
-        attendees: Array.isArray(s.attendees) ? s.attendees : []
+        attendees: Array.isArray(s.attendees) ? s.attendees : [],
+        latitude: s.latitude,
+        longitude: s.longitude,
+        radius: s.radius
       }));
 
       const mappedConfig = config ? {
@@ -133,12 +136,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleanId = identifier.trim();
     const cleanPass = password.trim();
 
+    // 1. Super Admin Hardcoded (Fallback)
     if (cleanId.toLowerCase() === 'jasnu.nariyahsurabaya@gmail.com' && cleanPass === 'JasnuNariyahSurabaya1926') {
       const masterAdmin: User = {
         id: 999999,
-        name: 'Administrator JSN',
+        name: 'Administrator JSN (Super)',
         email: 'jasnu.nariyahsurabaya@gmail.com',
-        role: UserRole.ADMIN,
+        role: UserRole.SUPER_ADMIN,
         status: MemberStatus.ACTIVE,
         nia: 'ADMIN-MASTER',
         password: cleanPass,
@@ -151,6 +155,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
+      // 2. Check Database for Users (Members, Korwil, Pengurus)
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -160,9 +165,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (error || !data) return null;
 
-      setState(prev => ({ ...prev, currentUser: data }));
-      showToast(`Ahlan wa sahlan, ${data.name}`, 'success');
-      return data;
+      const user = data as User;
+      
+      // Role Mapping from DB Text to Enum
+      // Assuming DB has 'admin', 'korwil', 'pengurus', 'member' stored as text
+      // Force correct role assignment based on DB value
+      const userRole = 
+         user.role === 'admin' ? UserRole.SUPER_ADMIN :
+         user.role === 'korwil' ? UserRole.ADMIN_KORWIL :
+         user.role === 'pengurus' ? UserRole.ADMIN_PENGURUS :
+         UserRole.MEMBER;
+
+      const loggedInUser = { ...user, role: userRole };
+
+      setState(prev => ({ ...prev, currentUser: loggedInUser }));
+      
+      if (userRole === UserRole.ADMIN_KORWIL) showToast(`Login Admin Korwil: ${data.name}`, 'success');
+      else if (userRole === UserRole.ADMIN_PENGURUS) showToast(`Login Pengurus Pusat: ${data.name}`, 'success');
+      else showToast(`Ahlan wa sahlan, ${data.name}`, 'success');
+      
+      return loggedInUser;
     } catch (err) {
       console.error(err);
       return null;
@@ -191,7 +213,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const approveMember = async (regId: number) => {
+  // STEP 1 APPROVAL: KORWIL
+  const verifyMemberByKorwil = async (regId: number) => {
+     try {
+        const { error } = await supabase
+          .from('registrations')
+          .update({ status: MemberStatus.VERIFIED_KORWIL })
+          .eq('id', regId);
+        
+        if (error) throw error;
+
+        setState(prev => ({
+          ...prev,
+          registrations: prev.registrations.map(r => r.id === regId ? { ...r, status: MemberStatus.VERIFIED_KORWIL } : r)
+        }));
+
+        showToast("Anggota berhasil diverifikasi oleh Korwil. Menunggu approval Pengurus.", "success");
+     } catch (error) {
+        showToast("Gagal verifikasi korwil", "error");
+     }
+  };
+
+  // STEP 2 APPROVAL: PENGURUS (FINAL) - OLD approveMember logic
+  const approveMemberFinal = async (regId: number) => {
     const candidate = state.registrations.find(r => r.id === regId);
     if (!candidate) return;
 
@@ -215,12 +259,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }]);
 
       if (insertError) throw insertError;
+      
+      // Delete from registrations after moving to users
       await supabase.from('registrations').delete().eq('id', regId);
-      fetchData();
+      
+      fetchData(); // Refresh all data
       showToast(`Anggota ${candidate.name} resmi diterima. NIA: ${nia}`, 'success');
     } catch (error) {
       console.error(error);
-      showToast("Gagal memproses approval", "error");
+      showToast("Gagal memproses approval final", "error");
     }
   };
 
@@ -236,7 +283,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateMember = async (userId: number, data: Partial<User>) => {
     try {
-      // Filter out fields that shouldn't be updated loosely or map them correctly
       const updates: any = {};
       if (data.name) updates.name = data.name;
       if (data.nik) updates.nik = data.nik;
@@ -244,6 +290,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.address) updates.address = data.address;
       if (data.wilayah) updates.wilayah = data.wilayah;
       if (data.email) updates.email = data.email;
+      if (data.role) updates.role = data.role; // Allow role updates
 
       const { error } = await supabase.from('users').update(updates).eq('id', userId);
       if (error) throw error;
@@ -262,7 +309,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteMember = async (userId: number) => {
     try {
       await supabase.from('attendance_records').delete().eq('user_id', userId);
-      
       const { error } = await supabase.from('users').delete().eq('id', userId);
       if (error) throw error;
       
@@ -286,34 +332,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const createSession = async (name: string) => {
+  // SESSION MANAGEMENT WITH GEO
+  const createSession = async (name: string, lat?: number, lng?: number, rad?: number) => {
     try {
       const { error } = await supabase.from('attendance_sessions').insert([{
         name,
         date: new Date().toISOString().split('T')[0],
         is_open: true,
-        attendees: []
+        attendees: [],
+        latitude: lat || null,
+        longitude: lng || null,
+        radius: rad || 100 // Default 100 meters
       }]);
       if (error) throw error;
-      fetchData(); // Refresh to ensure we get proper ID
+      fetchData(); 
       showToast('Sesi absensi baru berhasil dibuat & dibuka', 'success');
     } catch (error) {
       showToast("Gagal membuat sesi", "error");
     }
   };
 
-  const updateSession = async (sessionId: number, name: string) => {
+  const updateSession = async (sessionId: number, name: string, lat?: number, lng?: number, rad?: number) => {
     try {
+      const updates: any = { name };
+      if (lat !== undefined) updates.latitude = lat;
+      if (lng !== undefined) updates.longitude = lng;
+      if (rad !== undefined) updates.radius = rad;
+
       const { error } = await supabase
         .from('attendance_sessions')
-        .update({ name })
+        .update(updates)
         .eq('id', sessionId);
 
       if (error) throw error;
       
       setState(prev => ({
         ...prev,
-        attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, name } : s)
+        attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, name, latitude: lat, longitude: lng, radius: rad } : s)
       }));
       showToast("Data sesi berhasil diperbarui", "success");
     } catch (error) {
@@ -324,10 +379,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteSession = async (sessionId: number) => {
     try {
-      // 1. Delete associated records first (Manual Cascade for safety)
       await supabase.from('attendance_records').delete().eq('session_id', sessionId);
-
-      // 2. Delete the session
       const { error } = await supabase.from('attendance_sessions').delete().eq('id', sessionId);
       if (error) throw error;
 
@@ -359,18 +411,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ...prev,
         attendanceSessions: prev.attendanceSessions.map(s => s.id === sessionId ? { ...s, isOpen: newStatus } : s)
       }));
-      
     } catch (error) {
       console.error(error);
       showToast("Gagal mengubah status sesi", "error");
     }
   };
 
-  const markAttendance = async (sessionId: number, userId: number, photoUrl: string, location: string): Promise<boolean> => {
+  const markAttendance = async (sessionId: number, userId: number, photoUrl: string, location: string, distance?: number): Promise<boolean> => {
     const session = state.attendanceSessions.find(s => s.id === sessionId);
     const user = state.users.find(u => u.id === userId) || (state.currentUser?.id === userId ? state.currentUser : null);
     
     if (!session || !session.isOpen || !user) return false;
+    
+    // Check if session has geofencing
+    if (session.latitude && session.longitude && session.radius && distance !== undefined) {
+       if (distance > session.radius) {
+          showToast(`Gagal Absen: Lokasi Anda terlalu jauh (${Math.round(distance)}m). Maksimal ${session.radius}m dari lokasi majelis.`, 'error');
+          return false;
+       }
+    }
+
     if (session.attendees.includes(userId)) return false;
 
     const recordId = `ATT-${Date.now()}-${userId}`;
@@ -404,7 +464,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // NEW: Update Attendance Record
   const updateAttendanceRecord = async (recordId: string, data: Partial<AttendanceRecord>) => {
     try {
       const updates: any = {};
@@ -426,14 +485,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // NEW: Delete Attendance Record
   const deleteAttendanceRecord = async (recordId: string, sessionId: number, userId: number) => {
     try {
-      // 1. Delete Record
       const { error } = await supabase.from('attendance_records').delete().eq('id', recordId);
       if (error) throw error;
 
-      // 2. Remove user from session attendees list to allow re-attendance if needed
       const session = state.attendanceSessions.find(s => s.id === sessionId);
       if (session) {
         const newAttendees = session.attendees.filter(id => id !== userId);
@@ -458,6 +514,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // News, Gallery, Slider, Media, Config, etc. (Existing implementations unchanged for brevity but included in scope)
   const addNews = async (newsData: Omit<NewsItem, 'id'>) => {
     try {
       const { error } = await supabase.from('news').insert([{
@@ -482,14 +539,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         excerpt: newsData.excerpt,
         content: newsData.content,
       };
-      
-      if (newsData.imageUrl) {
-        updates.image_url = newsData.imageUrl;
-      }
-
+      if (newsData.imageUrl) updates.image_url = newsData.imageUrl;
       const { error } = await supabase.from('news').update(updates).eq('id', id);
       if (error) throw error;
-      
       fetchData();
       showToast('Berita berhasil diperbarui', 'success');
     } catch (error) {
@@ -508,7 +560,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Gallery Functions
   const addGalleryItem = async (item: Omit<GalleryItem, 'id'>) => {
     try {
       const { error } = await supabase.from('gallery').insert([{
@@ -520,7 +571,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fetchData(); 
       showToast('Foto berhasil ditambahkan ke galeri', 'success');
     } catch (error) {
-      console.error(error);
       showToast("Gagal menambahkan foto ke galeri", "error");
     }
   };
@@ -532,12 +582,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setState(prev => ({ ...prev, gallery: prev.gallery.filter(g => g.id !== id) }));
       showToast('Foto berhasil dihapus', 'success');
     } catch (error) {
-      console.error(error);
       showToast("Gagal menghapus foto", "error");
     }
   };
 
-  // Slider Functions
   const addSliderItem = async (item: Omit<SliderItem, 'id'>) => {
     try {
       const { error } = await supabase.from('sliders').insert([{
@@ -549,7 +597,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fetchData(); 
       showToast('Slider berhasil ditambahkan', 'success');
     } catch (error) {
-      console.error(error);
       showToast("Gagal menambahkan slider", "error");
     }
   };
@@ -561,7 +608,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setState(prev => ({ ...prev, sliders: prev.sliders.filter(s => s.id !== id) }));
       showToast('Slider berhasil dihapus', 'success');
     } catch (error) {
-      console.error(error);
       showToast("Gagal menghapus slider", "error");
     }
   };
@@ -663,7 +709,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <AppContext.Provider value={{ ...state, login, logout, register, approveMember, rejectMember, updateMember, deleteMember, resetMemberPassword, createSession, updateSession, deleteSession, toggleSession, markAttendance, updateAttendanceRecord, deleteAttendanceRecord, addNews, updateNews, deleteNews, addGalleryItem, deleteGalleryItem, addSliderItem, deleteSliderItem, addMediaPost, deleteMediaPost, updateSiteConfig, updateProfilePage, addKorwil, deleteKorwil, restoreData, showToast, removeToast, refreshData: fetchData, isLoading }}>
+    <AppContext.Provider value={{ 
+      ...state, 
+      login, logout, register, 
+      verifyMemberByKorwil, approveMemberFinal, rejectMember, 
+      updateMember, deleteMember, resetMemberPassword, 
+      createSession, updateSession, deleteSession, toggleSession, markAttendance, updateAttendanceRecord, deleteAttendanceRecord, 
+      addNews, updateNews, deleteNews, 
+      addGalleryItem, deleteGalleryItem, 
+      addSliderItem, deleteSliderItem, 
+      addMediaPost, deleteMediaPost, 
+      updateSiteConfig, updateProfilePage, 
+      addKorwil, deleteKorwil, 
+      restoreData, showToast, removeToast, refreshData: fetchData, isLoading 
+    }}>
       {children}
     </AppContext.Provider>
   );
