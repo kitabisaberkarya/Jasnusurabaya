@@ -20,11 +20,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Initial Data Fetch from Supabase
   useEffect(() => {
+    // CACHE STRATEGY: Load config from LocalStorage immediately for instant UI
+    const cachedConfig = localStorage.getItem('jsn_site_config');
+    if (cachedConfig) {
+      try {
+        const parsedConfig = JSON.parse(cachedConfig);
+        setState(prev => ({ ...prev, siteConfig: parsedConfig }));
+        // If we have cache, we don't need to show a loading spinner for the basic UI
+        setIsLoading(false); 
+      } catch (e) {
+        console.error("Cache parse error", e);
+      }
+    }
+
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    setIsLoading(true);
+    // Only block UI with loading state if we didn't have a cache
+    if (!localStorage.getItem('jsn_site_config')) {
+        setIsLoading(true);
+    }
+    
     try {
       const [
         { data: users }, 
@@ -70,6 +87,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         phone: config.phone,
         logoUrl: config.logo_url
       } : MOCK_INITIAL_STATE.siteConfig;
+
+      // CACHE: Save fresh config to local storage
+      localStorage.setItem('jsn_site_config', JSON.stringify(mappedConfig));
 
       const mappedNews = (news || []).map((n: any) => ({
         ...n,
@@ -652,6 +672,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }).gt('id', 0);
       if (error) throw error;
       setState(prev => ({ ...prev, siteConfig: config }));
+      // Update cache
+      localStorage.setItem('jsn_site_config', JSON.stringify(config));
       showToast('Pengaturan website berhasil diperbarui', 'success');
     } catch (error) {
       showToast("Gagal menyimpan konfigurasi", "error");
