@@ -37,7 +37,7 @@ Kami mengubah alur pendaftaran dari Sederhana menjadi Berjenjang untuk validitas
 - Logika backend untuk mencegah bypass alur.
 
 *C. Geofencing Attendance (Absensi Radius) (Tingkat Kesulitan: MENENGAH - TINGGI)*
-Fitur ini mencegah kecurangan absensi.
+Fitur ini mencegah kecurangan absensi..
 
 1. *Validasi Jarak (Haversine Formula)*:
    - Sistem menghitung jarak real-time antara GPS HP Anggota dengan Lokasi Majelis.
