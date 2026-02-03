@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -7,7 +8,7 @@ import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, logout, toasts, removeToast, siteConfig } = useApp();
+  const { currentUser, logout, toasts, removeToast, siteConfig, isLoading } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [isProfileHovered, setIsProfileHovered] = useState(false);
@@ -55,7 +56,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               layout
               className="pointer-events-auto min-w-[300px] md:min-w-[320px] bg-white/90 backdrop-blur-md border border-white/40 shadow-xl rounded-2xl p-4 flex items-start gap-3 overflow-hidden relative group"
             >
-              {/* Status Indicator Line */}
               <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
                 toast.type === 'success' ? 'bg-emerald-500' : 
                 toast.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
@@ -91,7 +91,42 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       </div>
   );
 
-  // IF ADMIN ROUTE: Render ONLY content + toasts (No Navbar/Footer)
+  // SKELETON NAVBAR (Shown when isLoading is true or data is empty)
+  // This prevents showing old data. It shows a professional "loading" state.
+  if (isLoading || !siteConfig.appName) {
+     if (isAdminRoute) return <>{children}</>; // Don't block admin route
+
+     return (
+        <div className="min-h-screen flex flex-col font-sans bg-neutral-50 relative">
+           <nav className="sticky top-0 z-40 bg-white border-b border-neutral-200/50 shadow-sm h-24 flex items-center">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex justify-between items-center">
+                 <div className="flex items-center gap-4 animate-pulse">
+                    <div className="w-16 h-16 rounded-full bg-neutral-200"></div>
+                    <div className="flex flex-col gap-2">
+                       <div className="h-6 w-48 bg-neutral-200 rounded"></div>
+                       <div className="h-3 w-24 bg-neutral-200 rounded"></div>
+                    </div>
+                 </div>
+                 <div className="hidden lg:flex gap-8 items-center animate-pulse">
+                    <div className="h-4 w-16 bg-neutral-200 rounded"></div>
+                    <div className="h-4 w-16 bg-neutral-200 rounded"></div>
+                    <div className="h-4 w-16 bg-neutral-200 rounded"></div>
+                    <div className="h-4 w-16 bg-neutral-200 rounded"></div>
+                    <div className="h-10 w-24 bg-neutral-200 rounded-full"></div>
+                 </div>
+              </div>
+           </nav>
+           <main className="flex-grow flex items-center justify-center">
+              <div className="animate-pulse flex flex-col items-center">
+                 <div className="h-8 w-64 bg-neutral-200 rounded mb-4"></div>
+                 <div className="h-4 w-48 bg-neutral-200 rounded"></div>
+              </div>
+           </main>
+        </div>
+     );
+  }
+
+  // IF ADMIN ROUTE: Render ONLY content + toasts
   if (isAdminRoute) {
     return (
       <>
@@ -105,32 +140,28 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <div className="min-h-screen flex flex-col font-sans text-neutral-900 bg-neutral-50 relative pb-24 md:pb-0">
       
-      {/* Toast Container - Modern 2026 Style */}
       <ToastContainer />
 
-      {/* Navbar (Desktop & Tablet Top View - Simplified for Mobile) */}
+      {/* Navbar */}
       <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-neutral-200/50 shadow-sm transition-all duration-300 supports-[backdrop-filter]:bg-white/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 md:h-24 items-center">
-            {/* Logo & Branding */}
             <Link to="/" className="flex items-center gap-3 md:gap-4 group">
-               {/* Show smaller logo on mobile header, full on desktop */}
                <div className="relative md:block hidden">
                  <div className="absolute inset-0 bg-secondary-400 rounded-full blur opacity-20 group-hover:opacity-40 transition duration-500 animate-pulse"></div>
                  <img 
-                   src={siteConfig.logoUrl} 
+                   src={siteConfig.logoUrl || "https://placehold.co/400x400/064e3b/ffffff?text=JSN"} 
                    alt="Logo" 
                    className="relative w-12 h-12 md:w-16 md:h-16 rounded-full object-cover shadow-lg border-2 border-white ring-2 ring-primary-50 group-hover:scale-105 transition duration-300" 
                  />
                </div>
-               {/* Mobile text-only branding since logo is at bottom */}
                <div className="block">
                  <h1 className="text-xl md:text-2xl font-bold font-serif text-primary-900 leading-none tracking-tight">{siteConfig.appName}</h1>
                  <p className="text-[10px] md:text-xs text-secondary-600 tracking-[0.2em] font-medium mt-1">{siteConfig.orgName}</p>
                </div>
             </Link>
 
-            {/* Desktop Menu (Hidden on Mobile/Tablet Portrait) */}
+            {/* Desktop Menu */}
             <div className="hidden lg:flex space-x-8 items-center">
               <Link to="/" className={getLinkClass('/')}>Beranda</Link>
               
@@ -144,18 +175,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   Profil <ChevronDown size={14} className={`transform transition-transform duration-200 ${isProfileHovered ? 'rotate-180' : ''}`} />
                 </button>
                 <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-neutral-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-left z-50">
-                  <Link to="/profile/sejarah" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">
-                    Sejarah
-                  </Link>
-                  <Link to="/profile/pengurus" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">
-                    Susunan Pengurus
-                  </Link>
-                  <Link to="/profile/korwil" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">
-                    Daftar Korwil
-                  </Link>
-                   <Link to="/profile/amaliyah" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition border-t border-neutral-100 mt-1">
-                    Amaliyah Rutin
-                  </Link>
+                  <Link to="/profile/sejarah" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">Sejarah</Link>
+                  <Link to="/profile/pengurus" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">Susunan Pengurus</Link>
+                  <Link to="/profile/korwil" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition">Daftar Korwil</Link>
+                   <Link to="/profile/amaliyah" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 transition border-t border-neutral-100 mt-1">Amaliyah Rutin</Link>
                 </div>
               </div>
 
@@ -171,7 +194,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                      <span className="text-[10px] uppercase tracking-wider text-secondary-600 font-bold bg-secondary-50 px-2 py-0.5 rounded-full">{currentUser.role}</span>
                   </div>
                   
-                  {currentUser.role === UserRole.ADMIN ? (
+                  {currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.ADMIN_KORWIL || currentUser.role === UserRole.ADMIN_PENGURUS ? (
                      <Link to="/admin" className="p-2.5 bg-primary-50 text-primary-700 rounded-xl hover:bg-primary-100 hover:scale-105 transition-all shadow-sm" title="Dashboard">
                         <LayoutDashboard size={20} />
                      </Link>
@@ -203,19 +226,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {children}
       </main>
 
-      {/* MOBILE & TABLET BOTTOM NAVIGATION (Visible on lg and below) */}
+      {/* MOBILE & TABLET BOTTOM NAVIGATION */}
       <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
-        {/* Curved shape background could be complex, using a clean floating island approach instead */}
         <div className="bg-white/95 backdrop-blur-xl border-t border-neutral-200 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] pb-safe">
           <div className="flex justify-between items-center px-2 h-20 relative max-w-lg mx-auto">
-            
-            {/* Left Group */}
             <div className="flex-1 flex justify-around">
                <MobileNavItem to="/news" icon={Newspaper} label="Berita" />
                <MobileNavItem to="/media" icon={PlayCircle} label="Media" />
             </div>
 
-            {/* CENTER FLOATING LOGO (HOME) */}
             <div className="relative -top-8 mx-2 z-10">
                <Link to="/">
                  <motion.div 
@@ -223,23 +242,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                    className={`rounded-full p-1.5 shadow-[0_8px_25px_rgba(4,120,87,0.3)] transition-all duration-300 ${isActive('/') ? 'bg-gradient-to-tr from-secondary-500 to-secondary-600 scale-110' : 'bg-white'}`}
                  >
                    <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-white bg-primary-900 relative">
-                      <img src={siteConfig.logoUrl} alt="Home" className="w-full h-full object-cover" />
-                      {/* Shine effect */}
+                      <img src={siteConfig.logoUrl || "https://placehold.co/400x400/064e3b/ffffff?text=JSN"} alt="Home" className="w-full h-full object-cover" />
                       <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-tr from-white/20 to-transparent opacity-50"></div>
                    </div>
                  </motion.div>
                </Link>
             </div>
 
-            {/* Right Group */}
             <div className="flex-1 flex justify-around">
                <MobileNavItem to="/profile/sejarah" icon={BookOpen} label="Profil" />
-               
-               {/* Account / Login Logic */}
                {currentUser ? (
-                  <Link to={currentUser.role === UserRole.ADMIN ? "/admin" : "/member"} className="flex flex-col items-center justify-center w-full h-full group">
+                  <Link to={currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.ADMIN_KORWIL || currentUser.role === UserRole.ADMIN_PENGURUS ? "/admin" : "/member"} className="flex flex-col items-center justify-center w-full h-full group">
                     <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${isActive('/member') || isActive('/admin') ? '-translate-y-1' : ''}`}>
-                       {currentUser.role === UserRole.ADMIN ? 
+                       {currentUser.role !== UserRole.MEMBER ? 
                           <LayoutDashboard size={24} className={isActive('/admin') ? 'text-secondary-600' : 'text-neutral-400'} strokeWidth={isActive('/admin') ? 2.5 : 2} /> : 
                           <UserCircle2 size={24} className={isActive('/member') ? 'text-secondary-600' : 'text-neutral-400'} strokeWidth={isActive('/member') ? 2.5 : 2} />
                        }
@@ -264,7 +279,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <div>
               <div className="flex items-center gap-4 mb-6">
                 <img 
-                 src={siteConfig.logoUrl} 
+                 src={siteConfig.logoUrl || "https://placehold.co/400x400/064e3b/ffffff?text=JSN"} 
                  alt="Logo" 
                  className="w-16 h-16 rounded-full object-cover border-2 border-white/20 shadow-lg" 
                 />

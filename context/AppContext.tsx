@@ -18,29 +18,73 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [state, setState] = useState<AppState>(MOCK_INITIAL_STATE);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initial Data Fetch from Supabase
+  // Initial Data Fetch & Realtime Setup
   useEffect(() => {
-    // CACHE STRATEGY: Load config from LocalStorage immediately for instant UI
-    const cachedConfig = localStorage.getItem('jsn_site_config');
-    if (cachedConfig) {
-      try {
-        const parsedConfig = JSON.parse(cachedConfig);
-        setState(prev => ({ ...prev, siteConfig: parsedConfig }));
-        // If we have cache, we don't need to show a loading spinner for the basic UI
-        setIsLoading(false); 
-      } catch (e) {
-        console.error("Cache parse error", e);
-      }
-    }
-
     fetchData();
+
+    // REALTIME SUBSCRIPTION setup
+    // This allows the app to update instantly when data changes in DB without refresh
+    const channel = supabase.channel('db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'site_config' },
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
+             const newConfig = payload.new as any;
+             setState(prev => ({
+                ...prev,
+                siteConfig: {
+                  appName: newConfig.app_name,
+                  orgName: newConfig.org_name,
+                  description: newConfig.description,
+                  address: newConfig.address,
+                  email: newConfig.email,
+                  phone: newConfig.phone,
+                  logoUrl: newConfig.logo_url
+                }
+             }));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'attendance_sessions' },
+        () => { refreshSessions(); } // Refresh sessions on change
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'news' },
+        () => { refreshNews(); } // Refresh news on change
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
+  const refreshSessions = async () => {
+      const { data } = await supabase.from('attendance_sessions').select('*').order('id', { ascending: false });
+      if (data) {
+        const mapped = data.map((s: any) => ({
+            ...s, isOpen: s.is_open, attendees: Array.isArray(s.attendees) ? s.attendees : [],
+            latitude: s.latitude, longitude: s.longitude, radius: s.radius
+        }));
+        setState(prev => ({ ...prev, attendanceSessions: mapped }));
+      }
+  };
+
+  const refreshNews = async () => {
+      const { data } = await supabase.from('news').select('*').order('id', { ascending: false });
+      if (data) {
+         const mapped = data.map((n: any) => ({ ...n, imageUrl: n.image_url }));
+         setState(prev => ({ ...prev, news: mapped }));
+      }
+  };
+
   const fetchData = async () => {
-    // Only block UI with loading state if we didn't have a cache
-    if (!localStorage.getItem('jsn_site_config')) {
-        setIsLoading(true);
-    }
+    // Force Loading State to ensure we don't show stale empty data
+    setIsLoading(true);
     
     try {
       const [
@@ -88,8 +132,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logoUrl: config.logo_url
       } : MOCK_INITIAL_STATE.siteConfig;
 
-      // CACHE: Save fresh config to local storage
-      localStorage.setItem('jsn_site_config', JSON.stringify(mappedConfig));
+      // REMOVED: localStorage.setItem (We want fresh data every time)
 
       const mappedNews = (news || []).map((n: any) => ({
         ...n,
@@ -187,9 +230,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const user = data as User;
       
-      // Role Mapping from DB Text to Enum
-      // Assuming DB has 'admin', 'korwil', 'pengurus', 'member' stored as text
-      // Force correct role assignment based on DB value
       const userRole = 
          user.role === 'admin' ? UserRole.SUPER_ADMIN :
          user.role === 'korwil' ? UserRole.ADMIN_KORWIL :
@@ -254,7 +294,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
      }
   };
 
-  // STEP 2 APPROVAL: PENGURUS (FINAL) - OLD approveMember logic
+  // STEP 2 APPROVAL: PENGURUS (FINAL)
   const approveMemberFinal = async (regId: number) => {
     const candidate = state.registrations.find(r => r.id === regId);
     if (!candidate) return;
@@ -280,10 +320,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (insertError) throw insertError;
       
-      // Delete from registrations after moving to users
       await supabase.from('registrations').delete().eq('id', regId);
       
-      fetchData(); // Refresh all data
+      fetchData(); 
       showToast(`Anggota ${candidate.name} resmi diterima. NIA: ${nia}`, 'success');
     } catch (error) {
       console.error(error);
@@ -310,7 +349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.address) updates.address = data.address;
       if (data.wilayah) updates.wilayah = data.wilayah;
       if (data.email) updates.email = data.email;
-      if (data.role) updates.role = data.role; // Allow role updates
+      if (data.role) updates.role = data.role;
 
       const { error } = await supabase.from('users').update(updates).eq('id', userId);
       if (error) throw error;
@@ -362,7 +401,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         attendees: [],
         latitude: lat || null,
         longitude: lng || null,
-        radius: rad || 100 // Default 100 meters
+        radius: rad || 100
       }]);
       if (error) throw error;
       fetchData(); 
@@ -443,7 +482,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     if (!session || !session.isOpen || !user) return false;
     
-    // Check if session has geofencing
     if (session.latitude && session.longitude && session.radius && distance !== undefined) {
        if (distance > session.radius) {
           showToast(`Gagal Absen: Lokasi Anda terlalu jauh (${Math.round(distance)}m). Maksimal ${session.radius}m dari lokasi majelis.`, 'error');
@@ -534,39 +572,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // News, Gallery, Slider, Media, Config, etc. (Existing implementations unchanged for brevity but included in scope)
+  // Other CRUD methods (addNews, addGalleryItem, etc.) kept same structure but without localStorage logic...
   const addNews = async (newsData: Omit<NewsItem, 'id'>) => {
     try {
       const { error } = await supabase.from('news').insert([{
-        title: newsData.title,
-        excerpt: newsData.excerpt,
-        content: newsData.content,
-        date: newsData.date,
-        image_url: newsData.imageUrl
+        title: newsData.title, excerpt: newsData.excerpt, content: newsData.content, date: newsData.date, image_url: newsData.imageUrl
       }]);
       if (error) throw error;
-      fetchData();
-      showToast('Berita berhasil dipublikasikan', 'success');
-    } catch (error) {
-      showToast("Gagal mempublish berita", "error");
-    }
+      fetchData(); showToast('Berita berhasil dipublikasikan', 'success');
+    } catch (error) { showToast("Gagal mempublish berita", "error"); }
   };
 
   const updateNews = async (id: number, newsData: Partial<NewsItem>) => {
     try {
-      const updates: any = {
-        title: newsData.title,
-        excerpt: newsData.excerpt,
-        content: newsData.content,
-      };
+      const updates: any = { title: newsData.title, excerpt: newsData.excerpt, content: newsData.content };
       if (newsData.imageUrl) updates.image_url = newsData.imageUrl;
       const { error } = await supabase.from('news').update(updates).eq('id', id);
       if (error) throw error;
-      fetchData();
-      showToast('Berita berhasil diperbarui', 'success');
-    } catch (error) {
-      showToast("Gagal memperbarui berita", "error");
-    }
+      fetchData(); showToast('Berita berhasil diperbarui', 'success');
+    } catch (error) { showToast("Gagal memperbarui berita", "error"); }
   };
 
   const deleteNews = async (id: number) => {
@@ -575,24 +599,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error) throw error;
       setState(prev => ({ ...prev, news: prev.news.filter(n => n.id !== id) }));
       showToast('Berita berhasil dihapus', 'success');
-    } catch (error) {
-      showToast("Gagal menghapus berita", "error");
-    }
+    } catch (error) { showToast("Gagal menghapus berita", "error"); }
   };
 
   const addGalleryItem = async (item: Omit<GalleryItem, 'id'>) => {
     try {
-      const { error } = await supabase.from('gallery').insert([{
-        type: item.type,
-        url: item.url,
-        caption: item.caption
-      }]);
+      const { error } = await supabase.from('gallery').insert([{ type: item.type, url: item.url, caption: item.caption }]);
       if (error) throw error;
-      fetchData(); 
-      showToast('Foto berhasil ditambahkan ke galeri', 'success');
-    } catch (error) {
-      showToast("Gagal menambahkan foto ke galeri", "error");
-    }
+      fetchData(); showToast('Foto berhasil ditambahkan ke galeri', 'success');
+    } catch (error) { showToast("Gagal menambahkan foto ke galeri", "error"); }
   };
 
   const deleteGalleryItem = async (id: number) => {
@@ -601,24 +616,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error) throw error;
       setState(prev => ({ ...prev, gallery: prev.gallery.filter(g => g.id !== id) }));
       showToast('Foto berhasil dihapus', 'success');
-    } catch (error) {
-      showToast("Gagal menghapus foto", "error");
-    }
+    } catch (error) { showToast("Gagal menghapus foto", "error"); }
   };
 
   const addSliderItem = async (item: Omit<SliderItem, 'id'>) => {
     try {
-      const { error } = await supabase.from('sliders').insert([{
-        image_url: item.imageUrl,
-        title: item.title,
-        description: item.description
-      }]);
+      const { error } = await supabase.from('sliders').insert([{ image_url: item.imageUrl, title: item.title, description: item.description }]);
       if (error) throw error;
-      fetchData(); 
-      showToast('Slider berhasil ditambahkan', 'success');
-    } catch (error) {
-      showToast("Gagal menambahkan slider", "error");
-    }
+      fetchData(); showToast('Slider berhasil ditambahkan', 'success');
+    } catch (error) { showToast("Gagal menambahkan slider", "error"); }
   };
 
   const deleteSliderItem = async (id: number) => {
@@ -627,25 +633,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error) throw error;
       setState(prev => ({ ...prev, sliders: prev.sliders.filter(s => s.id !== id) }));
       showToast('Slider berhasil dihapus', 'success');
-    } catch (error) {
-      showToast("Gagal menghapus slider", "error");
-    }
+    } catch (error) { showToast("Gagal menghapus slider", "error"); }
   };
 
   const addMediaPost = async (post: Omit<MediaPost, 'id' | 'createdAt'>) => {
     try {
-      const { error } = await supabase.from('media_posts').insert([{
-        type: post.type,
-        url: post.url,
-        embed_url: post.embedUrl,
-        caption: post.caption
-      }]);
+      const { error } = await supabase.from('media_posts').insert([{ type: post.type, url: post.url, embed_url: post.embedUrl, caption: post.caption }]);
       if (error) throw error;
-      fetchData();
-      showToast('Media berhasil ditambahkan', 'success');
-    } catch (error) {
-      showToast("Gagal menambahkan media", "error");
-    }
+      fetchData(); showToast('Media berhasil ditambahkan', 'success');
+    } catch (error) { showToast("Gagal menambahkan media", "error"); }
   };
 
   const deleteMediaPost = async (id: number) => {
@@ -654,30 +650,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error) throw error;
       setState(prev => ({...prev, mediaPosts: prev.mediaPosts.filter(m => m.id !== id)}));
       showToast('Media berhasil dihapus', 'success');
-    } catch (error) {
-      showToast("Gagal menghapus media", "error");
-    }
+    } catch (error) { showToast("Gagal menghapus media", "error"); }
   };
 
   const updateSiteConfig = async (config: SiteConfig) => {
     try {
       const { error } = await supabase.from('site_config').update({
-        app_name: config.appName,
-        org_name: config.orgName,
-        description: config.description,
-        address: config.address,
-        email: config.email,
-        phone: config.phone,
-        logo_url: config.logoUrl
+        app_name: config.appName, org_name: config.orgName, description: config.description, address: config.address, email: config.email, phone: config.phone, logo_url: config.logoUrl
       }).gt('id', 0);
       if (error) throw error;
       setState(prev => ({ ...prev, siteConfig: config }));
-      // Update cache
-      localStorage.setItem('jsn_site_config', JSON.stringify(config));
+      // No localStorage setItem here, we rely on Supabase Realtime now
       showToast('Pengaturan website berhasil diperbarui', 'success');
-    } catch (error) {
-      showToast("Gagal menyimpan konfigurasi", "error");
-    }
+    } catch (error) { showToast("Gagal menyimpan konfigurasi", "error"); }
   };
 
   const updateProfilePage = async (slug: string, title: string, content: string) => {
@@ -688,31 +673,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
          const { error: err } = await supabase.from('profile_pages').update({ title, content }).eq('slug', slug);
          error = err;
        } else {
-         const { error: err } = await supabase.from('profile_pages').insert([{ 
-             slug, 
-             title: title || 'Profil', 
-             content 
-         }]);
+         const { error: err } = await supabase.from('profile_pages').insert([{ slug, title: title || 'Profil', content }]);
          error = err;
        }
        if (error) throw error;
-       fetchData();
-       showToast("Data profil berhasil disimpan", "success");
-    } catch(err) {
-       console.error(err);
-       showToast("Gagal menyimpan profil", "error");
-    }
+       fetchData(); showToast("Data profil berhasil disimpan", "success");
+    } catch(err) { console.error(err); showToast("Gagal menyimpan profil", "error"); }
   };
 
   const addKorwil = async (name: string) => {
     try {
       const { error } = await supabase.from('korwils').insert([{ name }]);
       if (error) throw error;
-      fetchData();
-      showToast("Korwil berhasil ditambahkan", "success");
-    } catch (error) {
-      showToast("Gagal menambahkan korwil", "error");
-    }
+      fetchData(); showToast("Korwil berhasil ditambahkan", "success");
+    } catch (error) { showToast("Gagal menambahkan korwil", "error"); }
   };
 
   const deleteKorwil = async (id: number) => {
@@ -721,9 +695,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error) throw error;
       setState(prev => ({ ...prev, korwils: prev.korwils.filter(k => k.id !== id) }));
       showToast("Korwil berhasil dihapus", "success");
-    } catch (error) {
-      showToast("Gagal menghapus korwil", "error");
-    }
+    } catch (error) { showToast("Gagal menghapus korwil", "error"); }
   };
 
   const restoreData = (newState: AppState) => {

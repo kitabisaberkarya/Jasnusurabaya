@@ -4,13 +4,13 @@ import { AppState } from "./types";
 export const MOCK_INITIAL_STATE: AppState = {
   currentUser: null,
   siteConfig: {
-    appName: "JSN Surabaya", // Updated from "Loading..."
-    orgName: "Kota Surabaya",
-    description: "Sistem Informasi Manajemen Jamiyah Sholawat Nariyah",
+    appName: "", // Empty to trigger Skeleton
+    orgName: "",
+    description: "",
     address: "",
     email: "",
     phone: "",
-    logoUrl: "https://placehold.co/400x400/064e3b/ffffff?text=JSN" // Default placeholder if logo fails
+    logoUrl: "" 
   },
   users: [],
   registrations: [],
