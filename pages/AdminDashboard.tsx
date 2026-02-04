@@ -9,9 +9,9 @@ import {
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
   User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon, Lock, LayoutTemplate, ArrowLeft, Clock,
-  LayoutDashboard, CheckCircle2, Map, CreditCard, MonitorPlay, HelpCircle, ShieldAlert, ShieldCheck, HardDrive, Cloud, FileJson, Server
+  LayoutDashboard, CheckCircle2, Map, CreditCard, MonitorPlay, HelpCircle, ShieldAlert, ShieldCheck, HardDrive, Cloud, FileJson, Server, UploadCloud
 } from 'lucide-react';
-import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord, User, UserRole } from '../types';
+import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord, User, UserRole, BackupData } from '../types';
 import XLSX from 'xlsx-js-style';
 import { motion, AnimatePresence } from 'framer-motion';
 import { KORWIL_LIST } from '../constants';
@@ -29,7 +29,7 @@ export const AdminDashboard: React.FC = () => {
     createSession, updateSession, deleteSession, toggleSession, markAttendance, updateAttendanceRecord, deleteAttendanceRecord, news, gallery, sliders, mediaPosts, addNews, updateNews, deleteNews, 
     addGalleryItem, deleteGalleryItem, addSliderItem, deleteSliderItem, addMediaPost, deleteMediaPost, 
     showToast, currentUser, logout, 
-    siteConfig, updateSiteConfig, restoreData, profilePages, updateProfilePage, 
+    siteConfig, updateSiteConfig, downloadBackup, restoreData, profilePages, updateProfilePage, 
     korwils, addKorwil, deleteKorwil,
     createAdminUser, changePassword
   } = useApp();
@@ -86,6 +86,10 @@ export const AdminDashboard: React.FC = () => {
   const [selectedProfileSlug, setSelectedProfileSlug] = useState('sejarah');
   const [profileTitle, setProfileTitle] = useState('');
   const [profileContent, setProfileContent] = useState('');
+
+  // Backup & Restore State
+  const [isRestoring, setIsRestoring] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Settings State
   const [configForm, setConfigForm] = useState(siteConfig);
@@ -340,6 +344,40 @@ export const AdminDashboard: React.FC = () => {
   const handleProfileSave = () => {
     if (editorRef.current) {
         updateProfilePage(selectedProfileSlug, profileTitle, editorRef.current.innerHTML);
+    }
+  };
+  
+  const handleRestoreFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+        const file = e.target.files[0];
+        
+        // Confirmation
+        if (!window.confirm("PERINGATAN: Restore akan menimpa/menambah data yang ada di database. Apakah Anda yakin ingin melanjutkan?")) {
+            e.target.value = ''; // Reset input
+            return;
+        }
+
+        setIsRestoring(true);
+        try {
+            const text = await file.text();
+            const jsonData = JSON.parse(text) as BackupData;
+            
+            // Basic Validation
+            if (!jsonData.version || !jsonData.data) {
+                throw new Error("Format file backup tidak valid");
+            }
+
+            const success = await restoreData(jsonData);
+            if (success) {
+                showToast("Database berhasil direstore!", "success");
+            }
+        } catch (error) {
+            console.error(error);
+            showToast("Gagal membaca file backup", "error");
+        } finally {
+            setIsRestoring(false);
+            e.target.value = ''; // Reset input
+        }
     }
   };
 
@@ -1025,7 +1063,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
             
-            {/* BACKUP TAB - REDESIGNED ENTERPRISE LOOK */}
+            {/* BACKUP & RESTORE TAB - REDESIGNED */}
             {activeTab === 'backup' && isSuperAdmin && (
                 <div className="max-w-5xl mx-auto space-y-8 animate-fade-in-up">
                     {/* Header Alert */}
@@ -1034,107 +1072,77 @@ export const AdminDashboard: React.FC = () => {
                              <ShieldAlert size={20} />
                          </div>
                          <div>
-                             <h4 className="font-bold text-blue-800 text-sm">Security & Compliance Notice</h4>
+                             <h4 className="font-bold text-blue-800 text-sm">Backup & Restore Lokal</h4>
                              <p className="text-xs text-blue-600/80 mt-1 leading-relaxed">
-                                 Database ini dikelola menggunakan layanan Cloud Supabase (PostgreSQL). 
-                                 Backup otomatis dilakukan setiap hari pada pukul 00:00 UTC. 
-                                 Akses ke panel ini dicatat dalam log sistem untuk keperluan audit.
+                                 Sistem ini memungkinkan Anda untuk mengunduh seluruh data aplikasi ke dalam format JSON 
+                                 dan mengunggahnya kembali untuk pemulihan data. File disimpan secara lokal di perangkat Anda.
                              </p>
                          </div>
                     </div>
 
-                    {/* Status Grid (HUD) */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-white p-5 rounded-2xl border border-neutral-200 shadow-sm flex items-center gap-4 hover:border-emerald-200 transition-colors group">
-                             <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-100 transition">
-                                 <ShieldCheck size={24} strokeWidth={1.5} />
-                             </div>
-                             <div>
-                                 <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Encryption</p>
-                                 <h4 className="font-bold text-neutral-800">AES-256</h4>
-                                 <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-1"><CheckCircle2 size={10}/> At Rest & Transit</span>
-                             </div>
-                        </div>
-
-                        <div className="bg-white p-5 rounded-2xl border border-neutral-200 shadow-sm flex items-center gap-4 hover:border-blue-200 transition-colors group">
-                             <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-100 transition">
-                                 <Clock size={24} strokeWidth={1.5} />
-                             </div>
-                             <div>
-                                 <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Backup Schedule</p>
-                                 <h4 className="font-bold text-neutral-800">Daily (Auto)</h4>
-                                 <span className="text-[10px] text-blue-600 font-medium flex items-center gap-1"><HardDrive size={10}/> Point-in-Time Active</span>
-                             </div>
-                        </div>
-
-                        <div className="bg-white p-5 rounded-2xl border border-neutral-200 shadow-sm flex items-center gap-4 hover:border-purple-200 transition-colors group">
-                             <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-100 transition">
-                                 <Database size={24} strokeWidth={1.5} />
-                             </div>
-                             <div>
-                                 <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Data Retention</p>
-                                 <h4 className="font-bold text-neutral-800">7 Days</h4>
-                                 <span className="text-[10px] text-purple-600 font-medium flex items-center gap-1"><Cloud size={10}/> Managed Cloud</span>
-                             </div>
-                        </div>
-                    </div>
-
                     {/* Main Action Area */}
-                    <div className="grid md:grid-cols-3 gap-8">
-                        {/* Control Panel */}
-                        <div className="md:col-span-2 bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col">
-                            <div className="p-6 border-b border-neutral-100 bg-neutral-50/50 flex justify-between items-center">
+                    <div className="grid md:grid-cols-2 gap-8">
+                        {/* Backup / Export */}
+                        <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col h-full group hover:border-blue-300 transition-colors">
+                            <div className="p-6 border-b border-neutral-100 bg-blue-50/30 flex justify-between items-center">
                                 <h3 className="font-bold text-lg text-neutral-800 flex items-center gap-2">
-                                    <Server size={18} className="text-neutral-400" /> Database Control
+                                    <Download size={18} className="text-blue-600" /> Export Database
                                 </h3>
-                                <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded border border-emerald-200 uppercase tracking-wide">System Online</span>
+                                <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1 rounded border border-blue-200 uppercase tracking-wide">Backup</span>
                             </div>
                             <div className="p-8 flex flex-col items-center text-center justify-center flex-grow space-y-6">
-                                <div className="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center border-4 border-neutral-50 shadow-inner">
-                                    <Database size={40} className="text-neutral-400" />
+                                <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center border-4 border-white shadow-inner group-hover:scale-110 transition-transform duration-300">
+                                    <FileJson size={40} className="text-blue-500" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold text-neutral-900">Supabase Console</h2>
-                                    <p className="text-neutral-500 max-w-md mx-auto mt-2">
-                                        Untuk melakukan Full Backup (Dump), Restore Point-in-Time, atau Query Analysis, silakan akses dashboard infrastruktur.
+                                    <h2 className="text-2xl font-bold text-neutral-900">Download Data JSON</h2>
+                                    <p className="text-neutral-500 max-w-xs mx-auto mt-2 text-sm">
+                                        Unduh arsip lengkap data anggota, absensi, berita, dan konfigurasi saat ini.
                                     </p>
                                 </div>
-                                <div className="flex gap-4 w-full justify-center">
-                                    <a href="https://supabase.com/dashboard/project/_/database/backups" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-6 py-3 bg-primary-900 text-white rounded-xl font-bold hover:bg-primary-800 transition shadow-lg shadow-primary-900/20 transform hover:-translate-y-0.5">
-                                        <ExternalLink size={18}/> Buka Backup Manager
-                                    </a>
+                                <div className="w-full pt-2">
+                                    <button onClick={downloadBackup} className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 transform active:scale-95">
+                                        <Download size={20}/> Download Backup Sekarang
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Quick Actions / SOP */}
-                        <div className="space-y-6">
-                            <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
-                                <h4 className="font-bold text-neutral-800 mb-4 flex items-center gap-2">
-                                    <FileText size={16} /> Recovery Procedures
-                                </h4>
-                                <ul className="space-y-4">
-                                    <li className="flex gap-3 items-start text-xs text-neutral-600">
-                                        <span className="flex-shrink-0 w-5 h-5 bg-neutral-100 rounded-full flex items-center justify-center font-bold text-neutral-500">1</span>
-                                        <p>Login ke Supabase menggunakan akun Administrator yang terdaftar.</p>
-                                    </li>
-                                    <li className="flex gap-3 items-start text-xs text-neutral-600">
-                                        <span className="flex-shrink-0 w-5 h-5 bg-neutral-100 rounded-full flex items-center justify-center font-bold text-neutral-500">2</span>
-                                        <p>Navigasi ke menu <strong className="text-neutral-800">Database &gt; Backups</strong>.</p>
-                                    </li>
-                                    <li className="flex gap-3 items-start text-xs text-neutral-600">
-                                        <span className="flex-shrink-0 w-5 h-5 bg-neutral-100 rounded-full flex items-center justify-center font-bold text-neutral-500">3</span>
-                                        <p>Pilih "Point in Time" untuk restore ke jam tertentu, atau unduh .sql untuk arsip manual.</p>
-                                    </li>
-                                </ul>
+                        {/* Restore / Import */}
+                        <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col h-full group hover:border-amber-300 transition-colors">
+                            <div className="p-6 border-b border-neutral-100 bg-amber-50/30 flex justify-between items-center">
+                                <h3 className="font-bold text-lg text-neutral-800 flex items-center gap-2">
+                                    <UploadCloud size={18} className="text-amber-600" /> Restore Database
+                                </h3>
+                                <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded border border-amber-200 uppercase tracking-wide">Restore</span>
                             </div>
-
-                            <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm opacity-60 pointer-events-none grayscale">
-                                <h4 className="font-bold text-neutral-800 mb-4 flex items-center gap-2">
-                                    <FileJson size={16} /> Logical Dump
-                                </h4>
-                                <p className="text-xs text-neutral-500 mb-4">Unduh data tabel dalam format JSON/CSV untuk keperluan analisis lokal.</p>
-                                <button className="w-full py-2 border border-neutral-200 rounded-lg text-xs font-bold text-neutral-400">Export Tables (Coming Soon)</button>
+                            <div className="p-8 flex flex-col items-center text-center justify-center flex-grow space-y-6">
+                                <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center border-4 border-white shadow-inner group-hover:scale-110 transition-transform duration-300">
+                                    {isRestoring ? <RefreshCcw size={40} className="text-amber-500 animate-spin" /> : <Database size={40} className="text-amber-500" />}
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-neutral-900">Upload File JSON</h2>
+                                    <p className="text-neutral-500 max-w-xs mx-auto mt-2 text-sm">
+                                        Pulihkan data dari file backup sebelumnya. <span className="text-red-500 font-bold">Perhatian: Data akan ditimpa/ditambah.</span>
+                                    </p>
+                                </div>
+                                <div className="w-full pt-2 relative">
+                                    <input 
+                                        type="file" 
+                                        accept=".json" 
+                                        ref={fileInputRef}
+                                        onChange={handleRestoreFileChange}
+                                        className="hidden"
+                                        disabled={isRestoring}
+                                    />
+                                    <button 
+                                        onClick={() => fileInputRef.current?.click()} 
+                                        disabled={isRestoring}
+                                        className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold transition shadow-lg transform active:scale-95 ${isRestoring ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20'}`}
+                                    >
+                                        <Upload size={20}/> {isRestoring ? 'Sedang Memproses...' : 'Pilih File Backup (.json)'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

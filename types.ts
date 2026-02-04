@@ -121,6 +121,24 @@ export interface Korwil {
   name: string;
 }
 
+export interface BackupData {
+  timestamp: string;
+  version: string;
+  data: {
+    siteConfig: SiteConfig;
+    users: any[];
+    registrations: any[];
+    korwils: Korwil[];
+    attendanceSessions: any[];
+    attendanceRecords: any[];
+    news: any[];
+    gallery: any[];
+    sliders: any[];
+    mediaPosts: any[];
+    profilePages: any[];
+  }
+}
+
 export interface AppState {
   users: User[];
   currentUser: User | null;
@@ -178,7 +196,10 @@ export interface AppContextType extends AppState {
   updateProfilePage: (slug: string, title: string, content: string) => void;
   addKorwil: (name: string) => void;
   deleteKorwil: (id: number) => void;
-  restoreData: (data: AppState) => void;
+  
+  downloadBackup: () => Promise<void>;
+  restoreData: (jsonData: BackupData) => Promise<boolean>;
+  
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   removeToast: (id: number) => void;
   refreshData: () => Promise<void>;

@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost, AppContextType, GalleryItem, SliderItem, Korwil } from '../types';
+import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost, AppContextType, GalleryItem, SliderItem, Korwil, BackupData } from '../types';
 import { MOCK_INITIAL_STATE } from '../constants';
 import { supabase } from '../lib/supabase';
 
@@ -812,8 +813,124 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error) { showToast("Gagal menghapus korwil", "error"); }
   };
 
-  const restoreData = (newState: AppState) => {
-    showToast('Restore database memerlukan akses admin panel Supabase.', 'info');
+  // --- NEW: BACKUP & RESTORE FUNCTIONALITY ---
+  
+  const downloadBackup = async () => {
+    try {
+       showToast("Memproses backup data...", "info");
+       
+       // 1. Fetch ALL Raw Data from Supabase
+       const [
+           { data: siteConfig },
+           { data: users },
+           { data: registrations },
+           { data: korwils },
+           { data: attendanceSessions },
+           { data: attendanceRecords },
+           { data: news },
+           { data: gallery },
+           { data: sliders },
+           { data: mediaPosts },
+           { data: profilePages }
+       ] = await Promise.all([
+           supabase.from('site_config').select('*').single(),
+           supabase.from('users').select('*'),
+           supabase.from('registrations').select('*'),
+           supabase.from('korwils').select('*'),
+           supabase.from('attendance_sessions').select('*'),
+           supabase.from('attendance_records').select('*'),
+           supabase.from('news').select('*'),
+           supabase.from('gallery').select('*'),
+           supabase.from('sliders').select('*'),
+           supabase.from('media_posts').select('*'),
+           supabase.from('profile_pages').select('*')
+       ]);
+
+       const backupData: BackupData = {
+           timestamp: new Date().toISOString(),
+           version: "1.0",
+           data: {
+               siteConfig: siteConfig || {},
+               users: users || [],
+               registrations: registrations || [],
+               korwils: (korwils as Korwil[]) || [],
+               attendanceSessions: attendanceSessions || [],
+               attendanceRecords: attendanceRecords || [],
+               news: news || [],
+               gallery: gallery || [],
+               sliders: sliders || [],
+               mediaPosts: mediaPosts || [],
+               profilePages: profilePages || []
+           }
+       };
+
+       // 2. Create Downloadable File
+       const dataStr = JSON.stringify(backupData, null, 2);
+       const blob = new Blob([dataStr], { type: "application/json" });
+       const url = URL.createObjectURL(blob);
+       
+       const link = document.createElement('a');
+       link.href = url;
+       link.download = `JSN_Backup_${new Date().toISOString().split('T')[0]}.json`;
+       document.body.appendChild(link);
+       link.click();
+       document.body.removeChild(link);
+       
+       showToast("Backup berhasil diunduh!", "success");
+    } catch (error) {
+       console.error("Backup failed", error);
+       showToast("Gagal membuat backup", "error");
+    }
+  };
+
+  const restoreData = async (jsonData: BackupData): Promise<boolean> => {
+      try {
+          if (!jsonData.data) throw new Error("Invalid backup file format");
+
+          // SEQUENTIAL RESTORE (To respect FK constraints)
+          
+          // 1. Config & Korwils (Master Data)
+          if (jsonData.data.siteConfig) {
+             const { id, ...configRest } = jsonData.data.siteConfig as any;
+             await supabase.from('site_config').upsert(configRest); // Config biasanya cuma 1 row, ID diabaikan/diupdate
+          }
+          if (jsonData.data.korwils?.length) await supabase.from('korwils').upsert(jsonData.data.korwils);
+
+          // 2. Users (Core Data - Parent of Records)
+          if (jsonData.data.users?.length) {
+              // Batch upsert users
+              const { error } = await supabase.from('users').upsert(jsonData.data.users);
+              if (error) throw error;
+          }
+          
+          // 3. Registrations
+          if (jsonData.data.registrations?.length) await supabase.from('registrations').upsert(jsonData.data.registrations);
+
+          // 4. Content (Independent)
+          if (jsonData.data.news?.length) await supabase.from('news').upsert(jsonData.data.news);
+          if (jsonData.data.gallery?.length) await supabase.from('gallery').upsert(jsonData.data.gallery);
+          if (jsonData.data.sliders?.length) await supabase.from('sliders').upsert(jsonData.data.sliders);
+          if (jsonData.data.mediaPosts?.length) await supabase.from('media_posts').upsert(jsonData.data.mediaPosts);
+          if (jsonData.data.profilePages?.length) await supabase.from('profile_pages').upsert(jsonData.data.profilePages);
+
+          // 5. Attendance (Dependent on Users)
+          if (jsonData.data.attendanceSessions?.length) await supabase.from('attendance_sessions').upsert(jsonData.data.attendanceSessions);
+          
+          // 6. Attendance Records (Dependent on Sessions & Users)
+          if (jsonData.data.attendanceRecords?.length) {
+               // Perlu chunking jika data sangat banyak, tapi untuk sekarang direct upsert
+               const { error } = await supabase.from('attendance_records').upsert(jsonData.data.attendanceRecords);
+               if (error) throw error;
+          }
+          
+          // REFRESH STATE
+          await fetchData();
+          return true;
+      } catch (error) {
+          console.error("Restore failed", error);
+          showToast("Gagal melakukan restore database", "error");
+          return false;
+      }
   };
 
   return (
@@ -830,7 +947,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addMediaPost, deleteMediaPost, 
       updateSiteConfig, updateProfilePage, 
       addKorwil, deleteKorwil, 
-      restoreData, showToast, removeToast, refreshData: fetchData, isLoading 
+      downloadBackup, restoreData,
+      showToast, removeToast, refreshData: fetchData, isLoading 
     }}>
       {children}
     </AppContext.Provider>
