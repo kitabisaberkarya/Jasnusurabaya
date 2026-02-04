@@ -6,7 +6,8 @@ import {
   List, ListOrdered, Indent, Outdent, 
   Link as LinkIcon, Image as ImageIcon, Video, 
   Undo, Redo, Quote, RemoveFormatting, 
-  Type, Heading1, Heading2, Palette, MoreHorizontal
+  Type, Heading1, Heading2, Palette, MoreHorizontal,
+  ImagePlus, Trash2, Monitor, Smartphone, Maximize, Move
 } from 'lucide-react';
 
 interface RichTextEditorProps {
@@ -14,22 +15,31 @@ interface RichTextEditorProps {
   onChange: (html: string) => void;
   label?: string;
   placeholder?: string;
+  onUpload?: (file: File) => Promise<string | null>;
 }
 
-export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, label, placeholder }) => {
+export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, label, placeholder, onUpload }) => {
   const contentRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [selectedImg, setSelectedImg] = useState<HTMLImageElement | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Sync internal content with value prop only when not focused to prevent cursor jumping
+  // and only if value is substantially different (basic check)
   useEffect(() => {
     if (contentRef.current && !isFocused && value !== contentRef.current.innerHTML) {
-      contentRef.current.innerHTML = value;
+      // Basic check to avoid resetting cursor if simple updates happen, 
+      // but here we trust value prop is "source of truth" when blurred.
+      if (document.activeElement !== contentRef.current) {
+          contentRef.current.innerHTML = value;
+      }
     }
   }, [value, isFocused]);
 
   const exec = (command: string, value: string | undefined = undefined) => {
     document.execCommand(command, false, value);
-    handleInput(); // Trigger update
+    handleInput(); 
     contentRef.current?.focus();
   };
 
@@ -39,20 +49,37 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
     }
   };
 
+  const handleEditorClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'IMG') {
+      setSelectedImg(target as HTMLImageElement);
+    } else {
+      setSelectedImg(null);
+    }
+  };
+
+  const handleKeyUp = () => {
+    // Check selection for active formatting if we want to highlight toolbar buttons (skipped for brevity)
+    handleInput();
+  };
+
   const ToolbarButton = ({ 
     icon: Icon, 
     cmd, 
     arg, 
     title,
-    isActive = false 
-  }: { icon: any, cmd: string, arg?: string, title: string, isActive?: boolean }) => (
+    onClick,
+    isActive = false,
+    className = ""
+  }: { icon: any, cmd?: string, arg?: string, title: string, onClick?: () => void, isActive?: boolean, className?: string }) => (
     <button
       type="button"
       onClick={(e) => {
         e.preventDefault();
-        exec(cmd, arg);
+        if (onClick) onClick();
+        else if (cmd) exec(cmd, arg);
       }}
-      className={`p-1.5 rounded-md transition-all duration-200 hover:bg-neutral-100 text-neutral-600 ${isActive ? 'bg-primary-50 text-primary-700' : ''}`}
+      className={`p-1.5 rounded-md transition-all duration-200 hover:bg-neutral-100 text-neutral-600 ${isActive ? 'bg-primary-50 text-primary-700' : ''} ${className}`}
       title={title}
     >
       <Icon size={18} strokeWidth={2} />
@@ -64,18 +91,92 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
     if (url) exec('createLink', url);
   };
 
-  const handleInsertImage = () => {
+  const handleInsertImageURL = () => {
     const url = prompt('Masukkan URL Gambar:');
     if (url) exec('insertImage', url);
   };
 
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && onUpload) {
+      const file = e.target.files[0];
+      setIsUploading(true);
+      try {
+        // Save current selection
+        const selection = document.getSelection();
+        const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+
+        const url = await onUpload(file);
+        
+        if (url) {
+          // Restore selection if lost (focus editor first)
+          contentRef.current?.focus();
+          if (range) {
+             selection?.removeAllRanges();
+             selection?.addRange(range);
+          }
+          exec('insertImage', url);
+        }
+      } catch (error) {
+        console.error("Failed to upload image inside editor", error);
+        alert("Gagal mengupload gambar.");
+      } finally {
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Image Manipulation Functions
+  const setImageAlignment = (align: 'left' | 'center' | 'right') => {
+    if (!selectedImg) return;
+    
+    // Reset styles
+    selectedImg.style.display = '';
+    selectedImg.style.float = '';
+    selectedImg.style.margin = '';
+    
+    if (align === 'left') {
+      selectedImg.style.float = 'left';
+      selectedImg.style.marginRight = '1rem';
+      selectedImg.style.marginBottom = '0.5rem';
+    } else if (align === 'right') {
+      selectedImg.style.float = 'right';
+      selectedImg.style.marginLeft = '1rem';
+      selectedImg.style.marginBottom = '0.5rem';
+    } else if (align === 'center') {
+      selectedImg.style.display = 'block';
+      selectedImg.style.margin = '0 auto 1rem auto';
+    }
+    handleInput();
+    setSelectedImg(null); // Deselect after action
+  };
+
+  const setImageWidth = (width: string) => {
+    if (!selectedImg) return;
+    selectedImg.style.width = width;
+    selectedImg.style.height = 'auto';
+    handleInput();
+  };
+
+  const removeImage = () => {
+    if (!selectedImg) return;
+    selectedImg.remove();
+    handleInput();
+    setSelectedImg(null);
+  };
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 relative group/editor">
       {label && <label className="block text-xs font-bold text-neutral-500 uppercase">{label}</label>}
       
       <div className={`bg-white border rounded-xl overflow-hidden transition-all duration-300 ${isFocused ? 'border-primary-500 ring-4 ring-primary-500/10 shadow-lg' : 'border-neutral-300 shadow-sm'}`}>
-        {/* TOOLBAR */}
-        <div className="flex flex-wrap items-center gap-1 p-2 border-b border-neutral-200 bg-neutral-50/50">
+        
+        {/* MAIN TOOLBAR */}
+        <div className="flex flex-wrap items-center gap-1 p-2 border-b border-neutral-200 bg-neutral-50/50 sticky top-0 z-10">
           
           {/* History */}
           <div className="flex items-center gap-0.5 pr-2 border-r border-neutral-200 mr-1">
@@ -106,18 +207,37 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
             <ToolbarButton icon={Strikethrough} cmd="strikeThrough" title="Strikethrough" />
           </div>
 
-          {/* Color & Inserts */}
+          {/* Inserts */}
           <div className="flex items-center gap-0.5 pr-2 border-r border-neutral-200 mr-1">
-            <div className="relative flex items-center justify-center p-1.5 hover:bg-neutral-100 rounded-md cursor-pointer" title="Warna Teks">
-               <Palette size={18} className="text-neutral-600" />
-               <input 
-                 type="color" 
-                 onChange={(e) => exec('foreColor', e.target.value)}
-                 className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-               />
-            </div>
-            <button type="button" onClick={handleInsertLink} className="p-1.5 hover:bg-neutral-100 rounded-md text-neutral-600" title="Insert Link"><LinkIcon size={18} /></button>
-            <button type="button" onClick={handleInsertImage} className="p-1.5 hover:bg-neutral-100 rounded-md text-neutral-600" title="Insert Image via URL"><ImageIcon size={18} /></button>
+            <ToolbarButton icon={LinkIcon} onClick={handleInsertLink} title="Insert Link" />
+            
+            {onUpload && (
+              <>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileUpload} 
+                  className="hidden" 
+                  accept="image/png, image/jpeg, image/gif, image/webp"
+                />
+                <button 
+                  type="button"
+                  onClick={triggerFileUpload}
+                  disabled={isUploading}
+                  className="p-1.5 rounded-md transition-all duration-200 hover:bg-neutral-100 text-neutral-600 relative"
+                  title="Upload & Insert Image"
+                >
+                  <ImagePlus size={18} strokeWidth={2} className={isUploading ? 'opacity-30' : ''} />
+                  {isUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-3 h-3 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </button>
+              </>
+            )}
+            
+            <ToolbarButton icon={ImageIcon} onClick={handleInsertImageURL} title="Insert Image via URL" />
           </div>
 
           {/* Alignment */}
@@ -128,36 +248,57 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
             <ToolbarButton icon={AlignJustify} cmd="justifyFull" title="Justify" />
           </div>
 
-          {/* Lists & Indent */}
-          <div className="flex items-center gap-0.5 pr-2 border-r border-neutral-200 mr-1">
+          {/* Lists */}
+          <div className="flex items-center gap-0.5">
             <ToolbarButton icon={List} cmd="insertUnorderedList" title="Bulleted List" />
             <ToolbarButton icon={ListOrdered} cmd="insertOrderedList" title="Numbered List" />
-            <ToolbarButton icon={Indent} cmd="indent" title="Indent" />
-            <ToolbarButton icon={Outdent} cmd="outdent" title="Outdent" />
-          </div>
-
-          {/* Misc */}
-          <div className="flex items-center gap-0.5">
             <ToolbarButton icon={Quote} cmd="formatBlock" arg="BLOCKQUOTE" title="Quote" />
-            <ToolbarButton icon={RemoveFormatting} cmd="removeFormat" title="Clear Formatting" />
           </div>
         </div>
 
-        {/* EDITOR AREA */}
-        <div 
-          ref={contentRef}
-          className="min-h-[400px] p-6 outline-none prose max-w-none prose-headings:font-serif prose-p:leading-relaxed prose-img:rounded-xl prose-img:shadow-md focus:bg-white bg-white overflow-y-auto"
-          contentEditable
-          onInput={handleInput}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          dangerouslySetInnerHTML={{ __html: value }} // Initial value only, managed by ref afterwards
-          style={{
-             minHeight: '400px',
-             maxHeight: '600px'
-          }}
-          data-placeholder={placeholder}
-        />
+        {/* EDITOR CONTENT */}
+        <div className="relative">
+          <div 
+            ref={contentRef}
+            className="min-h-[400px] p-6 outline-none prose max-w-none prose-headings:font-serif prose-p:leading-relaxed prose-img:rounded-xl prose-img:shadow-md prose-img:cursor-pointer focus:bg-white bg-white overflow-y-auto"
+            contentEditable
+            onInput={handleInput}
+            onClick={handleEditorClick}
+            onKeyUp={handleKeyUp}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            dangerouslySetInnerHTML={{ __html: value }} 
+            style={{
+              minHeight: '400px',
+              maxHeight: '700px'
+            }}
+            data-placeholder={placeholder}
+          />
+
+          {/* IMAGE CONTEXT TOOLBAR (Visible when an image is selected) */}
+          {selectedImg && (
+            <div className="absolute top-4 right-4 bg-white shadow-2xl border border-neutral-200 rounded-lg p-2 flex flex-col gap-2 z-50 animate-in fade-in zoom-in duration-200">
+               <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-center mb-1">Atur Gambar</div>
+               
+               <div className="flex items-center justify-center gap-1 border-b border-neutral-100 pb-2">
+                  <button onClick={() => setImageAlignment('left')} className="p-2 hover:bg-neutral-100 rounded text-neutral-600" title="Align Left (Wrap Text)"><AlignLeft size={16}/></button>
+                  <button onClick={() => setImageAlignment('center')} className="p-2 hover:bg-neutral-100 rounded text-neutral-600" title="Center"><AlignCenter size={16}/></button>
+                  <button onClick={() => setImageAlignment('right')} className="p-2 hover:bg-neutral-100 rounded text-neutral-600" title="Align Right (Wrap Text)"><AlignRight size={16}/></button>
+               </div>
+
+               <div className="flex items-center justify-center gap-1 border-b border-neutral-100 pb-2">
+                  <button onClick={() => setImageWidth('25%')} className="p-2 hover:bg-neutral-100 rounded text-neutral-600 text-xs font-bold">25%</button>
+                  <button onClick={() => setImageWidth('50%')} className="p-2 hover:bg-neutral-100 rounded text-neutral-600 text-xs font-bold">50%</button>
+                  <button onClick={() => setImageWidth('75%')} className="p-2 hover:bg-neutral-100 rounded text-neutral-600 text-xs font-bold">75%</button>
+                  <button onClick={() => setImageWidth('100%')} className="p-2 hover:bg-neutral-100 rounded text-neutral-600 text-xs font-bold">100%</button>
+               </div>
+
+               <button onClick={removeImage} className="w-full py-1.5 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 rounded text-xs font-bold transition">
+                  <Trash2 size={14}/> Hapus Gambar
+               </button>
+            </div>
+          )}
+        </div>
         
         <style>{`
           [contenteditable]:empty:before {
@@ -165,9 +306,14 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
             color: #9ca3af;
             font-style: italic;
           }
+          /* Custom styles for image floats visibility in editor */
+          .prose img { transition: all 0.2s; border: 2px solid transparent; }
+          .prose img:hover { border-color: #3b82f6; }
         `}</style>
       </div>
-      <p className="text-[10px] text-neutral-400 text-right">* Gunakan Ctrl+B, Ctrl+I, Ctrl+U untuk shortcut cepat.</p>
+      <p className="text-[10px] text-neutral-400 text-right flex items-center justify-end gap-2">
+         {isUploading ? <span className="text-primary-600 animate-pulse font-bold">Sedang mengupload gambar...</span> : <span>* Klik gambar untuk mengatur posisi (kiri/tengah/kanan) dan ukuran.</span>}
+      </p>
     </div>
   );
 };

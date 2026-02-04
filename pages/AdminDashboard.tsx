@@ -294,6 +294,18 @@ export const AdminDashboard: React.FC = () => {
     } catch (error) { console.error(error); showToast("Gagal menyimpan berita", "error"); } finally { setIsUploading(false); }
   };
 
+  // Helper function for inline editor image uploads
+  const handleEditorImageUpload = async (file: File) => {
+      try {
+          const url = await uploadFile(file, 'content_images');
+          return url;
+      } catch (error) {
+          console.error("Editor upload error", error);
+          showToast("Gagal upload gambar editor", "error");
+          return null;
+      }
+  };
+
   const handleGallerySubmit = async (e: React.MouseEvent) => {
       e.preventDefault();
       if (!galleryFile && !galleryForm.imageUrl) { showToast("Pilih foto atau masukkan URL", "error"); return; }
@@ -906,12 +918,13 @@ export const AdminDashboard: React.FC = () => {
                             <input type="text" placeholder="Judul Berita" className="w-full border rounded-lg p-2 text-sm" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} required />
                             <textarea placeholder="Ringkasan Singkat" className="w-full border rounded-lg p-2 text-sm h-20" value={newsForm.excerpt} onChange={e => setNewsForm({...newsForm, excerpt: e.target.value})} required />
                             
-                            {/* REPLACED TEXTAREA WITH RICHTEXTEDITOR */}
+                            {/* REPLACED TEXTAREA WITH RICHTEXTEDITOR AND UPLOAD PROP */}
                             <RichTextEditor 
                                 label="Konten Berita" 
                                 value={newsForm.content} 
                                 onChange={(html) => setNewsForm({...newsForm, content: html})} 
                                 placeholder="Tulis artikel lengkap di sini..."
+                                onUpload={(file) => handleEditorImageUpload(file)}
                             />
 
                             <FileUploader label="Foto Berita / Cover" currentImage={newsForm.imageUrl} onFileSelect={(file) => setNewsFile(file)} />
@@ -1038,6 +1051,7 @@ export const AdminDashboard: React.FC = () => {
                                 value={profileContent} 
                                 onChange={setProfileContent}
                                 placeholder="Tulis konten profil di sini..."
+                                onUpload={(file) => handleEditorImageUpload(file)}
                             />
                         )}
                         <p className="text-xs text-neutral-400 mt-2">* Gunakan format HTML sederhana. Paste dari Word mungkin perlu perapian.</p>
