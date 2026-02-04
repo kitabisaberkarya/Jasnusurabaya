@@ -1001,7 +1001,7 @@ export const AdminDashboard: React.FC = () => {
                         {selectedProfileSlug === 'korwil' ? (
                             <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200 text-center">
                                 <p className="text-neutral-500">Halaman ini otomatis digenerate dari database Korwil.</p>
-                                <p className="text-xs text-neutral-400 mt-2">Gunakan menu "Settings > Manajemen Korwil" untuk mengubah data.</p>
+                                <p className="text-xs text-neutral-400 mt-2">Gunakan menu "Settings &gt; Manajemen Korwil" untuk mengubah data.</p>
                             </div>
                         ) : (
                             <div className="border rounded-lg overflow-hidden">
