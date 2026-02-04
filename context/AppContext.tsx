@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost, AppContextType, GalleryItem, SliderItem, Korwil } from '../types';
 import { MOCK_INITIAL_STATE } from '../constants';
@@ -243,11 +242,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error || !data) return null;
 
       const user = data as User;
+      const rawRole = (user.role || '').toLowerCase();
       
       const userRole = 
-         user.role === 'admin' ? UserRole.SUPER_ADMIN :
-         user.role === 'korwil' ? UserRole.ADMIN_KORWIL :
-         user.role === 'pengurus' ? UserRole.ADMIN_PENGURUS :
+         rawRole === 'admin' ? UserRole.SUPER_ADMIN :
+         rawRole === 'korwil' ? UserRole.ADMIN_KORWIL :
+         rawRole === 'pengurus' ? UserRole.ADMIN_PENGURUS :
          UserRole.MEMBER;
 
       const loggedInUser = { ...user, role: userRole };
