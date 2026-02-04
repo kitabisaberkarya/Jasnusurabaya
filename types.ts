@@ -183,6 +183,9 @@ export interface AppContextType extends AppState {
   updateAttendanceRecord: (recordId: string, data: Partial<AttendanceRecord>) => void;
   deleteAttendanceRecord: (recordId: string, sessionId: number, userId: number) => void;
   
+  // File Upload Helper
+  uploadFile: (file: File, folder?: string) => Promise<string | null>;
+
   addNews: (news: Omit<NewsItem, 'id'>) => void;
   updateNews: (id: number, news: Partial<NewsItem>) => void;
   deleteNews: (id: number) => void;

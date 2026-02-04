@@ -271,6 +271,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Anda telah keluar dari sistem', 'info');
   };
 
+  // UPLOAD FILE HELPER
+  const uploadFile = async (file: File, folder: string = 'general'): Promise<string | null> => {
+    try {
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('public-files')
+        .upload(fileName, file);
+
+      if (uploadError) {
+        console.error('Upload Error:', uploadError);
+        throw uploadError;
+      }
+
+      // Get Public URL
+      const { data } = supabase.storage.from('public-files').getPublicUrl(fileName);
+      return data.publicUrl;
+    } catch (error) {
+      console.error(error);
+      showToast("Gagal mengupload file. Cek ukuran atau koneksi.", "error");
+      return null;
+    }
+  };
+
   const register = async (data: RegistrationInput) => {
     try {
       const { error } = await supabase.from('registrations').insert([{
@@ -948,6 +974,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateSiteConfig, updateProfilePage, 
       addKorwil, deleteKorwil, 
       downloadBackup, restoreData,
+      uploadFile,
       showToast, removeToast, refreshData: fetchData, isLoading 
     }}>
       {children}
