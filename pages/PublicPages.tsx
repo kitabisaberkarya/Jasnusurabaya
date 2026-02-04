@@ -2,7 +2,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube, ArrowLeft, Clock, Share2, Facebook, Twitter, Link as LinkIcon, MessageCircle } from 'lucide-react';
+import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube, ArrowLeft, Clock, Share2, Facebook, Twitter, Link as LinkIcon, MessageCircle, ImageOff } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { MemberStatus, UserRole } from '../types';
@@ -10,6 +10,15 @@ import { MemberStatus, UserRole } from '../types';
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+};
+
+// Fallback Image Constant
+const FALLBACK_IMAGE = "https://placehold.co/800x600/f3f4f6/1f2937?text=Gambar+Tidak+Tersedia";
+
+// Helper untuk menangani error gambar
+const handleImgError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+  e.currentTarget.src = FALLBACK_IMAGE;
+  e.currentTarget.onerror = null; // Prevent infinite loop
 };
 
 export const Home: React.FC = () => {
@@ -68,7 +77,12 @@ export const Home: React.FC = () => {
                className="absolute inset-0 z-0"
             >
                <div className="absolute inset-0 bg-gradient-to-b from-primary-900/90 via-primary-900/70 to-primary-900 z-10"></div>
-               <img src={activeSlide.imageUrl} alt="Background" className="w-full h-full object-cover" />
+               <img 
+                 src={activeSlide.imageUrl} 
+                 alt="Background" 
+                 onError={handleImgError}
+                 className="w-full h-full object-cover" 
+               />
             </motion.div>
         </AnimatePresence>
 
@@ -90,6 +104,9 @@ export const Home: React.FC = () => {
                <img 
                  src={siteConfig.logoUrl} 
                  alt="Logo Utama JSN" 
+                 onError={(e) => {
+                    e.currentTarget.src = "https://placehold.co/400x400/064e3b/ffffff?text=JSN";
+                 }}
                  className="relative w-24 h-24 md:w-36 md:h-36 rounded-full shadow-2xl border-4 border-white/20 ring-4 ring-primary-900/50 object-cover backdrop-blur-sm"
                />
             </div>
@@ -166,10 +183,11 @@ export const Home: React.FC = () => {
                 <div className="absolute -inset-4 bg-secondary-100/50 rounded-[2rem] transform rotate-3 transition-transform duration-700 group-hover:rotate-6"></div>
                 <div className="absolute -inset-4 bg-primary-50 rounded-[2rem] transform -rotate-3 transition-transform duration-700 group-hover:-rotate-6 opacity-70"></div>
                 
-                <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] border-4 border-white">
+                <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] border-4 border-white bg-neutral-200">
                     <img 
                       src={aboutImage} 
                       alt="Tentang Kami" 
+                      onError={handleImgError}
                       className="w-full h-full object-cover transform transition duration-1000 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-primary-900/60 to-transparent opacity-60"></div>
@@ -244,11 +262,16 @@ export const Home: React.FC = () => {
           <div className="grid md:grid-cols-3 gap-8">
             {news.slice(0, 3).map((item) => (
               <div key={item.id} className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group border border-neutral-100 flex flex-col h-full">
-                <div className="h-56 overflow-hidden relative">
+                <div className="h-56 overflow-hidden relative bg-neutral-200">
                   <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg text-xs font-bold text-primary-900 shadow-sm">
                     {item.date}
                   </div>
-                  <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" />
+                  <img 
+                    src={item.imageUrl} 
+                    alt={item.title} 
+                    onError={handleImgError}
+                    className="w-full h-full object-cover group-hover:scale-110 transition duration-700" 
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
                 <div className="p-8 flex flex-col flex-grow">
@@ -288,10 +311,11 @@ export const News: React.FC = () => {
               key={item.id} 
               className="bg-white rounded-[2rem] shadow-sm border border-neutral-100/50 overflow-hidden flex flex-col h-full hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:-translate-y-2 transition-all duration-500 group relative"
             >
-              <div className="relative aspect-[4/3] overflow-hidden">
+              <div className="relative aspect-[4/3] overflow-hidden bg-neutral-200">
                 <img 
                   src={item.imageUrl} 
                   alt={item.title} 
+                  onError={handleImgError}
                   className="w-full h-full object-cover transform group-hover:scale-110 transition duration-1000 ease-out" 
                 />
                 
@@ -451,6 +475,10 @@ export const NewsDetail: React.FC = () => {
         </header>
 
         <article className="prose prose-lg prose-emerald max-w-none text-neutral-700 leading-loose prose-headings:font-serif prose-headings:text-primary-900 prose-a:text-secondary-600 hover:prose-a:text-secondary-700 prose-img:rounded-2xl prose-img:shadow-lg">
+           {/* Handle image in content or show hero image if not in content */}
+           <div className="mb-8 rounded-2xl overflow-hidden shadow-lg aspect-video bg-neutral-100">
+              <img src={item.imageUrl} alt={item.title} onError={handleImgError} className="w-full h-full object-cover" />
+           </div>
            <div dangerouslySetInnerHTML={{ __html: item.content }} />
         </article>
         
@@ -501,12 +529,23 @@ export const Gallery: React.FC = () => {
         <h1 className="text-5xl font-serif font-bold text-primary-900 mb-6">Galeri Kegiatan</h1>
         <p className="text-neutral-500 text-lg">Momen kebersamaan dalam setiap majelis.</p>
       </div>
-      <div className="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {gallery.map((item) => (
-          <div key={item.id} className="break-inside-avoid rounded-3xl overflow-hidden relative group cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500">
-            <img src={item.url} alt={item.caption} className="w-full h-auto rounded-3xl transform group-hover:scale-110 transition duration-700" />
+          <div key={item.id} className="rounded-3xl overflow-hidden relative group cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500 bg-neutral-200 aspect-[4/3]">
+            <img 
+              src={item.url} 
+              alt={item.caption} 
+              onError={handleImgError}
+              className="w-full h-full object-cover transform group-hover:scale-110 transition duration-700" 
+            />
+            {/* Overlay Gradient always present if needed, but only visible on hover */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-8">
               <p className="text-white font-medium text-lg translate-y-4 group-hover:translate-y-0 transition duration-500">{item.caption}</p>
+            </div>
+            
+            {/* Helper text if image breaks (Fallback usually handles it, but this adds clarity if fallback fails or loads slow) */}
+            <div className="absolute inset-0 flex items-center justify-center -z-10">
+               <ImageOff className="text-neutral-400" />
             </div>
           </div>
         ))}
