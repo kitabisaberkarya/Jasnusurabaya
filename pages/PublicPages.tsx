@@ -1,10 +1,11 @@
+
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube, ArrowLeft, Clock, Share2, Facebook, Twitter, Link as LinkIcon, MessageCircle } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { MemberStatus } from '../types';
+import { MemberStatus, UserRole } from '../types';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -15,17 +16,15 @@ export const Home: React.FC = () => {
   const { news, siteConfig, sliders, profilePages } = useApp();
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Auto-play slider logic
   useEffect(() => {
     if (sliders.length > 1) {
       const interval = setInterval(() => {
         setCurrentSlide((prev) => (prev + 1) % sliders.length);
-      }, 6000); // 6 Seconds
+      }, 6000); 
       return () => clearInterval(interval);
     }
   }, [sliders]);
 
-  // Default slide if DB is empty
   const defaultSlide = {
     imageUrl: "https://images.unsplash.com/photo-1564507592333-c60657eea523?q=80&w=2071&auto=format&fit=crop",
     title: "BERKHIDMAT UNTUK UMAT, BERBAKTI KEPADA NEGERI",
@@ -35,20 +34,16 @@ export const Home: React.FC = () => {
   const activeSlide = sliders.length > 0 ? sliders[currentSlide] : defaultSlide;
   const aboutPage = profilePages.find(p => p.slug === 'tentang-kami');
   
-  // LOGIC: Extract image from content or use default
   const { aboutImage, aboutContent } = useMemo(() => {
-    const defaultImg = "https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=1470&auto=format&fit=crop"; // Interior Masjid Elegan
+    const defaultImg = "https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=1470&auto=format&fit=crop"; 
     
     if (!aboutPage?.content) return { aboutImage: defaultImg, aboutContent: null };
 
-    // Regex to find the first image in the content
     const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/;
     const match = aboutPage.content.match(imgRegex);
     
     if (match) {
-        // If found, use it as hero image and remove from text content to avoid duplicate
         let cleanContent = aboutPage.content.replace(match[0], '');
-        // Clean up empty paragraphs or breaks that might be left over after removing the image
         cleanContent = cleanContent.replace(/<p>\s*<\/p>/g, '').replace(/<p>&nbsp;<\/p>/g, '');
 
         return { 
@@ -62,10 +57,7 @@ export const Home: React.FC = () => {
 
   return (
     <motion.div initial="hidden" animate="visible" variants={fadeIn}>
-      {/* Hero Section with Dynamic Slider */}
       <section className="relative bg-primary-900 text-white min-h-[90vh] flex items-center justify-center overflow-hidden">
-        
-        {/* Background Image Slider with Crossfade */}
         <AnimatePresence mode="wait">
             <motion.div 
                key={activeSlide.imageUrl}
@@ -80,13 +72,10 @@ export const Home: React.FC = () => {
             </motion.div>
         </AnimatePresence>
 
-        {/* Decorative Elements */}
         <div className="absolute top-0 left-0 w-full h-full opacity-10 z-0" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"1\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }}></div>
         <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-secondary-500 rounded-full blur-[128px] opacity-20 animate-pulse z-0"></div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-20">
-          
-          {/* Central Logo Identity with Multi-layer Glow */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -94,7 +83,6 @@ export const Home: React.FC = () => {
             className="mb-8 flex justify-center relative"
           >
             <div className="relative">
-               {/* Outer Glow Rings */}
                <div className="absolute inset-0 bg-secondary-500 rounded-full blur-2xl opacity-40 animate-pulse"></div>
                <div className="absolute -inset-4 border border-secondary-500/30 rounded-full animate-[spin_10s_linear_infinite]"></div>
                <div className="absolute -inset-8 border border-white/10 rounded-full animate-[spin_15s_linear_infinite_reverse]"></div>
@@ -107,10 +95,9 @@ export const Home: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Dynamic Content Animation */}
           <AnimatePresence mode="wait">
             <motion.div
-                key={activeSlide.title} // Change key to trigger animation
+                key={activeSlide.title}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -147,7 +134,6 @@ export const Home: React.FC = () => {
             </Link>
           </motion.div>
 
-          {/* Slider Indicators */}
           {sliders.length > 1 && (
             <div className="flex justify-center gap-2 mt-12">
                 {sliders.map((_, idx) => (
@@ -162,7 +148,6 @@ export const Home: React.FC = () => {
 
         </div>
 
-        {/* Scroll Indicator */}
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -174,25 +159,19 @@ export const Home: React.FC = () => {
         </motion.div>
       </section>
 
-      {/* About Section - IMPROVED LAYOUT */}
       <section className="py-24 bg-white overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="grid md:grid-cols-2 gap-16 items-start">
-             
-             {/* Left Side: Image with Decorative Elements */}
              <div className="relative group md:sticky md:top-32">
-                {/* Background Shapes */}
                 <div className="absolute -inset-4 bg-secondary-100/50 rounded-[2rem] transform rotate-3 transition-transform duration-700 group-hover:rotate-6"></div>
                 <div className="absolute -inset-4 bg-primary-50 rounded-[2rem] transform -rotate-3 transition-transform duration-700 group-hover:-rotate-6 opacity-70"></div>
                 
-                {/* Main Image Container */}
                 <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] border-4 border-white">
                     <img 
                       src={aboutImage} 
                       alt="Tentang Kami" 
                       className="w-full h-full object-cover transform transition duration-1000 group-hover:scale-105"
                     />
-                    {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-primary-900/60 to-transparent opacity-60"></div>
                     <div className="absolute bottom-6 left-6 text-white">
                         <p className="text-xs uppercase tracking-widest font-bold text-secondary-400 mb-1">Sekilas Tentang</p>
@@ -200,19 +179,15 @@ export const Home: React.FC = () => {
                     </div>
                 </div>
                 
-                {/* Floating Ornament */}
                 <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-pattern-dots opacity-20 z-0"></div>
              </div>
 
-             {/* Right Side: Content */}
              <div className="relative z-10">
                {aboutContent ? (
-                   // PROSE STYLING FIX: Text Justify, Better Spacing, Clean Tables
                    <div className="prose prose-lg prose-emerald max-w-none text-neutral-600 text-justify prose-headings:font-serif prose-headings:text-primary-900 prose-headings:leading-tight prose-p:leading-relaxed prose-li:marker:text-secondary-500 prose-img:rounded-xl prose-img:shadow-lg prose-table:border-collapse prose-td:border prose-td:border-neutral-200 prose-td:p-2 prose-th:bg-primary-50 prose-th:p-2 prose-th:text-primary-900">
                       <div dangerouslySetInnerHTML={{ __html: aboutContent }} />
                    </div>
                ) : (
-                  // Default Fallback Content
                   <>
                    <span className="inline-block px-3 py-1 rounded-full bg-secondary-50 text-secondary-600 text-[10px] font-bold uppercase tracking-widest mb-4 border border-secondary-100">
                      Tentang Kami
@@ -254,7 +229,6 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Latest News Preview */}
       <section className="py-24 bg-neutral-50 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-4">
@@ -299,8 +273,6 @@ export const News: React.FC = () => {
   return (
     <motion.div initial="hidden" animate="visible" variants={fadeIn} className="py-20 bg-neutral-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Header Section */}
         <div className="text-center mb-20">
           <span className="text-secondary-600 font-bold tracking-[0.2em] uppercase text-xs mb-3 block">Berita & Artikel</span>
           <h1 className="text-4xl md:text-6xl font-serif font-bold text-primary-900 mb-6">Warta Jamiyah</h1>
@@ -310,14 +282,12 @@ export const News: React.FC = () => {
           <div className="w-24 h-1 bg-secondary-500 mx-auto mt-8 rounded-full"></div>
         </div>
 
-        {/* Elegant Grid Layout */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
           {news.map((item, index) => (
             <article 
               key={item.id} 
               className="bg-white rounded-[2rem] shadow-sm border border-neutral-100/50 overflow-hidden flex flex-col h-full hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:-translate-y-2 transition-all duration-500 group relative"
             >
-              {/* Elegant Thumbnail Container */}
               <div className="relative aspect-[4/3] overflow-hidden">
                 <img 
                   src={item.imageUrl} 
@@ -325,7 +295,6 @@ export const News: React.FC = () => {
                   className="w-full h-full object-cover transform group-hover:scale-110 transition duration-1000 ease-out" 
                 />
                 
-                {/* Date Badge - Elegant Floating Style */}
                 <div className="absolute top-6 left-6 z-20">
                   <div className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-xl shadow-lg border border-white/50 flex flex-col items-center min-w-[60px]">
                     <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{item.date.split(' ')[1] || 'BLN'}</span>
@@ -333,11 +302,9 @@ export const News: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               </div>
 
-              {/* Content Body */}
               <div className="p-8 flex flex-col flex-grow relative">
                 <div className="mb-4">
                   <span className="inline-block px-3 py-1 rounded-full bg-primary-50 text-primary-700 text-[10px] font-bold uppercase tracking-widest border border-primary-100">
@@ -356,7 +323,6 @@ export const News: React.FC = () => {
                   {item.excerpt}
                 </p>
 
-                {/* Footer / Read More */}
                 <div className="flex items-center justify-between pt-6 border-t border-neutral-100">
                   <div className="flex items-center gap-2 text-neutral-400 text-xs font-medium">
                     <Clock size={14} />
@@ -439,7 +405,6 @@ export const NewsDetail: React.FC = () => {
 
   return (
     <motion.div initial="hidden" animate="visible" variants={fadeIn} className="bg-white min-h-screen">
-      {/* Top Navigation Bar */}
       <div className="border-b border-neutral-100 bg-white sticky top-[80px] z-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
            <Link to="/news" className="inline-flex items-center gap-2 text-neutral-500 hover:text-primary-700 transition font-medium text-sm group">
@@ -457,8 +422,6 @@ export const NewsDetail: React.FC = () => {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        
-        {/* Article Header (No Cover Image) */}
         <header className="mb-12 text-center">
           <div className="flex items-center justify-center gap-3 mb-6">
             <span className="px-3 py-1 bg-primary-50 text-primary-700 text-[10px] font-bold uppercase tracking-widest rounded-full border border-primary-100">
@@ -487,20 +450,16 @@ export const NewsDetail: React.FC = () => {
           </div>
         </header>
 
-        {/* Content Body */}
-        {/* Note: Cover image (item.imageUrl) is intentionally excluded here based on requirements */}
         <article className="prose prose-lg prose-emerald max-w-none text-neutral-700 leading-loose prose-headings:font-serif prose-headings:text-primary-900 prose-a:text-secondary-600 hover:prose-a:text-secondary-700 prose-img:rounded-2xl prose-img:shadow-lg">
            <div dangerouslySetInnerHTML={{ __html: item.content }} />
         </article>
         
-        {/* Article Footer */}
         <div className="mt-16 pt-8 border-t border-neutral-200">
            <div className="bg-neutral-50 rounded-2xl p-8 text-center">
               <h3 className="font-serif font-bold text-xl text-primary-900 mb-2">Terima kasih telah membaca</h3>
               <p className="text-neutral-500 text-sm mb-6">Bagikan informasi kebaikan ini kepada rekan dan saudara Anda.</p>
               
               <div className="flex flex-col items-center gap-6">
-                 {/* Social Share Buttons */}
                  <div className="flex items-center justify-center gap-3 flex-wrap">
                     <button onClick={() => handleShare('whatsapp')} className="w-10 h-10 rounded-full bg-[#25D366] text-white flex items-center justify-center hover:scale-110 transition shadow-lg" title="WhatsApp">
                        <MessageCircle size={20} />
@@ -617,9 +576,10 @@ export const Database: React.FC = () => {
   const { users } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Only show active members
+  // IMPORTANT: Filter hanya member aktif, sembunyikan Admin/Pengurus/Korwil dari publik
   const activeMembers = users.filter(
-    u => u.status === MemberStatus.ACTIVE && u.role !== 'admin' && 
+    u => u.status === MemberStatus.ACTIVE && 
+    u.role === UserRole.MEMBER && 
     u.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 

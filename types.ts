@@ -142,6 +142,10 @@ export interface AppContextType extends AppState {
   logout: () => void;
   register: (data: RegistrationInput) => void;
   
+  // New Admin User Management
+  createAdminUser: (name: string, email: string, role: UserRole, wilayah: string, password: string) => Promise<boolean>;
+  changePassword: (userId: number, newPass: string) => Promise<boolean>;
+
   // Approval Workflow
   verifyMemberByKorwil: (registrationId: number) => void;
   approveMemberFinal: (registrationId: number) => void;

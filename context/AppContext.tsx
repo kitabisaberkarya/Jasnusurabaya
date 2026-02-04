@@ -94,7 +94,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // PROGRESSIVE FETCH STRATEGY
   const fetchData = async () => {
     // 1. CRITICAL PHASE: Fetch Site Config ONLY
-    // Kita ambil ini duluan agar Navbar/Layout bisa langsung render
     try {
         const { data: config } = await supabase.from('site_config').select('*').single();
         
@@ -114,12 +113,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error("Config fetch error", err);
     }
     
-    // UNBLOCK UI SEKARANG! Jangan tunggu data lain.
-    // User akan melihat Navbar & Footer, konten lain akan menyusul (pop-in).
+    // UNBLOCK UI SEKARANG
     setIsLoading(false);
 
     // 2. BACKGROUND PHASE: Fetch Heavy Content
-    // Data ini berjalan paralel di background
     try {
       const [
         { data: users }, 
@@ -199,7 +196,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     } catch (error) {
       console.error("Error fetching background data:", error);
-      // Silent error for background tasks
     }
   };
 
@@ -236,7 +232,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      // 2. Check Database for Users (Members, Korwil, Pengurus)
+      // 2. Check Database for Users
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -258,8 +254,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setState(prev => ({ ...prev, currentUser: loggedInUser }));
       
-      if (userRole === UserRole.ADMIN_KORWIL) showToast(`Login Admin Korwil: ${data.name}`, 'success');
-      else if (userRole === UserRole.ADMIN_PENGURUS) showToast(`Login Pengurus Pusat: ${data.name}`, 'success');
+      if (userRole === UserRole.ADMIN_KORWIL) showToast(`Login Korwil: ${data.name}`, 'success');
+      else if (userRole === UserRole.ADMIN_PENGURUS) showToast(`Login Pengurus: ${data.name}`, 'success');
       else showToast(`Ahlan wa sahlan, ${data.name}`, 'success');
       
       return loggedInUser;
@@ -291,6 +287,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // --- NEW: CREATE ADMIN DIRECTLY ---
+  const createAdminUser = async (name: string, email: string, role: UserRole, wilayah: string, password: string): Promise<boolean> => {
+     try {
+        const year = new Date().getFullYear();
+        const random = Math.floor(1000 + Math.random() * 9000);
+        
+        let niaPrefix = "ADM";
+        if (role === UserRole.ADMIN_KORWIL) niaPrefix = `KORWIL-${wilayah.replace(/\s+/g, '-').toUpperCase()}`;
+        if (role === UserRole.ADMIN_PENGURUS) niaPrefix = `PENGURUS`;
+        
+        const nia = `${niaPrefix}-${year}-${random}`;
+
+        const { error } = await supabase.from('users').insert([{
+             name,
+             email,
+             role: role,
+             status: MemberStatus.ACTIVE,
+             nia,
+             password,
+             wilayah,
+             joined_at: new Date().toISOString().split('T')[0]
+        }]);
+
+        if (error) throw error;
+        
+        // Refresh users
+        const { data: newUsers } = await supabase.from('users').select('*');
+        setState(prev => ({ ...prev, users: newUsers || [] }));
+        
+        showToast(`Akun ${role.toUpperCase()} berhasil dibuat. NIA: ${nia}`, 'success');
+        return true;
+     } catch (err) {
+        console.error(err);
+        showToast("Gagal membuat akun admin", "error");
+        return false;
+     }
+  };
+
+  const changePassword = async (userId: number, newPass: string): Promise<boolean> => {
+      try {
+          const { error } = await supabase.from('users').update({ password: newPass }).eq('id', userId);
+          if (error) throw error;
+          showToast("Password berhasil diubah", "success");
+          return true;
+      } catch (err) {
+          console.error(err);
+          showToast("Gagal mengubah password", "error");
+          return false;
+      }
+  };
+
   // STEP 1 APPROVAL: KORWIL
   const verifyMemberByKorwil = async (regId: number) => {
      try {
@@ -306,7 +353,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           registrations: prev.registrations.map(r => r.id === regId ? { ...r, status: MemberStatus.VERIFIED_KORWIL } : r)
         }));
 
-        showToast("Anggota berhasil diverifikasi oleh Korwil. Menunggu approval Pengurus.", "success");
+        showToast("Anggota diverifikasi Korwil. Menunggu approval Pengurus.", "success");
      } catch (error) {
         showToast("Gagal verifikasi korwil", "error");
      }
@@ -350,7 +397,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           registrations: newRegs || [] 
       }));
       
-      showToast(`Anggota ${candidate.name} resmi diterima. NIA: ${nia}`, 'success');
+      showToast(`Anggota ${candidate.name} diterima. NIA: ${nia}`, 'success');
     } catch (error) {
       console.error(error);
       showToast("Gagal memproses approval final", "error");
@@ -394,15 +441,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteMember = async (userId: number) => {
     try {
+      // 1. Delete Attendance Records (Cascade manual if needed)
       await supabase.from('attendance_records').delete().eq('user_id', userId);
+      
+      // 2. Delete User
       const { error } = await supabase.from('users').delete().eq('id', userId);
       if (error) throw error;
       
-      setState(prev => ({ ...prev, users: prev.users.filter(u => u.id !== userId) }));
-      showToast("Data anggota berhasil dihapus permanen.", "success");
+      // 3. Update State Locally
+      setState(prev => ({ 
+          ...prev, 
+          users: prev.users.filter(u => u.id !== userId),
+          attendanceRecords: prev.attendanceRecords.filter(r => r.userId !== userId)
+      }));
+      
+      showToast("Data anggota berhasil dihapus.", "success");
     } catch (error) {
       console.error(error);
-      showToast("Gagal menghapus anggota", "error");
+      showToast("Gagal menghapus anggota. Cek database policy.", "error");
     }
   };
 
@@ -411,7 +467,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const defaultPass = "12345678";
       const { error } = await supabase.from('users').update({ password: defaultPass }).eq('id', userId);
       if (error) throw error;
-      showToast(`Password berhasil direset menjadi: ${defaultPass}`, "success");
+      showToast(`Password direset: ${defaultPass}`, "success");
     } catch (error) {
        console.error(error);
        showToast("Gagal mereset password", "error");
@@ -601,7 +657,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Other CRUD methods (addNews, addGalleryItem, etc.) kept same structure but without localStorage logic...
   const addNews = async (newsData: Omit<NewsItem, 'id'>) => {
     try {
       const { error } = await supabase.from('news').insert([{
@@ -636,7 +691,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const { error } = await supabase.from('gallery').insert([{ type: item.type, url: item.url, caption: item.caption }]);
       if (error) throw error;
       
-      // refresh gallery
       const { data } = await supabase.from('gallery').select('*').order('id', { ascending: false });
       setState(prev => ({ ...prev, gallery: data || [] }));
       
@@ -658,7 +712,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const { error } = await supabase.from('sliders').insert([{ image_url: item.imageUrl, title: item.title, description: item.description }]);
       if (error) throw error;
       
-      // Refresh slider
       const { data } = await supabase.from('sliders').select('*').order('id', { ascending: true });
       const mapped = (data || []).map((s: any) => ({
         id: s.id,
@@ -686,7 +739,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const { error } = await supabase.from('media_posts').insert([{ type: post.type, url: post.url, embed_url: post.embedUrl, caption: post.caption }]);
       if (error) throw error;
       
-      // refresh media
       const { data } = await supabase.from('media_posts').select('*').order('id', { ascending: false });
       const mapped = (data || []).map((m: any) => ({
         ...m,
@@ -715,7 +767,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }).gt('id', 0);
       if (error) throw error;
       setState(prev => ({ ...prev, siteConfig: config }));
-      // No localStorage setItem here, we rely on Supabase Realtime now
       showToast('Pengaturan website berhasil diperbarui', 'success');
     } catch (error) { showToast("Gagal menyimpan konfigurasi", "error"); }
   };
@@ -733,7 +784,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
        }
        if (error) throw error;
        
-       // refresh profile
        const { data } = await supabase.from('profile_pages').select('*');
        setState(prev => ({ ...prev, profilePages: (data as ProfilePage[]) || [] }));
        
@@ -770,6 +820,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{ 
       ...state, 
       login, logout, register, 
+      createAdminUser, changePassword,
       verifyMemberByKorwil, approveMemberFinal, rejectMember, 
       updateMember, deleteMember, resetMemberPassword, 
       createSession, updateSession, deleteSession, toggleSession, markAttendance, updateAttendanceRecord, deleteAttendanceRecord, 

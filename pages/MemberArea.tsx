@@ -1,11 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi, AlertCircle, RefreshCcw, Navigation, ChevronRight, Sparkles } from 'lucide-react';
+import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi, AlertCircle, RefreshCcw, Navigation, ChevronRight, Sparkles, Lock, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const MemberArea: React.FC = () => {
-  const { currentUser, attendanceSessions, markAttendance, showToast, refreshData, isLoading } = useApp();
+  const { currentUser, attendanceSessions, markAttendance, showToast, refreshData, changePassword } = useApp();
   const [selectedSession, setSelectedSession] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -26,6 +26,10 @@ export const MemberArea: React.FC = () => {
   // E-KTA State
   const [isCardOpen, setIsCardOpen] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
+
+  // Change Password State
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ new: '', confirm: '' });
 
   if (!currentUser) return <div>Access Denied</div>;
 
@@ -48,10 +52,26 @@ export const MemberArea: React.FC = () => {
     setIsRefreshing(false);
     showToast("Data absensi diperbarui", "info");
   };
+  
+  const handleChangePassword = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (passwordForm.new !== passwordForm.confirm) {
+          showToast("Konfirmasi password tidak cocok", "error");
+          return;
+      }
+      if (passwordForm.new.length < 6) {
+          showToast("Password minimal 6 karakter", "error");
+          return;
+      }
+      const success = await changePassword(currentUser.id, passwordForm.new);
+      if (success) {
+          setIsChangePasswordOpen(false);
+          setPasswordForm({ new: '', confirm: '' });
+      }
+  };
 
-  // HAVERSINE FORMULA to calculate distance
   const getDistanceFromLatLonInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371e3; // Radius of the earth in meters
+    const R = 6371e3; 
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
     const a =
@@ -59,16 +79,14 @@ export const MemberArea: React.FC = () => {
       Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c; // Distance in meters
+    const d = R * c; 
     return d;
   }
 
   const getAddressFromCoords = async (lat: number, lng: number) => {
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
-        headers: {
-          'User-Agent': 'JSN-App/1.0'
-        }
+        headers: { 'User-Agent': 'JSN-App/1.0' }
       });
       const data = await response.json();
       if (data && data.address) {
@@ -103,18 +121,14 @@ export const MemberArea: React.FC = () => {
         async (position) => {
           const currentLat = position.coords.latitude;
           const currentLng = position.coords.longitude;
-          
           setCoords({ lat: currentLat, lng: currentLng });
-          
-          // Calculate Distance if session has Geo
           const session = attendanceSessions.find(s => s.id === sessionId);
           if (session && session.latitude && session.longitude) {
               const dist = getDistanceFromLatLonInMeters(currentLat, currentLng, session.latitude, session.longitude);
               setCalculatedDistance(dist);
           } else {
-              setCalculatedDistance(0); // No Geo restriction
+              setCalculatedDistance(0);
           }
-
           const address = await getAddressFromCoords(currentLat, currentLng);
           setLocationName(address);
           setLocationStatus('success');
@@ -155,8 +169,6 @@ export const MemberArea: React.FC = () => {
       showToast("Tunggu hingga lokasi terdeteksi!", "error");
       return;
     }
-    
-    // Check Distance Limit
     const session = attendanceSessions.find(s => s.id === selectedSession);
     if (session && session.latitude && session.radius && calculatedDistance !== null) {
        if (calculatedDistance > session.radius) {
@@ -182,7 +194,6 @@ export const MemberArea: React.FC = () => {
         context.drawImage(video, -w, 0, w, h);
         context.restore();
 
-        // Watermark Logic
         const gradientHeight = h * 0.45;
         const gradient = context.createLinearGradient(0, h - gradientHeight, 0, h);
         gradient.addColorStop(0, "rgba(0,0,0,0)");
@@ -246,71 +257,13 @@ export const MemberArea: React.FC = () => {
     }
   };
 
-  const renderCard = () => (
-      <div className="w-full max-w-sm mx-auto h-[230px] md:h-[250px] cursor-pointer group" onClick={() => setIsFlipped(!isFlipped)} style={{ perspective: '1200px' }}>
-         <motion.div className="relative w-full h-full shadow-2xl rounded-2xl" initial={false} animate={{ rotateY: isFlipped ? 180 : 0 }} style={{ transformStyle: 'preserve-3d', transition: 'all 0.6s' }}>
-            {/* Front */}
-            <div className="absolute inset-0 w-full h-full rounded-2xl bg-gradient-to-br from-[#064e3b] to-[#022c22] p-6 text-white backface-hidden border border-amber-500/30 overflow-hidden" style={{ backfaceVisibility: 'hidden' }}>
-                {/* Pattern Overlay */}
-                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"1\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }}></div>
-                
-                <div className="relative z-10 flex justify-between items-start">
-                   <div>
-                      <h3 className="font-serif font-bold text-amber-400 text-lg tracking-wide">JSN SURABAYA</h3>
-                      <p className="text-[10px] tracking-[0.2em] text-emerald-200 uppercase">Kartu Anggota Resmi</p>
-                   </div>
-                   <Wifi className="text-white/20 rotate-90" />
-                </div>
-                <div className="mt-8 relative z-10">
-                   <p className="text-[10px] text-emerald-300 uppercase tracking-widest mb-1">Nomor Induk Anggota</p>
-                   <p className="font-mono text-xl tracking-widest text-white drop-shadow-md">{currentUser.nia || 'PENDING'}</p>
-                </div>
-                <div className="absolute bottom-6 left-6 right-6 z-10 flex justify-between items-end">
-                   <div>
-                      <p className="text-lg font-bold font-serif text-white">{currentUser.name}</p>
-                      <p className="text-xs text-emerald-300 uppercase tracking-wide">{currentUser.wilayah}</p>
-                   </div>
-                   <div className="w-12 h-12 rounded-full border-2 border-amber-400/50 flex items-center justify-center bg-gradient-to-tr from-amber-500 to-amber-300 shadow-lg">
-                      <span className="text-[10px] font-bold text-primary-900">JSN</span>
-                   </div>
-                </div>
-            </div>
-            {/* Back */}
-            <div className="absolute inset-0 w-full h-full rounded-2xl bg-neutral-900 p-6 text-white overflow-hidden" style={{ transform: "rotateY(180deg)", backfaceVisibility: 'hidden' }}>
-               <div className="w-full h-12 bg-black -mx-6 mb-6 mt-2 relative">
-                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-               </div>
-               <div className="flex gap-4 items-center">
-                  <div className="flex-grow">
-                     <div className="h-8 bg-white/10 rounded mb-2"></div>
-                     <div className="h-2 w-2/3 bg-white/5 rounded"></div>
-                     <p className="text-[8px] text-neutral-500 mt-4 leading-relaxed">
-                        Kartu ini adalah bukti keanggotaan sah Jamiyah Sholawat Nariyah Surabaya. 
-                        Barang siapa menemukan kartu ini harap mengembalikan ke sekretariat JSN.
-                     </p>
-                  </div>
-                  <div className="bg-white p-1 rounded-lg shadow-sm">
-                     <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentUser.nia || currentUser.email)}`} 
-                        alt="Kode Anggota" 
-                        className="w-16 h-16 object-contain"
-                     />
-                  </div>
-               </div>
-            </div>
-         </motion.div>
-      </div>
-  );
-
   const activeSessions = attendanceSessions.filter(s => s.isOpen);
-  const totalAttendance = attendanceSessions.filter(s => s.attendees.includes(currentUser.id)).length;
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto px-4 py-8 lg:py-12 pb-24 lg:pb-12 min-h-screen">
       
       {/* 1. HERO PROFILE CARD */}
       <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white shadow-2xl p-8 mb-12 border border-primary-700/50 group">
-          {/* Pattern Background */}
           <div className="absolute inset-0 opacity-10 pattern-bg mix-blend-overlay"></div>
           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500 rounded-full blur-[100px] opacity-20 group-hover:opacity-30 transition duration-1000"></div>
           
@@ -352,9 +305,12 @@ export const MemberArea: React.FC = () => {
                    >
                       <CreditCard size={18} /> Buka E-KTA
                    </button>
-                   <div className="text-[10px] text-center text-primary-300/80">
-                      *Tunjukkan E-KTA saat hadir di majelis
-                   </div>
+                   <button 
+                     onClick={() => setIsChangePasswordOpen(true)} 
+                     className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl border border-white/10 transition flex items-center justify-center gap-2 text-sm"
+                   >
+                      <Lock size={16} /> Ganti Password
+                   </button>
                </div>
           </div>
       </div>
@@ -384,7 +340,6 @@ export const MemberArea: React.FC = () => {
                     key={session.id} 
                     className={`relative overflow-hidden rounded-3xl border transition-all duration-300 group ${hasAttended ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-neutral-100 shadow-sm hover:shadow-xl'}`}
                   >
-                     {/* Decoration */}
                      <div className="absolute top-0 right-0 p-8 opacity-5 transform group-hover:scale-110 transition duration-700 pointer-events-none">
                         <QrCode size={120} />
                      </div>
@@ -463,13 +418,63 @@ export const MemberArea: React.FC = () => {
          )}
       </div>
 
-      {/* MODALS (E-KTA & Camera) */}
+      {/* MODALS */}
+      <AnimatePresence>
+        {isChangePasswordOpen && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center p-4">
+                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white p-8 rounded-3xl max-w-sm w-full">
+                    <h3 className="text-xl font-bold mb-4">Ganti Password</h3>
+                    <form onSubmit={handleChangePassword} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 mb-1">Password Baru</label>
+                            <input type="password" className="w-full border rounded-lg p-3" value={passwordForm.new} onChange={e => setPasswordForm({...passwordForm, new: e.target.value})} required />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 mb-1">Konfirmasi Password</label>
+                            <input type="password" className="w-full border rounded-lg p-3" value={passwordForm.confirm} onChange={e => setPasswordForm({...passwordForm, confirm: e.target.value})} required />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-4">
+                            <button type="button" onClick={() => setIsChangePasswordOpen(false)} className="px-4 py-2 text-neutral-500 font-bold">Batal</button>
+                            <button type="submit" className="px-4 py-2 bg-primary-700 text-white rounded-xl font-bold">Simpan</button>
+                        </div>
+                    </form>
+                </motion.div>
+            </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Existing Card & Camera Modals... (Keeping logic same) */}
       <AnimatePresence>
         {isCardOpen && (
            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
               <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="relative max-w-md w-full">
                  <div className="flex justify-end mb-4"><button onClick={() => setIsCardOpen(false)} className="p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition"><X size={24} /></button></div>
-                 {renderCard()}
+                 
+                 {/* KARTU MEMBER (Reuse component logic) */}
+                 <div className="w-full max-w-sm mx-auto h-[230px] md:h-[250px] cursor-pointer group" onClick={() => setIsFlipped(!isFlipped)} style={{ perspective: '1200px' }}>
+                     <motion.div className="relative w-full h-full shadow-2xl rounded-2xl" initial={false} animate={{ rotateY: isFlipped ? 180 : 0 }} style={{ transformStyle: 'preserve-3d', transition: 'all 0.6s' }}>
+                        <div className="absolute inset-0 w-full h-full rounded-2xl bg-gradient-to-br from-[#064e3b] to-[#022c22] p-6 text-white backface-hidden border border-amber-500/30 overflow-hidden" style={{ backfaceVisibility: 'hidden' }}>
+                            <div className="absolute inset-0 opacity-10 pattern-bg"></div>
+                            <div className="relative z-10 flex justify-between items-start">
+                               <div><h3 className="font-serif font-bold text-amber-400 text-lg tracking-wide">JSN SURABAYA</h3><p className="text-[10px] tracking-[0.2em] text-emerald-200 uppercase">Kartu Anggota Resmi</p></div>
+                               <Wifi className="text-white/20 rotate-90" />
+                            </div>
+                            <div className="mt-8 relative z-10"><p className="text-[10px] text-emerald-300 uppercase tracking-widest mb-1">Nomor Induk Anggota</p><p className="font-mono text-xl tracking-widest text-white drop-shadow-md">{currentUser.nia || 'PENDING'}</p></div>
+                            <div className="absolute bottom-6 left-6 right-6 z-10 flex justify-between items-end">
+                               <div><p className="text-lg font-bold font-serif text-white">{currentUser.name}</p><p className="text-xs text-emerald-300 uppercase tracking-wide">{currentUser.wilayah}</p></div>
+                               <div className="w-12 h-12 rounded-full border-2 border-amber-400/50 flex items-center justify-center bg-gradient-to-tr from-amber-500 to-amber-300 shadow-lg"><span className="text-[10px] font-bold text-primary-900">JSN</span></div>
+                            </div>
+                        </div>
+                        <div className="absolute inset-0 w-full h-full rounded-2xl bg-neutral-900 p-6 text-white overflow-hidden" style={{ transform: "rotateY(180deg)", backfaceVisibility: 'hidden' }}>
+                           <div className="w-full h-12 bg-black -mx-6 mb-6 mt-2 relative"><div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div></div>
+                           <div className="flex gap-4 items-center">
+                              <div className="flex-grow"><div className="h-8 bg-white/10 rounded mb-2"></div><div className="h-2 w-2/3 bg-white/5 rounded"></div><p className="text-[8px] text-neutral-500 mt-4 leading-relaxed">Kartu ini adalah bukti keanggotaan sah Jamiyah Sholawat Nariyah Surabaya.</p></div>
+                              <div className="bg-white p-1 rounded-lg shadow-sm"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentUser.nia || currentUser.email)}`} alt="Kode Anggota" className="w-16 h-16 object-contain"/></div>
+                           </div>
+                        </div>
+                     </motion.div>
+                 </div>
+                 
                  <p className="text-center text-white/50 text-xs mt-6">Ketuk kartu untuk membalik</p>
               </motion.div>
            </motion.div>
@@ -483,55 +488,25 @@ export const MemberArea: React.FC = () => {
               <div className="absolute top-0 left-0 right-0 p-4 z-20 flex justify-between bg-gradient-to-b from-black/80 to-transparent">
                 <div>
                     <h3 className="text-white font-bold text-lg drop-shadow-md">Ambil Foto</h3>
-                    {/* Distance Indicator */}
                     <div className="text-xs mt-1 flex items-center gap-2">
                         {locationStatus === 'loading' && <span className="text-amber-400 animate-pulse flex items-center gap-1"><Navigation size={10} /> Mencari Lokasi...</span>}
-                        {locationStatus === 'success' && (
-                             <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm ${calculatedDistance && calculatedDistance > 100 ? "text-red-400 font-bold border border-red-500/50" : "text-emerald-400 font-bold border border-emerald-500/50"}`}>
-                                <MapPin size={10} /> {locationName} {calculatedDistance !== null ? `(${Math.round(calculatedDistance)}m)` : ''}
-                             </span>
-                        )}
+                        {locationStatus === 'success' && (<span className={`flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm ${calculatedDistance && calculatedDistance > 100 ? "text-red-400 font-bold border border-red-500/50" : "text-emerald-400 font-bold border border-emerald-500/50"}`}><MapPin size={10} /> {locationName} {calculatedDistance !== null ? `(${Math.round(calculatedDistance)}m)` : ''}</span>)}
                         {locationStatus === 'error' && <span className="text-red-400">Gagal Lokasi</span>}
                     </div>
                 </div>
                 <button onClick={closeCameraModal} className="text-white bg-black/20 p-2 rounded-full backdrop-blur-md"><X size={24} /></button>
               </div>
-              
               <div className="relative aspect-[3/4] bg-black">
-                {!capturedImage ? (
-                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-                ) : (
-                    <img src={capturedImage} className="w-full h-full object-cover" />
-                )}
+                {!capturedImage ? (<video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />) : (<img src={capturedImage} className="w-full h-full object-cover" />)}
                 <canvas ref={canvasRef} className="hidden" />
-                
-                {/* Visual Guides */}
-                {!capturedImage && (
-                    <div className="absolute inset-0 border-[30px] border-black/30 pointer-events-none">
-                        <div className="absolute top-8 left-8 w-16 h-16 border-t-4 border-l-4 border-white/50 rounded-tl-3xl"></div>
-                        <div className="absolute top-8 right-8 w-16 h-16 border-t-4 border-r-4 border-white/50 rounded-tr-3xl"></div>
-                        <div className="absolute bottom-8 left-8 w-16 h-16 border-b-4 border-l-4 border-white/50 rounded-bl-3xl"></div>
-                        <div className="absolute bottom-8 right-8 w-16 h-16 border-b-4 border-r-4 border-white/50 rounded-br-3xl"></div>
-                    </div>
-                )}
               </div>
-
               <div className="bg-neutral-900 p-8 flex justify-center pb-10">
                  {!capturedImage ? (
-                   <button 
-                     onClick={takePhoto} 
-                     disabled={locationStatus !== 'success'} 
-                     className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all duration-300 ${locationStatus === 'success' ? 'border-white hover:scale-105 active:scale-95' : 'border-gray-600 opacity-50 cursor-not-allowed'}`}
-                   >
-                      <div className={`w-16 h-16 bg-white rounded-full transition-all ${locationStatus === 'success' ? 'scale-100' : 'scale-75 bg-gray-400'}`}></div>
-                   </button>
+                   <button onClick={takePhoto} disabled={locationStatus !== 'success'} className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all duration-300 ${locationStatus === 'success' ? 'border-white hover:scale-105 active:scale-95' : 'border-gray-600 opacity-50 cursor-not-allowed'}`}><div className={`w-16 h-16 bg-white rounded-full transition-all ${locationStatus === 'success' ? 'scale-100' : 'scale-75 bg-gray-400'}`}></div></button>
                  ) : (
                    <div className="flex gap-4 w-full">
                       <button onClick={retakePhoto} className="flex-1 py-4 bg-neutral-800 text-white font-bold rounded-2xl hover:bg-neutral-700 transition">Ulangi</button>
-                      <button onClick={submitAttendance} disabled={isSubmitting} className="flex-1 py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2">
-                        {isSubmitting ? <RefreshCw className="animate-spin" /> : <CheckCircle2 />} 
-                        {isSubmitting ? 'Mengirim...' : 'Kirim Bukti'}
-                      </button>
+                      <button onClick={submitAttendance} disabled={isSubmitting} className="flex-1 py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2">{isSubmitting ? <RefreshCw className="animate-spin" /> : <CheckCircle2 />} {isSubmitting ? 'Mengirim...' : 'Kirim Bukti'}</button>
                    </div>
                  )}
               </div>
