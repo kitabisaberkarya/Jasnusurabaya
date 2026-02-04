@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Users, Calendar, FileText, BarChart2, UserCheck, AlertCircle, ArrowUpRight, 
@@ -15,6 +15,10 @@ import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord, 
 import XLSX from 'xlsx-js-style';
 import { motion, AnimatePresence } from 'framer-motion';
 import { KORWIL_LIST } from '../constants';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  BarChart, Bar, PieChart, Pie, Cell, Legend 
+} from 'recharts';
 
 // Interface untuk baris data tabel Korwil
 interface KorwilRow {
@@ -103,6 +107,64 @@ export const AdminDashboard: React.FC = () => {
   const isKorwil = currentUser?.role === UserRole.ADMIN_KORWIL;
   const isPengurus = currentUser?.role === UserRole.ADMIN_PENGURUS;
 
+  // --- CHART DATA PREPARATION ---
+  
+  // 1. Member Growth (Line Chart)
+  const memberGrowthData = useMemo(() => {
+    const months: Record<string, number> = {};
+    const sortedUsers = [...users].sort((a, b) => {
+        const dateA = new Date((a as any).joined_at || a.joinedAt || '2024-01-01').getTime();
+        const dateB = new Date((b as any).joined_at || b.joinedAt || '2024-01-01').getTime();
+        return dateA - dateB;
+    });
+
+    sortedUsers.forEach(user => {
+       const rawDate = (user as any).joined_at || user.joinedAt || new Date().toISOString();
+       const date = new Date(rawDate);
+       const key = date.toLocaleString('id-ID', { month: 'short', year: '2-digit' }); // Jan 24
+       months[key] = (months[key] || 0) + 1;
+    });
+
+    // Cumulative sum
+    let total = 0;
+    return Object.entries(months).map(([name, count]) => {
+        total += count;
+        return { name, Anggota: total, Baru: count };
+    });
+  }, [users]);
+
+  // 2. Attendance Stats (Bar Chart)
+  const attendanceStatsData = useMemo(() => {
+     // Take last 7 sessions
+     return [...attendanceSessions]
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(-7)
+        .map(s => ({
+            name: s.date.split('-').slice(1).reverse().join('/'), // DD/MM
+            Hadir: s.attendees.length,
+            fullDate: s.date,
+            title: s.name
+        }));
+  }, [attendanceSessions]);
+
+  // 3. Wilayah Distribution (Pie Chart)
+  const wilayahData = useMemo(() => {
+      const counts: Record<string, number> = {};
+      users.forEach(u => {
+          if (u.role === UserRole.MEMBER && u.status === MemberStatus.ACTIVE) {
+              const w = u.wilayah || 'Lainnya';
+              counts[w] = (counts[w] || 0) + 1;
+          }
+      });
+      
+      return Object.entries(counts)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5); // Top 5 only + Others logic if needed
+  }, [users]);
+
+  const COLORS = ['#059669', '#d97706', '#3b82f6', '#8b5cf6', '#ec4899', '#6366f1'];
+
   // Set default tab based on role
   useEffect(() => {
     if (isKorwil && activeTab !== 'approval') setActiveTab('approval');
@@ -131,13 +193,10 @@ export const AdminDashboard: React.FC = () => {
   // Filter Registrations Based on Role & Wilayah
   const getPendingRegistrations = () => {
      if (isKorwil) {
-        // Korwil hanya melihat PENDING di wilayahnya
         return registrations.filter(r => r.status === MemberStatus.PENDING && r.wilayah === currentUser?.wilayah);
      } else if (isPengurus) {
-        // Pengurus melihat VERIFIED_KORWIL dari semua wilayah
         return registrations.filter(r => r.status === MemberStatus.VERIFIED_KORWIL);
      } else {
-        // Super Admin melihat semua
         return registrations.filter(r => r.status === MemberStatus.PENDING || r.status === MemberStatus.VERIFIED_KORWIL);
      }
   };
@@ -146,9 +205,8 @@ export const AdminDashboard: React.FC = () => {
   
   // Filter Members Based on Role
   const filteredUsers = users.filter(u => {
-      // Logic: Super Admin lihat semua, Korwil lihat wilayahnya saja, Pengurus lihat semua anggota
       if (isKorwil) return u.wilayah === currentUser?.wilayah && u.role === UserRole.MEMBER;
-      return true; // Pengurus & Admin can see all
+      return true; 
   }).filter(u => u.name.toLowerCase().includes(memberSearch.toLowerCase()));
 
   // --- HANDLERS ---
@@ -351,9 +409,8 @@ export const AdminDashboard: React.FC = () => {
     if (e.target.files && e.target.files.length > 0) {
         const file = e.target.files[0];
         
-        // Confirmation
         if (!window.confirm("PERINGATAN: Restore akan menimpa/menambah data yang ada di database. Apakah Anda yakin ingin melanjutkan?")) {
-            e.target.value = ''; // Reset input
+            e.target.value = ''; 
             return;
         }
 
@@ -362,7 +419,6 @@ export const AdminDashboard: React.FC = () => {
             const text = await file.text();
             const jsonData = JSON.parse(text) as BackupData;
             
-            // Basic Validation
             if (!jsonData.version || !jsonData.data) {
                 throw new Error("Format file backup tidak valid");
             }
@@ -376,9 +432,26 @@ export const AdminDashboard: React.FC = () => {
             showToast("Gagal membaca file backup", "error");
         } finally {
             setIsRestoring(false);
-            e.target.value = ''; // Reset input
+            e.target.value = ''; 
         }
     }
+  };
+
+  // Custom Tooltip for Charts
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white/90 backdrop-blur-md p-4 border border-white/20 rounded-xl shadow-xl">
+          <p className="font-bold text-primary-900 mb-1">{label}</p>
+          {payload.map((entry: any, index: number) => (
+             <p key={index} className="text-xs font-semibold" style={{ color: entry.color }}>
+                {entry.name}: {entry.value}
+             </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -503,6 +576,163 @@ export const AdminDashboard: React.FC = () => {
 
          <div className="flex-grow animate-fade-in-up">
             
+             {/* OVERVIEW TAB (UPDATED WITH CHARTS) */}
+             {activeTab === 'overview' && (
+               <div className="space-y-8">
+                   {/* Summary Cards */}
+                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                       <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm relative overflow-hidden group">
+                           <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                           <p className="text-sm font-bold text-neutral-400 uppercase tracking-wider relative z-10">Total Anggota</p>
+                           <h3 className="text-4xl font-serif font-bold mt-2 text-primary-900 relative z-10">{users.filter(u => u.status === 'active' && u.role === UserRole.MEMBER).length}</h3>
+                           <div className="absolute bottom-4 right-4 text-emerald-600 opacity-20"><Users size={40}/></div>
+                       </div>
+                       <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm relative overflow-hidden group">
+                           <div className="absolute right-0 top-0 w-24 h-24 bg-amber-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                           <p className="text-sm font-bold text-neutral-400 uppercase tracking-wider relative z-10">Total Kegiatan</p>
+                           <h3 className="text-4xl font-serif font-bold mt-2 text-primary-900 relative z-10">{attendanceSessions.length}</h3>
+                           <div className="absolute bottom-4 right-4 text-amber-600 opacity-20"><Calendar size={40}/></div>
+                       </div>
+                       <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm relative overflow-hidden group">
+                           <div className="absolute right-0 top-0 w-24 h-24 bg-red-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                           <p className="text-sm font-bold text-neutral-400 uppercase tracking-wider relative z-10">Menunggu Verifikasi</p>
+                           <h3 className="text-4xl font-serif font-bold mt-2 text-primary-900 relative z-10">{filteredRegistrations.length}</h3>
+                           <div className="absolute bottom-4 right-4 text-red-600 opacity-20"><UserCheck size={40}/></div>
+                       </div>
+                       <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm relative overflow-hidden group">
+                           <div className="absolute right-0 top-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                           <p className="text-sm font-bold text-neutral-400 uppercase tracking-wider relative z-10">Berita Terbit</p>
+                           <h3 className="text-4xl font-serif font-bold mt-2 text-primary-900 relative z-10">{news.length}</h3>
+                           <div className="absolute bottom-4 right-4 text-blue-600 opacity-20"><FileText size={40}/></div>
+                       </div>
+                   </div>
+
+                   {/* CHARTS SECTION */}
+                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                       
+                       {/* Chart 1: Member Growth (Area Chart) */}
+                       <div className="lg:col-span-2 bg-white rounded-3xl border border-neutral-100 shadow-lg p-6 relative overflow-hidden">
+                           <div className="flex justify-between items-center mb-6 relative z-10">
+                               <div>
+                                   <h3 className="font-bold text-lg text-primary-900">Pertumbuhan Anggota</h3>
+                                   <p className="text-xs text-neutral-400">Akumulasi anggota terdaftar per bulan</p>
+                               </div>
+                               <div className="bg-emerald-50 text-emerald-600 p-2 rounded-xl"><BarChart2 size={20}/></div>
+                           </div>
+                           
+                           <div className="h-[300px] w-full relative z-10">
+                               <ResponsiveContainer width="100%" height="100%">
+                                   <AreaChart data={memberGrowthData}>
+                                     <defs>
+                                       <linearGradient id="colorAnggota" x1="0" y1="0" x2="0" y2="1">
+                                         <stop offset="5%" stopColor="#059669" stopOpacity={0.4}/>
+                                         <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
+                                       </linearGradient>
+                                     </defs>
+                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0"/>
+                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} />
+                                     <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
+                                     <Tooltip content={<CustomTooltip />} />
+                                     <Area 
+                                       type="monotone" 
+                                       dataKey="Anggota" 
+                                       stroke="#059669" 
+                                       strokeWidth={3}
+                                       fillOpacity={1} 
+                                       fill="url(#colorAnggota)" 
+                                       animationDuration={1500}
+                                     />
+                                   </AreaChart>
+                               </ResponsiveContainer>
+                           </div>
+                           
+                           {/* Background Decor */}
+                           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                       </div>
+
+                       {/* Chart 2: Wilayah Distribution (Pie Chart) */}
+                       <div className="lg:col-span-1 bg-white rounded-3xl border border-neutral-100 shadow-lg p-6 relative overflow-hidden flex flex-col">
+                            <div className="mb-4 relative z-10">
+                                <h3 className="font-bold text-lg text-primary-900">Sebaran Wilayah</h3>
+                                <p className="text-xs text-neutral-400">Top 5 Korwil dengan anggota terbanyak</p>
+                            </div>
+                            
+                            <div className="flex-1 min-h-[250px] relative z-10">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                          data={wilayahData}
+                                          cx="50%"
+                                          cy="50%"
+                                          innerRadius={60}
+                                          outerRadius={80}
+                                          paddingAngle={5}
+                                          dataKey="value"
+                                          stroke="none"
+                                        >
+                                          {wilayahData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} style={{filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))'}} />
+                                          ))}
+                                        </Pie>
+                                        <Tooltip content={<CustomTooltip />} />
+                                        <Legend 
+                                            layout="horizontal" 
+                                            verticalAlign="bottom" 
+                                            align="center"
+                                            wrapperStyle={{fontSize: '10px', paddingTop: '20px'}}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+
+                            {/* Center Text Overlay */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none pt-8">
+                                <div className="text-center">
+                                    <span className="block text-2xl font-bold text-neutral-700">{users.length}</span>
+                                    <span className="text-[10px] text-neutral-400 uppercase tracking-wider">Total</span>
+                                </div>
+                            </div>
+                       </div>
+
+                       {/* Chart 3: Attendance Activity (Bar Chart) */}
+                       <div className="lg:col-span-3 bg-white rounded-3xl border border-neutral-100 shadow-lg p-6 relative overflow-hidden">
+                           <div className="flex justify-between items-center mb-6 relative z-10">
+                               <div>
+                                   <h3 className="font-bold text-lg text-primary-900">Aktivitas Absensi Terakhir</h3>
+                                   <p className="text-xs text-neutral-400">Jumlah kehadiran pada 7 sesi kegiatan terakhir</p>
+                                </div>
+                                <div className="bg-amber-50 text-amber-600 p-2 rounded-xl"><UserCheck size={20}/></div>
+                           </div>
+
+                           <div className="h-[250px] w-full relative z-10">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={attendanceStatsData} barSize={40}>
+                                        <defs>
+                                            <linearGradient id="colorHadir" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#d97706" stopOpacity={1}/>
+                                                <stop offset="100%" stopColor="#fbbf24" stopOpacity={0.8}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0"/>
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
+                                        <Tooltip content={<CustomTooltip />} cursor={{fill: 'transparent'}} />
+                                        <Bar 
+                                            dataKey="Hadir" 
+                                            fill="url(#colorHadir)" 
+                                            radius={[10, 10, 0, 0]}
+                                            animationDuration={1500}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                           </div>
+
+                           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-amber-500/5 to-transparent rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                       </div>
+                   </div>
+               </div>
+            )}
+
             {/* APPROVAL TAB */}
             {activeTab === 'approval' && (
                <div className="bg-white border border-neutral-200 shadow-sm rounded-2xl overflow-hidden">
@@ -1063,7 +1293,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
             
-            {/* BACKUP & RESTORE TAB - REDESIGNED */}
+            {/* BACKUP & RESTORE TAB */}
             {activeTab === 'backup' && isSuperAdmin && (
                 <div className="max-w-5xl mx-auto space-y-8 animate-fade-in-up">
                     {/* Header Alert */}
@@ -1147,16 +1377,6 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            )}
-
-            {/* OVERVIEW TAB */}
-            {activeTab === 'overview' && (
-               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                   <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm"><p className="text-sm font-medium text-neutral-500">Total Anggota</p><h3 className="text-3xl font-bold mt-2">{users.filter(u => u.status === 'active' && u.role === UserRole.MEMBER).length}</h3></div>
-                   <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm"><p className="text-sm font-medium text-neutral-500">Total Kegiatan</p><h3 className="text-3xl font-bold mt-2">{attendanceSessions.length}</h3></div>
-                   <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm"><p className="text-sm font-medium text-neutral-500">Menunggu Verifikasi</p><h3 className="text-3xl font-bold mt-2">{filteredRegistrations.length}</h3></div>
-                   <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm"><p className="text-sm font-medium text-neutral-500">Berita Terbit</p><h3 className="text-3xl font-bold mt-2">{news.length}</h3></div>
-               </div>
             )}
 
             {/* MODALS */}
