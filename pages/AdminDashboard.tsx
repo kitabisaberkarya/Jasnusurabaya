@@ -614,6 +614,176 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
 
+            {/* ATTENDANCE TAB */}
+            {activeTab === 'attendance' && (
+                <div className="space-y-6">
+                    {viewingSession ? (
+                        <div className="bg-white border border-neutral-200 shadow-sm rounded-2xl overflow-hidden">
+                            <div className="px-6 py-4 border-b border-neutral-100 bg-neutral-50 flex justify-between items-center sticky top-0 z-10">
+                                <div className="flex items-center gap-3">
+                                    <button onClick={() => setViewingSession(null)} className="p-2 hover:bg-neutral-200 rounded-full transition"><ArrowLeft size={20}/></button>
+                                    <div>
+                                        <h3 className="font-bold text-neutral-800">{viewingSession.name}</h3>
+                                        <p className="text-xs text-neutral-500">{viewingSession.date} • {viewingSession.attendees.length} Hadir</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <input type="text" placeholder="Cari peserta..." className="border rounded-lg px-3 py-1.5 text-xs" value={attendanceSearch} onChange={e => setAttendanceSearch(e.target.value)} />
+                                    <button onClick={handleExportAttendance} className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-700 flex items-center gap-1"><FileSpreadsheet size={14}/> Export XLSX</button>
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto max-h-[70vh]">
+                                <table className="w-full text-left">
+                                    <thead className="bg-white text-neutral-500 text-xs uppercase font-bold border-b border-neutral-100 sticky top-0 z-0">
+                                        <tr><th className="px-6 py-3">Waktu</th><th className="px-6 py-3">Nama Anggota</th><th className="px-6 py-3">Lokasi Absen</th><th className="px-6 py-3 text-center">Bukti Foto</th><th className="px-6 py-3 text-right">Aksi</th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-neutral-50">
+                                        {attendanceRecords.filter(r => r.sessionId === viewingSession.id && r.userName.toLowerCase().includes(attendanceSearch.toLowerCase())).map(r => (
+                                            <tr key={r.id} className="hover:bg-neutral-50">
+                                                <td className="px-6 py-3 text-xs font-mono text-neutral-600">{r.timestamp}</td>
+                                                <td className="px-6 py-3 font-bold text-neutral-800">{r.userName}</td>
+                                                <td className="px-6 py-3 text-xs text-neutral-600 max-w-xs truncate" title={r.location}>{r.location}</td>
+                                                <td className="px-6 py-3 text-center">
+                                                    <button onClick={() => setPreviewImage(r.photoUrl)} className="inline-flex items-center gap-1 px-2 py-1 bg-neutral-100 rounded-md text-xs font-bold text-neutral-600 hover:bg-neutral-200"><ImageIcon size={12}/> Lihat</button>
+                                                </td>
+                                                <td className="px-6 py-3 text-right">
+                                                    <button onClick={() => deleteAttendanceRecord(r.id, r.sessionId, r.userId)} className="text-red-500 hover:bg-red-50 p-1.5 rounded"><Trash2 size={16}/></button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {attendanceRecords.filter(r => r.sessionId === viewingSession.id).length === 0 && (
+                                            <tr><td colSpan={5} className="px-6 py-8 text-center text-neutral-400">Belum ada data absensi masuk.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <div className="lg:col-span-2 space-y-4">
+                                    {attendanceSessions.map(session => (
+                                        <div key={session.id} className={`bg-white border rounded-xl p-5 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between transition-all ${session.isOpen ? 'border-emerald-200 shadow-sm' : 'border-neutral-200 opacity-80 hover:opacity-100'}`}>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    {session.isOpen ? <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> : <span className="w-2 h-2 rounded-full bg-neutral-400"></span>}
+                                                    <span className={`text-xs font-bold uppercase tracking-wider ${session.isOpen ? 'text-emerald-600' : 'text-neutral-500'}`}>{session.isOpen ? 'Sesi Dibuka' : 'Sesi Ditutup'}</span>
+                                                    <span className="text-xs text-neutral-400">• {session.date}</span>
+                                                </div>
+                                                <h3 className="text-lg font-bold text-neutral-800">{session.name}</h3>
+                                                <div className="flex items-center gap-4 mt-2 text-xs text-neutral-600">
+                                                    <span className="flex items-center gap-1"><Users size={14}/> {session.attendees.length} Hadir</span>
+                                                    {session.latitude ? <span className="flex items-center gap-1 text-amber-600"><MapPin size={14}/> Wajib Lokasi ({session.radius}m)</span> : <span className="flex items-center gap-1 text-emerald-600"><MapPin size={14}/> Bebas Lokasi</span>}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 w-full md:w-auto">
+                                                <button onClick={() => toggleSession(session.id)} className={`flex-1 md:flex-none px-3 py-2 rounded-lg text-xs font-bold border transition ${session.isOpen ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}>
+                                                    {session.isOpen ? 'Tutup Sesi' : 'Buka Sesi'}
+                                                </button>
+                                                <button onClick={() => setViewingSession(session)} className="flex-1 md:flex-none px-3 py-2 bg-neutral-100 text-neutral-700 rounded-lg text-xs font-bold hover:bg-neutral-200">Detail</button>
+                                                <button onClick={() => handleEditSession(session)} className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg"><Edit3 size={18}/></button>
+                                                <button onClick={() => handleDeleteSession(session.id, session.name)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={18}/></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {attendanceSessions.length === 0 && (
+                                        <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-neutral-300">
+                                            <Calendar size={48} className="mx-auto text-neutral-300 mb-4"/>
+                                            <h3 className="text-neutral-500 font-medium">Belum ada sesi absensi dibuat</h3>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div id="session-form" className="bg-white border border-neutral-200 rounded-2xl p-6 h-fit sticky top-24 shadow-sm">
+                                    <h3 className="font-bold text-neutral-800 mb-4 flex items-center gap-2">
+                                        {editingSession ? <Edit3 size={18} className="text-amber-500"/> : <Plus size={18} className="text-emerald-500"/>}
+                                        {editingSession ? 'Edit Sesi Absensi' : 'Buat Sesi Baru'}
+                                    </h3>
+                                    <form onSubmit={editingSession ? handleUpdateSessionSubmit : handleCreateSession} className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-neutral-500 mb-1">Nama Kegiatan</label>
+                                            <input type="text" className="w-full border rounded-lg p-2.5 text-sm focus:border-emerald-500 outline-none" placeholder="Contoh: Majelis Rutin Malam Jumat" value={editingSession ? editSessionName : newSessionName} onChange={e => editingSession ? setEditSessionName(e.target.value) : setNewSessionName(e.target.value)} required />
+                                        </div>
+                                        
+                                        <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200 space-y-3">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-xs font-bold text-neutral-600 flex items-center gap-1"><MapPin size={12}/> Geofencing (Opsional)</label>
+                                                <button type="button" onClick={() => handleGetCurrentLocation(!!editingSession)} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200">Gunakan Lokasi Saya</button>
+                                            </div>
+                                            <input type="text" placeholder="Link Google Maps (Otomatis Ekstrak)" className="w-full border rounded-lg p-2 text-xs" value={editingSession ? editSessionGeo.mapsUrl : geoMapsUrl} onChange={e => handleMapsLinkChange(e.target.value, !!editingSession)} />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input type="text" placeholder="Latitude" className="w-full border rounded-lg p-2 text-xs bg-white" value={editingSession ? editSessionGeo.lat : geoLat} readOnly />
+                                                <input type="text" placeholder="Longitude" className="w-full border rounded-lg p-2 text-xs bg-white" value={editingSession ? editSessionGeo.lng : geoLng} readOnly />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-neutral-500 mb-1">Radius Toleransi (Meter)</label>
+                                                <input type="number" className="w-full border rounded-lg p-2 text-xs" value={editingSession ? editSessionGeo.rad : geoRadius} onChange={e => editingSession ? setEditSessionGeo({...editSessionGeo, rad: e.target.value}) : setGeoRadius(e.target.value)} min="10" />
+                                            </div>
+                                        </div>
+
+                                        <button type="submit" className={`w-full py-2.5 rounded-xl font-bold text-white shadow-lg transition transform active:scale-95 ${editingSession ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary-900 hover:bg-primary-800'}`}>
+                                            {editingSession ? 'Simpan Perubahan' : 'Buat Sesi Sekarang'}
+                                        </button>
+                                        {editingSession && (
+                                            <button type="button" onClick={() => { setEditingSession(null); setEditSessionName(''); setEditSessionGeo({lat:'', lng:'', rad:'100', mapsUrl:''}); }} className="w-full py-2 bg-neutral-100 text-neutral-600 rounded-xl font-bold hover:bg-neutral-200">Batal Edit</button>
+                                        )}
+                                    </form>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* RECAP TAB */}
+            {activeTab === 'recap' && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <h3 className="font-bold text-lg text-neutral-800">Export Data Anggota</h3>
+                                <p className="text-sm text-neutral-500 mt-1">Unduh seluruh database anggota aktif format Excel.</p>
+                            </div>
+                            <button onClick={handleExportMembers} className="bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-xl shadow-lg shadow-emerald-600/20 transition"><Download size={24}/></button>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <h3 className="font-bold text-lg text-neutral-800">Export Rekap Absensi</h3>
+                                <p className="text-sm text-neutral-500 mt-1">Unduh ringkasan dan detail kehadiran per sesi.</p>
+                            </div>
+                            <button onClick={handleExportAttendance} className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl shadow-lg shadow-blue-600/20 transition"><FileSpreadsheet size={24}/></button>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-sm">
+                        <div className="p-6 border-b border-neutral-100 bg-neutral-50">
+                            <h3 className="font-bold text-neutral-800">Ringkasan Statistik Kehadiran</h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-white text-neutral-500 text-xs uppercase font-bold border-b border-neutral-100">
+                                    <tr><th className="px-6 py-4">Nama Sesi</th><th className="px-6 py-4">Tanggal</th><th className="px-6 py-4 text-center">Jumlah Hadir</th><th className="px-6 py-4 text-center">Status</th></tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-50">
+                                    {attendanceSessions.map(s => (
+                                        <tr key={s.id}>
+                                            <td className="px-6 py-4 font-bold text-neutral-800">{s.name}</td>
+                                            <td className="px-6 py-4 text-sm text-neutral-600">{s.date}</td>
+                                            <td className="px-6 py-4 text-center font-mono font-bold text-emerald-600">{s.attendees.length}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${s.isOpen ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-600'}`}>
+                                                    {s.isOpen ? 'Buka' : 'Tutup'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* SETTINGS / CHANGE PASSWORD */}
             {activeTab === 'settings' && (
                <div className="max-w-4xl space-y-8">
@@ -672,13 +842,13 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
             
-            {/* OTHER TABS (News, Gallery, etc - Hidden for brevity, keeping existing logic) */}
+            {/* NEWS TAB */}
             {activeTab === 'news' && isSuperAdmin && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-6">
                         {news.map(n => (
-                            <div key={n.id} className="bg-white border border-neutral-200 rounded-xl p-6 flex gap-4 hover:shadow-md transition">
-                                <img src={n.imageUrl} className="w-24 h-24 object-cover rounded-lg bg-neutral-100" />
+                            <div key={n.id} className="bg-white border border-neutral-200 rounded-xl p-6 flex flex-col sm:flex-row gap-4 hover:shadow-md transition relative">
+                                <img src={n.imageUrl} className="w-full sm:w-24 h-48 sm:h-24 object-cover rounded-lg bg-neutral-100" />
                                 <div className="flex-1">
                                     <h3 className="font-bold text-lg">{n.title}</h3>
                                     <p className="text-sm text-neutral-500 line-clamp-2">{n.excerpt}</p>
@@ -703,6 +873,171 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
             )}
+            
+            {/* GALLERY TAB */}
+            {activeTab === 'gallery' && isSuperAdmin && (
+               <div className="space-y-6">
+                   <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm mb-6">
+                       <h3 className="font-bold text-neutral-800 mb-4">Tambah Foto Galeri</h3>
+                       <div className="flex flex-col md:flex-row gap-4">
+                           <input type="text" placeholder="URL Gambar" className="flex-1 border rounded-lg p-2" value={galleryForm.imageUrl} onChange={e => setGalleryForm({...galleryForm, imageUrl: e.target.value})} />
+                           <input type="text" placeholder="Caption" className="flex-1 border rounded-lg p-2" value={galleryForm.caption} onChange={e => setGalleryForm({...galleryForm, caption: e.target.value})} />
+                           <button onClick={() => { if(galleryForm.imageUrl) { addGalleryItem({ type: 'image', url: galleryForm.imageUrl, caption: galleryForm.caption }); setGalleryForm({imageUrl:'', caption:''}); } }} className="bg-primary-700 text-white px-6 py-2 rounded-lg font-bold">Tambah</button>
+                       </div>
+                   </div>
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                       {gallery.map(item => (
+                           <div key={item.id} className="relative group rounded-xl overflow-hidden border border-neutral-200">
+                               <img src={item.url} alt={item.caption} className="w-full h-40 object-cover" />
+                               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                   <button onClick={() => deleteGalleryItem(item.id)} className="bg-red-600 text-white p-2 rounded-full"><Trash2 size={16}/></button>
+                               </div>
+                               <div className="absolute bottom-0 left-0 right-0 bg-white/90 p-2 text-xs font-bold truncate">{item.caption || 'Tanpa Caption'}</div>
+                           </div>
+                       ))}
+                   </div>
+               </div>
+            )}
+            
+            {/* SLIDER TAB */}
+            {activeTab === 'slider' && isSuperAdmin && (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+                       <h3 className="font-bold text-neutral-800 mb-4">Tambah Slider Beranda</h3>
+                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                           <input type="text" placeholder="URL Gambar Full HD" className="border rounded-lg p-2" value={sliderForm.imageUrl} onChange={e => setSliderForm({...sliderForm, imageUrl: e.target.value})} />
+                           <input type="text" placeholder="Judul Besar" className="border rounded-lg p-2" value={sliderForm.title} onChange={e => setSliderForm({...sliderForm, title: e.target.value})} />
+                           <input type="text" placeholder="Deskripsi Singkat" className="border rounded-lg p-2" value={sliderForm.description} onChange={e => setSliderForm({...sliderForm, description: e.target.value})} />
+                       </div>
+                       <button onClick={() => { if(sliderForm.imageUrl) { addSliderItem(sliderForm); setSliderForm({imageUrl:'', title:'', description:''}); } }} className="bg-primary-700 text-white px-6 py-2 rounded-lg font-bold w-full md:w-auto">Tambah Slide</button>
+                    </div>
+                    <div className="space-y-4">
+                        {sliders.map(s => (
+                            <div key={s.id} className="bg-white p-4 rounded-xl border border-neutral-200 flex gap-4 items-center">
+                                <img src={s.imageUrl} className="w-32 h-20 object-cover rounded-lg bg-neutral-100" />
+                                <div className="flex-1">
+                                    <h4 className="font-bold">{s.title}</h4>
+                                    <p className="text-sm text-neutral-500">{s.description}</p>
+                                </div>
+                                <button onClick={() => deleteSliderItem(s.id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={20}/></button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
+            {/* MEDIA TAB */}
+            {activeTab === 'media' && isSuperAdmin && (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+                        <h3 className="font-bold text-neutral-800 mb-4">Tambah Video / Media</h3>
+                        <div className="flex gap-4 mb-4">
+                           <select className="border rounded-lg p-2" value={mediaForm.type} onChange={(e: any) => setMediaForm({...mediaForm, type: e.target.value})}>
+                               <option value="youtube">YouTube</option>
+                               <option value="instagram">Instagram</option>
+                           </select>
+                           <input type="text" placeholder="URL Video / Post" className="flex-1 border rounded-lg p-2" value={mediaForm.url} onChange={e => {
+                               let embed = e.target.value;
+                               if(mediaForm.type === 'youtube' && e.target.value.includes('watch?v=')) {
+                                   embed = e.target.value.replace('watch?v=', 'embed/');
+                               } else if (mediaForm.type === 'instagram' && !e.target.value.includes('/embed')) {
+                                   embed = e.target.value.replace(/\/$/, '') + '/embed';
+                               }
+                               setMediaForm({...mediaForm, url: e.target.value, embedUrl: embed}); // Store embed logic here or in submit
+                           }} />
+                        </div>
+                        <input type="text" placeholder="Judul / Caption" className="w-full border rounded-lg p-2 mb-4" value={mediaForm.caption} onChange={e => setMediaForm({...mediaForm, caption: e.target.value})} />
+                        <button onClick={() => { if(mediaForm.url) { 
+                            let embed = mediaForm.url;
+                            if(mediaForm.type === 'youtube' && mediaForm.url.includes('watch?v=')) {
+                                embed = mediaForm.url.replace('watch?v=', 'embed/');
+                            } else if (mediaForm.type === 'instagram') {
+                                embed = mediaForm.url.split('?')[0].replace(/\/$/, '') + '/embed';
+                            }
+                            addMediaPost({ type: mediaForm.type, url: mediaForm.url, embedUrl: embed, caption: mediaForm.caption }); 
+                            setMediaForm({type:'youtube', url:'', caption:''}); 
+                        } }} className="bg-primary-700 text-white px-6 py-2 rounded-lg font-bold">Simpan Media</button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {mediaPosts.map(m => (
+                            <div key={m.id} className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+                                <div className="aspect-video bg-black relative">
+                                    <iframe src={m.embedUrl} className="w-full h-full" allowFullScreen></iframe>
+                                </div>
+                                <div className="p-4 flex justify-between items-start">
+                                    <div>
+                                        <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${m.type === 'youtube' ? 'bg-red-100 text-red-600' : 'bg-pink-100 text-pink-600'}`}>{m.type}</span>
+                                        <p className="font-bold text-sm mt-2 line-clamp-1">{m.caption}</p>
+                                    </div>
+                                    <button onClick={() => deleteMediaPost(m.id)} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
+            {/* PROFILE TAB */}
+            {activeTab === 'profile' && isSuperAdmin && (
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div className="lg:col-span-1 space-y-2">
+                        {['sejarah', 'pengurus', 'korwil', 'amaliyah', 'tentang-kami'].map(slug => (
+                            <button 
+                                key={slug}
+                                onClick={() => setSelectedProfileSlug(slug)}
+                                className={`w-full text-left px-4 py-3 rounded-xl font-bold capitalize transition ${selectedProfileSlug === slug ? 'bg-primary-900 text-white' : 'bg-white text-neutral-600 hover:bg-neutral-100'}`}
+                            >
+                                {slug.replace('-', ' ')}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="lg:col-span-3 bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-lg">Edit Halaman: {selectedProfileSlug.toUpperCase()}</h3>
+                            <button onClick={handleProfileSave} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 flex items-center gap-2"><Save size={16}/> Simpan</button>
+                        </div>
+                        <input type="text" placeholder="Judul Halaman" className="w-full border rounded-lg p-3 mb-4 font-bold text-lg" value={profileTitle} onChange={e => setProfileTitle(e.target.value)} />
+                        
+                        {selectedProfileSlug === 'korwil' ? (
+                            <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200 text-center">
+                                <p className="text-neutral-500">Halaman ini otomatis digenerate dari database Korwil.</p>
+                                <p className="text-xs text-neutral-400 mt-2">Gunakan menu "Settings > Manajemen Korwil" untuk mengubah data.</p>
+                            </div>
+                        ) : (
+                            <div className="border rounded-lg overflow-hidden">
+                                <div className="bg-neutral-100 p-2 border-b flex gap-2">
+                                    <button className="p-1 hover:bg-white rounded"><Bold size={16}/></button>
+                                    <button className="p-1 hover:bg-white rounded"><Italic size={16}/></button>
+                                    <button className="p-1 hover:bg-white rounded"><List size={16}/></button>
+                                </div>
+                                <div 
+                                    ref={editorRef}
+                                    className="p-4 min-h-[300px] outline-none prose max-w-none"
+                                    contentEditable
+                                    suppressContentEditableWarning={true}
+                                >
+                                </div>
+                            </div>
+                        )}
+                        <p className="text-xs text-neutral-400 mt-2">* Gunakan format HTML sederhana. Paste dari Word mungkin perlu perapian.</p>
+                    </div>
+                </div>
+            )}
+            
+            {/* BACKUP TAB */}
+            {activeTab === 'backup' && isSuperAdmin && (
+                <div className="bg-white p-8 rounded-2xl border border-neutral-200 text-center max-w-2xl mx-auto mt-10">
+                    <Database size={64} className="mx-auto text-primary-200 mb-6"/>
+                    <h2 className="text-2xl font-bold text-neutral-800 mb-2">Backup & Restore Database</h2>
+                    <p className="text-neutral-500 mb-8">
+                        Fitur backup otomatis dilakukan oleh Supabase setiap hari. 
+                        Untuk backup manual atau restore, silakan akses dashboard Supabase.
+                    </p>
+                    <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-6 py-3 bg-primary-900 text-white rounded-xl font-bold hover:bg-primary-800 transition">
+                        <ExternalLink size={18}/> Buka Dashboard Supabase
+                    </a>
+                </div>
+            )}
 
             {/* OVERVIEW TAB */}
             {activeTab === 'overview' && (
@@ -725,7 +1060,22 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
             
-            {/* ... Other Modals (Edit Session, Edit Member, etc.) kept for brevity ... */}
+            {deleteSessionData && (
+                <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+                    <div className="bg-white p-6 rounded-2xl max-w-sm w-full">
+                        <h3 className="font-bold text-lg mb-2">Hapus Sesi?</h3>
+                        <p className="text-neutral-500 mb-6">Sesi "{deleteSessionData.name}" dan seluruh data absensi di dalamnya akan dihapus permanen.</p>
+                        <div className="flex justify-end gap-3"><button onClick={() => setDeleteSessionData(null)} className="px-4 py-2 rounded-lg bg-neutral-100 font-bold">Batal</button><button onClick={confirmDeleteSession} className="px-4 py-2 rounded-lg bg-red-600 text-white font-bold">{isDeletingSession ? 'Menghapus...' : 'Ya, Hapus'}</button></div>
+                    </div>
+                </div>
+            )}
+
+            {previewImage && (
+                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setPreviewImage(null)}>
+                    <img src={previewImage} className="max-w-full max-h-[90vh] rounded-lg shadow-2xl" />
+                </div>
+            )}
+            
             {editingMember && (
                 <div className="fixed inset-0 z-[99] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in">
