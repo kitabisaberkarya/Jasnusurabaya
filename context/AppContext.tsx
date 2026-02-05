@@ -271,28 +271,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Anda telah keluar dari sistem', 'info');
   };
 
-  // UPLOAD FILE HELPER
+  // UPLOAD FILE HELPER (UPDATED & FIXED)
   const uploadFile = async (file: File, folder: string = 'general'): Promise<string | null> => {
     try {
-      // Create unique filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      // 1. Sanitize Filename (Remove spaces and special chars)
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      // Hanya izinkan alfanumerik pada nama file
+      const cleanFileName = file.name.replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `${folder}/${Date.now()}-${cleanFileName}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
+      // 2. Upload to Supabase
+      // Note: Karena menggunakan Custom Auth, RLS Policy di Supabase harus mengizinkan
+      // insert ke bucket 'public-files' untuk role 'anon' atau 'authenticated'.
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('public-files')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+        });
 
       if (uploadError) {
-        console.error('Upload Error:', uploadError);
-        throw uploadError;
+        console.error('Supabase Upload Error:', uploadError);
+        // Tampilkan pesan error spesifik jika mungkin
+        showToast(`Gagal Upload: ${uploadError.message}`, "error");
+        return null;
       }
 
-      // Get Public URL
+      // 3. Get Public URL
       const { data } = supabase.storage.from('public-files').getPublicUrl(fileName);
       return data.publicUrl;
     } catch (error) {
-      console.error(error);
-      showToast("Gagal mengupload file. Cek ukuran atau koneksi.", "error");
+      console.error("System Upload Error:", error);
+      showToast("Terjadi kesalahan sistem saat upload.", "error");
       return null;
     }
   };
