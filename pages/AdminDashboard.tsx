@@ -32,11 +32,13 @@ interface KorwilRow {
 const FileUploader = ({ 
   currentImage, 
   onFileSelect, 
-  label 
+  label,
+  hint
 }: { 
   currentImage?: string, 
   onFileSelect: (file: File) => void, 
-  label: string 
+  label: string,
+  hint?: string
 }) => {
   const [preview, setPreview] = useState<string | null>(currentImage || null);
 
@@ -70,10 +72,12 @@ const FileUploader = ({
              </div>
           </div>
         ) : (
-          <div className="py-8">
+          <div className="py-8 px-4">
              <UploadCloud className="w-10 h-10 text-neutral-300 mx-auto mb-2" />
-             <p className="text-sm text-neutral-500 font-medium">Klik untuk upload foto</p>
-             <p className="text-[10px] text-neutral-400">JPG, PNG, WEBP (Max 2MB)</p>
+             <p className="text-sm text-neutral-500 font-medium mb-1">Klik untuk upload foto</p>
+             <p className="text-[10px] text-neutral-400 leading-tight max-w-[200px] mx-auto">
+               {hint || "JPG, PNG, WEBP (Max 2MB)"}
+             </p>
           </div>
         )}
       </div>
@@ -924,7 +928,12 @@ export const AdminDashboard: React.FC = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <FileUploader label="Foto Sampul (Cover)" currentImage={newsForm.imageUrl} onFileSelect={(file) => setNewsFile(file)} />
+                                    <FileUploader 
+                                        label="Foto Sampul (Cover)" 
+                                        currentImage={newsForm.imageUrl} 
+                                        onFileSelect={(file) => setNewsFile(file)} 
+                                        hint="Format: JPG/PNG. Rasio Landscape (16:9). Min. 800x450px. Max 2MB."
+                                    />
                                 </div>
                             </div>
 
@@ -986,7 +995,14 @@ export const AdminDashboard: React.FC = () => {
                    <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm mb-6">
                        <h3 className="font-bold text-neutral-800 mb-4">Tambah Foto Galeri</h3>
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           <div><FileUploader label="Upload Foto Galeri" currentImage="" onFileSelect={(file) => setGalleryFile(file)} /></div>
+                           <div>
+                               <FileUploader 
+                                   label="Upload Foto Galeri" 
+                                   currentImage="" 
+                                   onFileSelect={(file) => setGalleryFile(file)} 
+                                   hint="Format: JPG/PNG/WEBP. Resolusi HD disarankan. Max 5MB."
+                               />
+                           </div>
                            <div className="flex flex-col justify-end space-y-4">
                                <input type="text" placeholder="Caption / Keterangan" className="w-full border rounded-lg p-3" value={galleryForm.caption} onChange={e => setGalleryForm({...galleryForm, caption: e.target.value})} />
                                <button onClick={handleGallerySubmit} disabled={isUploading} className={`w-full py-3 rounded-lg font-bold text-white flex items-center justify-center gap-2 ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary-700 hover:bg-primary-800'}`}>{isUploading ? <><RefreshCcw className="animate-spin" size={16}/> Mengupload...</> : 'Tambah ke Galeri'}</button>
@@ -1013,7 +1029,14 @@ export const AdminDashboard: React.FC = () => {
                     <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
                        <h3 className="font-bold text-neutral-800 mb-4">Tambah Slider Beranda</h3>
                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                           <div><FileUploader label="Gambar Slider (Full HD)" currentImage="" onFileSelect={(file) => setSliderFile(file)} /></div>
+                           <div>
+                               <FileUploader 
+                                   label="Gambar Slider (Full HD)" 
+                                   currentImage="" 
+                                   onFileSelect={(file) => setSliderFile(file)} 
+                                   hint="Wajib Landscape (1920x800px). Agar tajam di layar lebar. Max 3MB."
+                               />
+                           </div>
                            <div className="md:col-span-2 space-y-4">
                                <input type="text" placeholder="Judul Besar" className="w-full border rounded-lg p-2" value={sliderForm.title} onChange={e => setSliderForm({...sliderForm, title: e.target.value})} />
                                <input type="text" placeholder="Deskripsi Singkat" className="w-full border rounded-lg p-2" value={sliderForm.description} onChange={e => setSliderForm({...sliderForm, description: e.target.value})} />
