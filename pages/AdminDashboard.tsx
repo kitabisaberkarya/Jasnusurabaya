@@ -55,7 +55,7 @@ const FileUploader = ({
   return (
     <div className="space-y-2">
       <label className="block text-xs font-bold text-neutral-500 uppercase">{label}</label>
-      <div className="border-2 border-dashed border-neutral-300 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:bg-neutral-50 transition cursor-pointer relative overflow-hidden group">
+      <div className="border-2 border-dashed border-neutral-300 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:bg-neutral-50 transition cursor-pointer relative overflow-hidden group min-h-[160px]">
         <input 
           type="file" 
           accept="image/*" 
@@ -63,8 +63,8 @@ const FileUploader = ({
           className="absolute inset-0 opacity-0 cursor-pointer z-20"
         />
         {preview ? (
-          <div className="relative w-full h-48 rounded-lg overflow-hidden">
-             <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+          <div className="relative w-full h-full min-h-[160px] rounded-lg overflow-hidden bg-neutral-100">
+             <img src={preview} alt="Preview" className="w-full h-full object-contain" />
              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-10">
                 <span className="text-white font-bold flex items-center gap-2"><Edit3 size={16}/> Ganti Foto</span>
              </div>
@@ -642,7 +642,7 @@ export const AdminDashboard: React.FC = () => {
                                <div className="bg-emerald-50 text-emerald-600 p-2 rounded-xl"><BarChart2 size={20}/></div>
                            </div>
                            <div className="h-[300px] w-full relative z-10">
-                               <ResponsiveContainer width="100%" height="100%"><AreaChart data={memberGrowthData}><defs><linearGradient id="colorAnggota" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#059669" stopOpacity={0.4}/><stop offset="95%" stopColor="#059669" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0"/><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} /><YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} /><Tooltip content={<CustomTooltip />} /><Area type="monotone" dataKey="Anggota" stroke="#059669" strokeWidth={3} fillOpacity={1} fill="url(#colorAnggota)" animationDuration={1500}/></AreaChart></ResponsiveContainer>
+                               <ResponsiveContainer width="100%" height="100%"><AreaChart data={memberGrowthData}><defs><linearGradient id="colorAnggota" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#059669" stopColorOpacity={0.4}/><stop offset="95%" stopColor="#059669" stopColorOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0"/><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} /><YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} /><Tooltip content={<CustomTooltip />} /><Area type="monotone" dataKey="Anggota" stroke="#059669" strokeWidth={3} fillOpacity={1} fill="url(#colorAnggota)" animationDuration={1500}/></AreaChart></ResponsiveContainer>
                            </div>
                        </div>
                        <div className="lg:col-span-1 bg-white rounded-3xl border border-neutral-100 shadow-lg p-6 relative overflow-hidden flex flex-col">
@@ -894,43 +894,87 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
             
-            {/* UPDATED: NEWS TAB WITH RICH TEXT EDITOR */}
+            {/* UPDATED: NEWS TAB WITH FULL WIDTH EDITOR */}
             {activeTab === 'news' && isSuperAdmin && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-6">
-                        {news.map(n => (
-                            <div key={n.id} className="bg-white border border-neutral-200 rounded-xl p-6 flex flex-col sm:flex-row gap-4 hover:shadow-md transition relative">
-                                <img src={n.imageUrl} className="w-full sm:w-24 h-48 sm:h-24 object-cover rounded-lg bg-neutral-100" />
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-lg">{n.title}</h3>
-                                    <p className="text-sm text-neutral-500 line-clamp-2">{n.excerpt}</p>
-                                    <div className="mt-4 flex gap-3 text-xs">
-                                        <button onClick={() => { setNewsForm({ title: n.title, excerpt: n.excerpt, content: n.content, imageUrl: n.imageUrl }); setEditingNewsId(n.id); }} className="text-amber-600 font-bold hover:underline">Edit</button>
-                                        <button onClick={() => deleteNews(n.id)} className="text-red-600 font-bold hover:underline">Hapus</button>
+                <div className="flex flex-col gap-10">
+                    {/* 1. EDITOR SECTION (FULL WIDTH TOP) */}
+                    <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm group/editor">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-xl text-neutral-800 flex items-center gap-2">
+                                {editingNewsId ? <Edit3 size={24} className="text-amber-500"/> : <Plus size={24} className="text-primary-600"/>}
+                                {editingNewsId ? 'Mode Edit Berita' : 'Tulis Berita Baru'}
+                            </h3>
+                            {editingNewsId && (
+                                 <button type="button" onClick={() => { setEditingNewsId(null); setNewsForm({title:'', excerpt:'', content:'', imageUrl:''}); setNewsFile(null); }} className="text-sm bg-neutral-100 text-neutral-600 px-3 py-1.5 rounded-lg font-bold hover:bg-neutral-200">
+                                    Batal Edit
+                                 </button>
+                            )}
+                        </div>
+                        
+                        <form onSubmit={handleNewsSubmit} className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="lg:col-span-2 space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Judul Berita</label>
+                                        <input type="text" placeholder="Masukkan judul berita yang menarik..." className="w-full border border-neutral-300 rounded-xl p-3 text-lg font-bold focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} required />
+                                    </div>
+                                    <div>
+                                         <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Ringkasan Singkat</label>
+                                         <textarea placeholder="Tulis ringkasan singkat untuk tampilan kartu..." className="w-full border border-neutral-300 rounded-xl p-3 text-sm h-24 focus:ring-2 focus:ring-primary-500 outline-none resize-none" value={newsForm.excerpt} onChange={e => setNewsForm({...newsForm, excerpt: e.target.value})} required />
                                     </div>
                                 </div>
+                                <div>
+                                    <FileUploader label="Foto Sampul (Cover)" currentImage={newsForm.imageUrl} onFileSelect={(file) => setNewsFile(file)} />
+                                </div>
                             </div>
-                        ))}
-                    </div>
-                    <div className="bg-white border border-neutral-200 rounded-xl p-6 h-fit sticky top-24">
-                        <h3 className="font-bold mb-4">{editingNewsId ? 'Edit Berita' : 'Tambah Berita'}</h3>
-                        <form onSubmit={handleNewsSubmit} className="space-y-4">
-                            <input type="text" placeholder="Judul Berita" className="w-full border rounded-lg p-2 text-sm" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} required />
-                            <textarea placeholder="Ringkasan Singkat" className="w-full border rounded-lg p-2 text-sm h-20" value={newsForm.excerpt} onChange={e => setNewsForm({...newsForm, excerpt: e.target.value})} required />
-                            
-                            {/* REPLACED TEXTAREA WITH RICHTEXTEDITOR AND UPLOAD PROP */}
-                            <RichTextEditor 
-                                label="Konten Berita" 
-                                value={newsForm.content} 
-                                onChange={(html) => setNewsForm({...newsForm, content: html})} 
-                                placeholder="Tulis artikel lengkap di sini..."
-                                onUpload={(file) => handleEditorImageUpload(file)}
-                            />
 
-                            <FileUploader label="Foto Berita / Cover" currentImage={newsForm.imageUrl} onFileSelect={(file) => setNewsFile(file)} />
-                            <button type="submit" disabled={isUploading} className={`w-full py-2 rounded-lg font-bold text-white flex items-center justify-center gap-2 ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary-700 hover:bg-primary-800'}`}>{isUploading ? (<><RefreshCcw className="animate-spin" size={16} /> Mengupload...</>) : (editingNewsId ? 'Simpan Perubahan' : 'Publish Berita')}</button>
-                            {editingNewsId && <button type="button" onClick={() => { setEditingNewsId(null); setNewsForm({title:'', excerpt:'', content:'', imageUrl:''}); setNewsFile(null); }} className="w-full mt-2 bg-neutral-100 text-neutral-600 py-2 rounded-lg font-bold">Batal</button>}
+                            {/* THE RICH TEXT EDITOR - FULL WIDTH */}
+                            <div className="pt-2">
+                                <RichTextEditor 
+                                    label="Konten Artikel Lengkap" 
+                                    value={newsForm.content} 
+                                    onChange={(html) => setNewsForm({...newsForm, content: html})} 
+                                    placeholder="Mulai menulis artikel lengkap di sini..."
+                                    onUpload={(file) => handleEditorImageUpload(file)}
+                                />
+                            </div>
+
+                            <div className="flex justify-end pt-4 border-t border-neutral-100">
+                                <button type="submit" disabled={isUploading} className={`px-8 py-3 rounded-xl font-bold text-white flex items-center gap-2 shadow-lg transition transform active:scale-95 ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary-700 hover:bg-primary-800'}`}>
+                                    {isUploading ? (<><RefreshCcw className="animate-spin" size={20} /> Memproses...</>) : (editingNewsId ? <><Save size={20}/> Simpan Perubahan</> : <><CheckCircle2 size={20}/> Terbitkan Berita</>)}
+                                </button>
+                            </div>
                         </form>
+                    </div>
+
+                    {/* 2. HISTORY LIST SECTION (FULL WIDTH BOTTOM) */}
+                    <div className="space-y-4">
+                        <h3 className="font-bold text-lg text-neutral-600 uppercase tracking-wider flex items-center gap-2 border-b border-neutral-200 pb-2">
+                            <FileText size={20}/> Riwayat Berita ({news.length})
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {news.map(n => (
+                                <div key={n.id} className={`bg-white border rounded-xl p-4 flex gap-4 hover:shadow-lg transition group ${editingNewsId === n.id ? 'border-amber-400 ring-2 ring-amber-100' : 'border-neutral-200'}`}>
+                                    <img src={n.imageUrl} className="w-24 h-24 object-cover rounded-lg bg-neutral-100 shadow-sm group-hover:scale-105 transition duration-500" />
+                                    <div className="flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <h3 className="font-bold text-neutral-800 line-clamp-2 leading-tight text-sm mb-1">{n.title}</h3>
+                                            <p className="text-[10px] text-neutral-500 bg-neutral-50 inline-block px-2 py-0.5 rounded border border-neutral-100">{n.date}</p>
+                                        </div>
+                                        <div className="flex gap-2 text-xs mt-3">
+                                            <button onClick={() => { setNewsForm({ title: n.title, excerpt: n.excerpt, content: n.content, imageUrl: n.imageUrl }); setEditingNewsId(n.id); document.querySelector('.group\\/editor')?.scrollIntoView({ behavior: 'smooth' }); }} className="flex-1 text-center text-amber-600 font-bold bg-amber-50 hover:bg-amber-100 py-1.5 rounded transition flex items-center justify-center gap-1"><Edit3 size={14}/> Edit</button>
+                                            <button onClick={() => deleteNews(n.id)} className="flex-1 text-center text-red-600 font-bold bg-red-50 hover:bg-red-100 py-1.5 rounded transition flex items-center justify-center gap-1"><Trash2 size={14}/> Hapus</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                         {news.length === 0 && (
+                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-neutral-300">
+                                <p className="text-neutral-400">Belum ada berita yang diterbitkan.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
