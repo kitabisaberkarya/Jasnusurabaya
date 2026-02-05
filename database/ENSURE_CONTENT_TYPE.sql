@@ -1,6 +1,6 @@
 
 -- =================================================================
--- OPTIMIZE CONTENT STORAGE FOR RICH TEXT
+-- OPTIMIZE CONTENT STORAGE FOR RICH TEXT (MS WORD STYLE)
 -- Description: Script ini memastikan kolom konten pada tabel berita dan profil
 -- memiliki tipe data yang sesuai untuk menyimpan HTML panjang.
 -- =================================================================
