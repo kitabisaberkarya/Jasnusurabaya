@@ -9,7 +9,7 @@ import {
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
   User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon, Lock, LayoutTemplate, ArrowLeft, Clock,
-  LayoutDashboard, CheckCircle2, Map, CreditCard, MonitorPlay, HelpCircle, ShieldAlert, ShieldCheck, HardDrive, Cloud, FileJson, Server, UploadCloud, RefreshCw
+  LayoutDashboard, CheckCircle2, Map, CreditCard, MonitorPlay, HelpCircle, ShieldAlert, ShieldCheck, HardDrive, Cloud, FileJson, Server, UploadCloud, RefreshCw, Info
 } from 'lucide-react';
 import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord, User, UserRole, BackupData } from '../types';
 import XLSX from 'xlsx-js-style';
@@ -1110,17 +1110,23 @@ export const AdminDashboard: React.FC = () => {
                     <div className="lg:col-span-3 bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
                         <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg">Edit Halaman: {selectedProfileSlug.toUpperCase()}</h3><button onClick={handleProfileSave} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 flex items-center gap-2"><Save size={16}/> Simpan</button></div>
                         <input type="text" placeholder="Judul Halaman" className="w-full border rounded-lg p-3 mb-4 font-bold text-lg" value={profileTitle} onChange={e => setProfileTitle(e.target.value)} />
-                        {selectedProfileSlug === 'korwil' ? (
-                            <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200 text-center"><p className="text-neutral-500">Halaman ini otomatis digenerate dari database Korwil.</p><p className="text-xs text-neutral-400 mt-2">Gunakan menu "Settings &gt; Manajemen Korwil" untuk mengubah data.</p></div>
-                        ) : (
-                            /* REPLACED CONTENTEDITABLE DIV WITH RICHTEXTEDITOR */
-                            <RichTextEditor 
-                                value={profileContent} 
-                                onChange={setProfileContent}
-                                placeholder="Tulis konten profil di sini..."
-                                onUpload={(file) => handleEditorImageUpload(file)}
-                            />
+                        {selectedProfileSlug === 'korwil' && (
+                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4 flex gap-3 items-start">
+                                <div className="p-1 bg-blue-100 rounded text-blue-600 mt-0.5"><Info size={16}/></div>
+                                <div>
+                                    <p className="text-sm text-blue-800 font-bold">Info Halaman Korwil</p>
+                                    <p className="text-xs text-blue-600 mt-1">
+                                        Konten di bawah ini adalah teks pengantar. Daftar nama Korwil akan dimunculkan secara otomatis di bawah teks ini pada halaman publik (mengambil dari database).
+                                    </p>
+                                </div>
+                            </div>
                         )}
+                        <RichTextEditor 
+                            value={profileContent} 
+                            onChange={setProfileContent}
+                            placeholder="Tulis konten profil di sini..."
+                            onUpload={(file) => handleEditorImageUpload(file)}
+                        />
                         <p className="text-xs text-neutral-400 mt-2">* Gunakan format HTML sederhana. Paste dari Word mungkin perlu perapian.</p>
                     </div>
                 </div>

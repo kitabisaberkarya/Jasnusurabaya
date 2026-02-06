@@ -682,7 +682,7 @@ export const Database: React.FC = () => {
 
 export const ProfileView: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
-    const { profilePages } = useApp();
+    const { profilePages, korwils } = useApp();
     
     const page = profilePages.find(p => p.slug === slug);
 
@@ -709,6 +709,23 @@ export const ProfileView: React.FC = () => {
                 <article className="prose prose-lg prose-emerald max-w-none text-neutral-700 leading-loose prose-headings:font-serif prose-headings:text-primary-900 prose-a:text-secondary-600 hover:prose-a:text-secondary-700 prose-img:rounded-2xl prose-img:shadow-lg prose-table:border-collapse prose-td:border prose-td:border-neutral-200 prose-td:p-3 prose-th:bg-primary-50 prose-th:p-3 prose-th:text-primary-900">
                     <div dangerouslySetInnerHTML={{ __html: page.content }} />
                 </article>
+
+                {/* AUTO GENERATED LIST FOR KORWIL */}
+                {slug === 'korwil' && korwils.length > 0 && (
+                    <div className="mt-8 pt-8 border-t border-neutral-100">
+                        <h3 className="font-serif font-bold text-2xl text-primary-900 mb-6">Daftar Wilayah Resmi</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {korwils.map((k, idx) => (
+                                <div key={k.id} className="flex items-center gap-3 p-4 rounded-xl bg-neutral-50 border border-neutral-100 hover:border-primary-200 transition-colors">
+                                    <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm">
+                                        {idx + 1}
+                                    </div>
+                                    <span className="font-medium text-neutral-700">{k.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </motion.div>
     );
