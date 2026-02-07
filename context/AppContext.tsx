@@ -20,6 +20,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Initial Data Fetch & Realtime Setup
   useEffect(() => {
+    // 1. Restore Session from LocalStorage (Fix Logout on Refresh)
+    const restoreSession = () => {
+        const storedSession = localStorage.getItem('jsn_session');
+        if (storedSession) {
+            try {
+                const parsedUser = JSON.parse(storedSession);
+                setState(prev => ({ ...prev, currentUser: parsedUser }));
+            } catch (e) {
+                console.error("Failed to parse session", e);
+                localStorage.removeItem('jsn_session');
+            }
+        }
+    };
+
+    restoreSession();
+
     // Jalankan fetch data
     fetchData();
 
@@ -227,6 +243,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         joinedAt: new Date().toISOString()
       };
       setState(prev => ({ ...prev, currentUser: masterAdmin }));
+      localStorage.setItem('jsn_session', JSON.stringify(masterAdmin)); // Save Session
       showToast(`Login Super Admin Berhasil`, 'success');
       return masterAdmin;
     }
@@ -254,6 +271,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const loggedInUser = { ...user, role: userRole };
 
       setState(prev => ({ ...prev, currentUser: loggedInUser }));
+      localStorage.setItem('jsn_session', JSON.stringify(loggedInUser)); // Save Session
       
       if (userRole === UserRole.ADMIN_KORWIL) showToast(`Login Korwil: ${data.name}`, 'success');
       else if (userRole === UserRole.ADMIN_PENGURUS) showToast(`Login Pengurus: ${data.name}`, 'success');
@@ -268,6 +286,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setState(prev => ({ ...prev, currentUser: null }));
+    localStorage.removeItem('jsn_session'); // Clear Session
     showToast('Anda telah keluar dari sistem', 'info');
   };
 
@@ -309,15 +328,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const register = async (data: RegistrationInput) => {
     try {
+      // 1. Check if NIK already exists in ACTIVE USERS
+      const { data: existingUser, error: userError } = await supabase
+        .from('users')
+        .select('id, name')
+        .eq('nik', data.nik)
+        .maybeSingle();
+
+      if (existingUser) {
+        showToast("NIK sudah terdaftar sebagai anggota silahkan hubungi korwil dan pengurus.", "error");
+        return;
+      }
+
+      // 2. Check if NIK exists in PENDING REGISTRATIONS
+      const { data: existingReg, error: regError } = await supabase
+        .from('registrations')
+        .select('id, name')
+        .eq('nik', data.nik)
+        .maybeSingle();
+
+      if (existingReg) {
+         showToast("NIK sudah terdaftar dalam antrian pendaftaran. Silakan hubungi Korwil.", "error");
+         return;
+      }
+
+      // 3. Proceed with Registration
       const { error } = await supabase.from('registrations').insert([{
         ...data,
         status: MemberStatus.PENDING,
         date: new Date().toISOString().split('T')[0]
       }]);
+      
       if (error) throw error;
       
       const { data: newData } = await supabase.from('registrations').select('*').order('id', { ascending: false });
       setState(prev => ({ ...prev, registrations: newData || [] }));
+      
+      // Notify success UI (handled in component, but redundant toast here doesn't hurt)
     } catch (error) {
       console.error("Registration failed", error);
       showToast("Gagal mendaftar. Silakan coba lagi.", "error");
