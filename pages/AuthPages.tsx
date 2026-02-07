@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { RegistrationInput, UserRole } from '../types';
 import { KORWIL_LIST } from '../constants';
-import { User, ShieldCheck, Users, Lock } from 'lucide-react';
+import { User, ShieldCheck, Users, Lock, Loader2 } from 'lucide-react';
 
 type LoginTab = 'member' | 'staff' | 'super';
 
@@ -194,6 +195,7 @@ export const Register: React.FC = () => {
   });
   const [isCustomWilayah, setIsCustomWilayah] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -210,13 +212,22 @@ export const Register: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    register(formData);
-    setSubmitted(true);
-    setTimeout(() => {
-      navigate('/');
-    }, 3000);
+    setIsSubmitting(true);
+    
+    // Call register logic which now returns a Promise<boolean>
+    const success = await register(formData);
+    
+    setIsSubmitting(false);
+
+    if (success) {
+      setSubmitted(true);
+      setTimeout(() => {
+        navigate('/');
+      }, 3000);
+    }
+    // If failed, toast is already handled in Context
   };
 
   // Use korwils from DB if available, otherwise fallback to static list
@@ -252,7 +263,7 @@ export const Register: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">NIK</label>
-                <input type="text" name="nik" required className="w-full rounded-lg border-neutral-300 border px-3 py-2 focus:ring-primary-500 focus:border-primary-500" onChange={handleChange} />
+                <input type="text" name="nik" required className="w-full rounded-lg border-neutral-300 border px-3 py-2 focus:ring-primary-500 focus:border-primary-500" onChange={handleChange} placeholder="16 digit angka" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>
@@ -308,8 +319,13 @@ export const Register: React.FC = () => {
             </div>
             
             <div className="pt-6 border-t border-neutral-100 flex justify-end">
-              <button type="submit" className="px-8 py-3 bg-secondary-600 text-white font-medium rounded-xl hover:bg-secondary-700 transition shadow-lg shadow-secondary-600/20">
-                Kirim Pendaftaran
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className={`px-8 py-3 bg-secondary-600 text-white font-medium rounded-xl hover:bg-secondary-700 transition shadow-lg shadow-secondary-600/20 flex items-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                {isSubmitting && <Loader2 className="animate-spin" size={20} />}
+                {isSubmitting ? 'Mengirim Data...' : 'Kirim Pendaftaran'}
               </button>
             </div>
           </form>

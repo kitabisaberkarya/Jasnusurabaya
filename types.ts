@@ -1,4 +1,5 @@
 
+
 export enum UserRole {
   SUPER_ADMIN = 'admin',       // Legacy 'admin' is now Super Admin
   ADMIN_KORWIL = 'korwil',     // New Role
@@ -158,7 +159,7 @@ export interface AppState {
 export interface AppContextType extends AppState {
   login: (identifier: string, password: string) => Promise<User | null>;
   logout: () => void;
-  register: (data: RegistrationInput) => void;
+  register: (data: RegistrationInput) => Promise<boolean>; // CHANGED TO PROMISE BOOLEAN
   
   // New Admin User Management
   createAdminUser: (name: string, email: string, role: UserRole, wilayah: string, password: string) => Promise<boolean>;

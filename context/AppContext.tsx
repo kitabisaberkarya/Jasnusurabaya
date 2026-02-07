@@ -1,4 +1,5 @@
 
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AppState, User, RegistrationInput, MemberStatus, UserRole, AttendanceSession, NewsItem, ToastMessage, AttendanceRecord, SiteConfig, ProfilePage, MediaPost, AppContextType, GalleryItem, SliderItem, Korwil, BackupData } from '../types';
 import { MOCK_INITIAL_STATE } from '../constants';
@@ -326,14 +327,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const register = async (data: RegistrationInput) => {
+  const register = async (data: RegistrationInput): Promise<boolean> => {
     try {
       // Sanitasi input NIK
       const cleanNik = data.nik.trim();
       
       if (!cleanNik) {
           showToast("NIK tidak boleh kosong", "error");
-          return;
+          return false;
       }
 
       // 1. Check if NIK already exists in ACTIVE USERS (Table: users)
@@ -344,8 +345,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .maybeSingle(); // maybeSingle returns null if not found, instead of error
 
       if (existingUser) {
-        showToast("NIK sudah terdaftar sebagai anggota silahkan hubungi korwil dan pengurus.", "error");
-        return;
+        showToast("Gagal! NIK ini sudah terdaftar sebagai anggota aktif.", "error");
+        return false;
       }
 
       // 2. Check if NIK exists in PENDING REGISTRATIONS (Table: registrations)
@@ -356,9 +357,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .maybeSingle();
 
       if (existingReg) {
-         // Pesan error sama untuk konsistensi, atau bisa dibedakan jika perlu
-         showToast("NIK sudah terdaftar dalam antrian pendaftaran (Status: " + existingReg.status + "). Silakan hubungi Korwil.", "error");
-         return;
+         showToast(`Gagal! NIK sudah terdaftar dalam antrian (Status: ${existingReg.status}). Silakan hubungi Korwil.`, "error");
+         return false;
       }
 
       // 3. Proceed with Registration
@@ -372,8 +372,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error) {
           // Tangkap error duplicate key violation dari database (Error Code 23505)
           if (error.code === '23505') {
-              showToast("NIK sudah terdaftar sebagai anggota silahkan hubungi korwil dan pengurus.", "error");
-              return;
+              showToast("Gagal! NIK ini sudah digunakan. Mohon cek kembali.", "error");
+              return false;
           }
           throw error;
       }
@@ -381,15 +381,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const { data: newData } = await supabase.from('registrations').select('*').order('id', { ascending: false });
       setState(prev => ({ ...prev, registrations: newData || [] }));
       
-      // Notify success handled in component by checking state update, but redundancy is safe here
+      return true; // Success
     } catch (error: any) {
       console.error("Registration failed", error);
       // Fallback error message
       if (error?.message?.includes('unique') || error?.code === '23505') {
-          showToast("NIK sudah terdaftar sebagai anggota silahkan hubungi korwil dan pengurus.", "error");
+          showToast("Gagal! NIK sudah terdaftar.", "error");
       } else {
           showToast("Gagal mendaftar. Silakan coba lagi atau cek koneksi.", "error");
       }
+      return false;
     }
   };
 
