@@ -328,46 +328,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const register = async (data: RegistrationInput) => {
     try {
-      // 1. Check if NIK already exists in ACTIVE USERS
+      // Sanitasi input NIK
+      const cleanNik = data.nik.trim();
+      
+      if (!cleanNik) {
+          showToast("NIK tidak boleh kosong", "error");
+          return;
+      }
+
+      // 1. Check if NIK already exists in ACTIVE USERS (Table: users)
       const { data: existingUser, error: userError } = await supabase
         .from('users')
         .select('id, name')
-        .eq('nik', data.nik)
-        .maybeSingle();
+        .eq('nik', cleanNik)
+        .maybeSingle(); // maybeSingle returns null if not found, instead of error
 
       if (existingUser) {
         showToast("NIK sudah terdaftar sebagai anggota silahkan hubungi korwil dan pengurus.", "error");
         return;
       }
 
-      // 2. Check if NIK exists in PENDING REGISTRATIONS
+      // 2. Check if NIK exists in PENDING REGISTRATIONS (Table: registrations)
       const { data: existingReg, error: regError } = await supabase
         .from('registrations')
-        .select('id, name')
-        .eq('nik', data.nik)
+        .select('id, name, status')
+        .eq('nik', cleanNik)
         .maybeSingle();
 
       if (existingReg) {
-         showToast("NIK sudah terdaftar dalam antrian pendaftaran. Silakan hubungi Korwil.", "error");
+         // Pesan error sama untuk konsistensi, atau bisa dibedakan jika perlu
+         showToast("NIK sudah terdaftar dalam antrian pendaftaran (Status: " + existingReg.status + "). Silakan hubungi Korwil.", "error");
          return;
       }
 
       // 3. Proceed with Registration
       const { error } = await supabase.from('registrations').insert([{
         ...data,
+        nik: cleanNik, // Ensure strict trimmed NIK is saved
         status: MemberStatus.PENDING,
         date: new Date().toISOString().split('T')[0]
       }]);
       
-      if (error) throw error;
+      if (error) {
+          // Tangkap error duplicate key violation dari database (Error Code 23505)
+          if (error.code === '23505') {
+              showToast("NIK sudah terdaftar sebagai anggota silahkan hubungi korwil dan pengurus.", "error");
+              return;
+          }
+          throw error;
+      }
       
       const { data: newData } = await supabase.from('registrations').select('*').order('id', { ascending: false });
       setState(prev => ({ ...prev, registrations: newData || [] }));
       
-      // Notify success UI (handled in component, but redundant toast here doesn't hurt)
-    } catch (error) {
+      // Notify success handled in component by checking state update, but redundancy is safe here
+    } catch (error: any) {
       console.error("Registration failed", error);
-      showToast("Gagal mendaftar. Silakan coba lagi.", "error");
+      // Fallback error message
+      if (error?.message?.includes('unique') || error?.code === '23505') {
+          showToast("NIK sudah terdaftar sebagai anggota silahkan hubungi korwil dan pengurus.", "error");
+      } else {
+          showToast("Gagal mendaftar. Silakan coba lagi atau cek koneksi.", "error");
+      }
     }
   };
 
