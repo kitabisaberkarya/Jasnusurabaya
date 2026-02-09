@@ -197,6 +197,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         location: r.location
       }));
 
+      const mappedKorwils = (korwils || []).map((k: any) => ({
+         id: k.id,
+         name: k.name,
+         coordinatorName: k.coordinator_name,
+         contact: k.contact
+      }));
+
       setState(prev => ({
         ...prev,
         users: users || [],
@@ -208,7 +215,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         attendanceSessions: mappedSessions,
         registrations: registrations || [],
         attendanceRecords: mappedRecords || [],
-        korwils: (korwils as Korwil[]) || []
+        korwils: mappedKorwils || []
       }));
 
     } catch (error) {
@@ -904,10 +911,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error) throw error;
       
       const { data } = await supabase.from('korwils').select('*').order('name', { ascending: true });
-      setState(prev => ({ ...prev, korwils: (data as Korwil[]) || [] }));
+      const mapped = (data || []).map((k: any) => ({
+         id: k.id,
+         name: k.name,
+         coordinatorName: k.coordinator_name,
+         contact: k.contact
+      }));
+      setState(prev => ({ ...prev, korwils: mapped || [] }));
       
       showToast("Korwil berhasil ditambahkan", "success");
     } catch (error) { showToast("Gagal menambahkan korwil", "error"); }
+  };
+
+  const updateKorwil = async (id: number, data: Partial<Korwil>) => {
+    try {
+      const updates: any = {};
+      if (data.name) updates.name = data.name;
+      if (data.coordinatorName) updates.coordinator_name = data.coordinatorName;
+      if (data.contact) updates.contact = data.contact;
+
+      const { error } = await supabase.from('korwils').update(updates).eq('id', id);
+      if (error) throw error;
+
+      setState(prev => ({
+        ...prev,
+        korwils: prev.korwils.map(k => k.id === id ? { ...k, ...data } : k)
+      }));
+      showToast("Data korwil berhasil diperbarui", "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Gagal memperbarui korwil", "error");
+    }
   };
 
   const deleteKorwil = async (id: number) => {
@@ -1052,7 +1086,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addSliderItem, deleteSliderItem, 
       addMediaPost, deleteMediaPost, 
       updateSiteConfig, updateProfilePage, 
-      addKorwil, deleteKorwil, 
+      addKorwil, updateKorwil, deleteKorwil, 
       downloadBackup, restoreData,
       uploadFile,
       showToast, removeToast, refreshData: fetchData, isLoading 

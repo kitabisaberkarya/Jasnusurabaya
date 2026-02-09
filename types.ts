@@ -120,6 +120,8 @@ export interface SiteConfig {
 export interface Korwil {
   id: number;
   name: string;
+  coordinatorName?: string; // Added
+  contact?: string; // Added
 }
 
 export interface BackupData {
@@ -198,7 +200,10 @@ export interface AppContextType extends AppState {
   deleteMediaPost: (id: number) => void;
   updateSiteConfig: (config: SiteConfig) => void;
   updateProfilePage: (slug: string, title: string, content: string) => void;
+  
+  // Korwil Management
   addKorwil: (name: string) => void;
+  updateKorwil: (id: number, data: Partial<Korwil>) => void; // Added
   deleteKorwil: (id: number) => void;
   
   downloadBackup: () => Promise<void>;

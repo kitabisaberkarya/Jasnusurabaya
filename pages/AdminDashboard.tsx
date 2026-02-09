@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -9,9 +10,10 @@ import {
   Printer, Type, Highlighter, Indent, Outdent, RemoveFormatting, ChevronDown,
   FileSpreadsheet, Download, Filter, Search, Menu, Bell, Settings, LogOut, Circle, Save, Upload, Database, RefreshCcw, AlertTriangle,
   User as UserIcon, Youtube, Instagram, Trash2, PlayCircle, Edit3, Key, MapPin, Phone, Eye, ExternalLink, Grid, List as ListIcon, Lock, LayoutTemplate, ArrowLeft, Clock,
-  LayoutDashboard, CheckCircle2, Map, CreditCard, MonitorPlay, HelpCircle, ShieldAlert, ShieldCheck, HardDrive, Cloud, FileJson, Server, UploadCloud, RefreshCw, Info
+  LayoutDashboard, CheckCircle2, Map, CreditCard, MonitorPlay, HelpCircle, ShieldAlert, ShieldCheck, HardDrive, Cloud, FileJson, Server, UploadCloud, RefreshCw, Info,
+  MapPinned, UserCog
 } from 'lucide-react';
-import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord, User, UserRole, BackupData } from '../types';
+import { MemberStatus, AppState, NewsItem, AttendanceSession, AttendanceRecord, User, UserRole, BackupData, Korwil } from '../types';
 import XLSX from 'xlsx-js-style';
 import { motion, AnimatePresence } from 'framer-motion';
 import { KORWIL_LIST } from '../constants';
@@ -20,13 +22,6 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, Legend 
 } from 'recharts';
 import { RichTextEditor } from '../components/RichTextEditor';
-
-// Interface untuk baris data tabel Korwil
-interface KorwilRow {
-  wilayah: string;
-  nama: string;
-  kontak: string;
-}
 
 // File Upload Component Helper
 const FileUploader = ({ 
@@ -92,7 +87,7 @@ export const AdminDashboard: React.FC = () => {
     addGalleryItem, deleteGalleryItem, addSliderItem, deleteSliderItem, addMediaPost, deleteMediaPost, 
     showToast, currentUser, logout, 
     siteConfig, updateSiteConfig, downloadBackup, restoreData, profilePages, updateProfilePage, 
-    korwils, addKorwil, deleteKorwil,
+    korwils, addKorwil, updateKorwil, deleteKorwil,
     createAdminUser, changePassword,
     uploadFile, refreshData, isLoading
   } = useApp();
@@ -165,6 +160,10 @@ export const AdminDashboard: React.FC = () => {
   // Settings State
   const [configForm, setConfigForm] = useState(siteConfig);
   const [newKorwilName, setNewKorwilName] = useState('');
+  
+  // Korwil Editing State (Inline)
+  const [editingKorwilId, setEditingKorwilId] = useState<number | null>(null);
+  const [editingKorwilData, setEditingKorwilData] = useState<Partial<Korwil>>({});
 
   // Loading States for Uploads
   const [isUploading, setIsUploading] = useState(false);
@@ -465,6 +464,17 @@ export const AdminDashboard: React.FC = () => {
             if (success) { showToast("Database berhasil direstore!", "success"); }
         } catch (error) { console.error(error); showToast("Gagal membaca file backup", "error"); } finally { setIsRestoring(false); e.target.value = ''; }
     }
+  };
+
+  const handleEditKorwil = (k: Korwil) => {
+    setEditingKorwilId(k.id);
+    setEditingKorwilData({ name: k.name, coordinatorName: k.coordinatorName, contact: k.contact });
+  };
+
+  const handleSaveKorwil = (id: number) => {
+    updateKorwil(id, editingKorwilData);
+    setEditingKorwilId(null);
+    setEditingKorwilData({});
   };
 
   // Custom Tooltip for Charts
@@ -900,23 +910,88 @@ export const AdminDashboard: React.FC = () => {
             )}
 
             {activeTab === 'korwil-data' && isSuperAdmin && (
-               <div className="max-w-4xl space-y-6">
+               <div className="space-y-6">
                   <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm">
-                      <h3 className="text-xl font-bold text-neutral-800 mb-6 flex items-center gap-2"><Map size={20}/> Manajemen Korwil</h3>
-                      <p className="text-sm text-neutral-500 mb-4">Tambahkan daftar wilayah baru agar muncul di pilihan formulir pendaftaran.</p>
-                      
-                      <div className="flex gap-4 mb-6">
-                          <input type="text" placeholder="Nama Wilayah Baru" className="flex-1 border rounded-lg p-3" value={newKorwilName} onChange={e => setNewKorwilName(e.target.value)} />
-                          <button onClick={() => { if(newKorwilName) { addKorwil(newKorwilName); setNewKorwilName(''); } }} className="bg-secondary-600 text-white px-6 rounded-lg font-bold">Tambah</button>
+                      <div className="flex justify-between items-center mb-6">
+                          <div>
+                            <h3 className="text-xl font-bold text-neutral-800 flex items-center gap-2"><Map size={20}/> Manajemen Korwil</h3>
+                            <p className="text-sm text-neutral-500 mt-1">Kelola data wilayah, nama koordinator, dan kontak yang ditampilkan di profil.</p>
+                          </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          {korwils.map(k => (
-                              <div key={k.id} className="bg-neutral-50 p-3 rounded-lg border border-neutral-200 flex justify-between items-center group hover:border-primary-200 transition-colors">
-                                  <span className="font-medium text-sm">{k.name}</span>
-                                  <button onClick={() => deleteKorwil(k.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"><X size={14}/></button>
-                              </div>
-                          ))}
+                      <div className="flex gap-4 mb-6">
+                          <input type="text" placeholder="Tambah Wilayah Baru..." className="flex-1 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary-500" value={newKorwilName} onChange={e => setNewKorwilName(e.target.value)} />
+                          <button onClick={() => { if(newKorwilName) { addKorwil(newKorwilName); setNewKorwilName(''); } }} className="bg-secondary-600 text-white px-6 rounded-lg font-bold hover:bg-secondary-700 transition">Tambah</button>
+                      </div>
+                      
+                      <div className="overflow-x-auto rounded-xl border border-neutral-200">
+                          <table className="w-full text-left">
+                              <thead className="bg-primary-50 text-primary-900 text-xs font-bold uppercase tracking-wider">
+                                  <tr>
+                                      <th className="px-6 py-3 border-b border-primary-100 w-16 text-center">No</th>
+                                      <th className="px-6 py-3 border-b border-primary-100">Nama Wilayah</th>
+                                      <th className="px-6 py-3 border-b border-primary-100">Nama Koordinator</th>
+                                      <th className="px-6 py-3 border-b border-primary-100">Kontak / Keterangan</th>
+                                      <th className="px-6 py-3 border-b border-primary-100 text-right">Aksi</th>
+                                  </tr>
+                              </thead>
+                              <tbody className="divide-y divide-neutral-100 bg-white">
+                                  {korwils.map((k, index) => (
+                                      <tr key={k.id} className="hover:bg-neutral-50 transition-colors group">
+                                          <td className="px-6 py-4 text-center font-bold text-neutral-400">{index + 1}</td>
+                                          <td className="px-6 py-4 font-bold text-neutral-800">
+                                              {k.name}
+                                          </td>
+                                          <td className="px-6 py-4">
+                                              {editingKorwilId === k.id ? (
+                                                  <input 
+                                                    type="text" 
+                                                    className="w-full border rounded p-1 text-sm focus:border-primary-500 outline-none" 
+                                                    value={editingKorwilData.coordinatorName || ''} 
+                                                    onChange={e => setEditingKorwilData({...editingKorwilData, coordinatorName: e.target.value})} 
+                                                    placeholder="Nama Koordinator"
+                                                  />
+                                              ) : (
+                                                  <span className={k.coordinatorName ? "text-neutral-800" : "text-neutral-400 italic"}>
+                                                      {k.coordinatorName || "Belum diisi"}
+                                                  </span>
+                                              )}
+                                          </td>
+                                          <td className="px-6 py-4">
+                                              {editingKorwilId === k.id ? (
+                                                  <input 
+                                                    type="text" 
+                                                    className="w-full border rounded p-1 text-sm focus:border-primary-500 outline-none" 
+                                                    value={editingKorwilData.contact || ''} 
+                                                    onChange={e => setEditingKorwilData({...editingKorwilData, contact: e.target.value})} 
+                                                    placeholder="No. HP / Kontak"
+                                                  />
+                                              ) : (
+                                                  <span className={k.contact ? "font-mono text-neutral-600 text-xs" : "text-neutral-400 italic text-xs"}>
+                                                      {k.contact || "Belum diisi"}
+                                                  </span>
+                                              )}
+                                          </td>
+                                          <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                              {editingKorwilId === k.id ? (
+                                                  <>
+                                                      <button onClick={() => handleSaveKorwil(k.id)} className="bg-emerald-500 text-white p-1.5 rounded hover:bg-emerald-600" title="Simpan"><Save size={16}/></button>
+                                                      <button onClick={() => setEditingKorwilId(null)} className="bg-neutral-200 text-neutral-600 p-1.5 rounded hover:bg-neutral-300" title="Batal"><X size={16}/></button>
+                                                  </>
+                                              ) : (
+                                                  <>
+                                                      <button onClick={() => handleEditKorwil(k)} className="text-amber-500 hover:bg-amber-50 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity" title="Edit Detail"><Edit3 size={16}/></button>
+                                                      <button onClick={() => deleteKorwil(k.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity" title="Hapus Wilayah"><Trash2 size={16}/></button>
+                                                  </>
+                                              )}
+                                          </td>
+                                      </tr>
+                                  ))}
+                                  {korwils.length === 0 && (
+                                      <tr><td colSpan={5} className="px-6 py-8 text-center text-neutral-400 italic">Belum ada data wilayah.</td></tr>
+                                  )}
+                              </tbody>
+                          </table>
                       </div>
                   </div>
                </div>
@@ -1159,16 +1234,26 @@ export const AdminDashboard: React.FC = () => {
                                 <h4 className="font-bold text-neutral-800 mb-4 flex items-center gap-2">
                                     <Eye size={16} className="text-secondary-500"/> Preview Daftar Wilayah (Live Database)
                                 </h4>
-                                <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
+                                <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200 overflow-x-auto">
                                     {korwils.length > 0 ? (
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                            {korwils.map((k, i) => (
-                                                <div key={k.id} className="flex items-center gap-2 bg-white p-2 rounded border border-neutral-200 text-xs shadow-sm">
-                                                    <span className="bg-primary-100 text-primary-700 w-5 h-5 flex items-center justify-center rounded-full font-bold text-[10px]">{i + 1}</span>
-                                                    <span className="truncate font-medium">{k.name}</span>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <table className="w-full text-left bg-white rounded-lg shadow-sm border border-neutral-200">
+                                            <thead className="bg-primary-900 text-white text-xs uppercase font-bold tracking-wider">
+                                                <tr>
+                                                    <th className="px-4 py-3">Wilayah / Jabatan</th>
+                                                    <th className="px-4 py-3">Nama Koordinator</th>
+                                                    <th className="px-4 py-3">Kontak / Keterangan</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-neutral-100">
+                                                {korwils.map((k, i) => (
+                                                    <tr key={k.id} className="text-sm hover:bg-neutral-50">
+                                                        <td className="px-4 py-3 font-bold text-primary-900">{k.name}</td>
+                                                        <td className="px-4 py-3 text-neutral-700">{k.coordinatorName || '-'}</td>
+                                                        <td className="px-4 py-3 font-mono text-neutral-600 text-xs">{k.contact || '-'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     ) : (
                                         <p className="text-sm text-neutral-400 italic">Belum ada data wilayah. Tambahkan di menu "Data Wilayah".</p>
                                     )}

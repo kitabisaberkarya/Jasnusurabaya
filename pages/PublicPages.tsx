@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -713,16 +714,32 @@ export const ProfileView: React.FC = () => {
                 {/* AUTO GENERATED LIST FOR KORWIL */}
                 {slug === 'korwil' && korwils.length > 0 && (
                     <div className="mt-8 pt-8 border-t border-neutral-100">
-                        <h3 className="font-serif font-bold text-2xl text-primary-900 mb-6">Daftar Wilayah Resmi</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {korwils.map((k, idx) => (
-                                <div key={k.id} className="flex items-center gap-3 p-4 rounded-xl bg-neutral-50 border border-neutral-100 hover:border-primary-200 transition-colors">
-                                    <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm">
-                                        {idx + 1}
-                                    </div>
-                                    <span className="font-medium text-neutral-700">{k.name}</span>
-                                </div>
-                            ))}
+                        <h3 className="font-serif font-bold text-2xl text-primary-900 mb-6">Daftar Koordinator Wilayah</h3>
+                        <div className="overflow-x-auto rounded-xl border border-neutral-200 shadow-sm">
+                            <table className="w-full text-left bg-white">
+                                <thead className="bg-primary-900 text-white text-sm font-bold uppercase tracking-wider">
+                                    <tr>
+                                        <th className="px-6 py-4 border-b border-primary-800">Wilayah / Jabatan</th>
+                                        <th className="px-6 py-4 border-b border-primary-800">Nama Koordinator</th>
+                                        <th className="px-6 py-4 border-b border-primary-800">Kontak / Keterangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-100">
+                                    {korwils.map((k) => (
+                                        <tr key={k.id} className="hover:bg-neutral-50 transition-colors">
+                                            <td className="px-6 py-4 font-bold text-primary-900 text-sm">
+                                                {k.name}
+                                            </td>
+                                            <td className="px-6 py-4 text-neutral-700 text-sm">
+                                                {k.coordinatorName || '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-neutral-600 text-sm font-mono">
+                                                {k.contact || '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}
