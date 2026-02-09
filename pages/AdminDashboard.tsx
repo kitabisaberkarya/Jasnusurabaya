@@ -1152,6 +1152,29 @@ export const AdminDashboard: React.FC = () => {
                             onUpload={(file) => handleEditorImageUpload(file)}
                         />
                         <p className="text-xs text-neutral-400 mt-2">* Gunakan format HTML sederhana. Paste dari Word mungkin perlu perapian.</p>
+
+                        {/* LIVE PREVIEW SECTION FOR KORWIL */}
+                        {selectedProfileSlug === 'korwil' && (
+                            <div className="mt-8 border-t border-neutral-200 pt-6">
+                                <h4 className="font-bold text-neutral-800 mb-4 flex items-center gap-2">
+                                    <Eye size={16} className="text-secondary-500"/> Preview Daftar Wilayah (Live Database)
+                                </h4>
+                                <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
+                                    {korwils.length > 0 ? (
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                            {korwils.map((k, i) => (
+                                                <div key={k.id} className="flex items-center gap-2 bg-white p-2 rounded border border-neutral-200 text-xs shadow-sm">
+                                                    <span className="bg-primary-100 text-primary-700 w-5 h-5 flex items-center justify-center rounded-full font-bold text-[10px]">{i + 1}</span>
+                                                    <span className="truncate font-medium">{k.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-neutral-400 italic">Belum ada data wilayah. Tambahkan di menu "Data Wilayah".</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
