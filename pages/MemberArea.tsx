@@ -1,11 +1,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi, AlertCircle, RefreshCcw, Navigation, ChevronRight, Sparkles, Lock, Settings } from 'lucide-react';
+import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi, AlertCircle, RefreshCcw, Navigation, ChevronRight, Sparkles, Lock, Settings, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 export const MemberArea: React.FC = () => {
-  const { currentUser, attendanceSessions, markAttendance, showToast, refreshData, changePassword } = useApp();
+  const { currentUser, attendanceSessions, markAttendance, showToast, refreshData, changePassword, logout } = useApp();
+  const navigate = useNavigate();
   const [selectedSession, setSelectedSession] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -51,6 +53,11 @@ export const MemberArea: React.FC = () => {
     await refreshData();
     setIsRefreshing(false);
     showToast("Data absensi diperbarui", "info");
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
   
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -310,6 +317,12 @@ export const MemberArea: React.FC = () => {
                      className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl border border-white/10 transition flex items-center justify-center gap-2 text-sm"
                    >
                       <Lock size={16} /> Ganti Password
+                   </button>
+                   <button 
+                     onClick={handleLogout} 
+                     className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-200 hover:text-red-100 font-bold rounded-xl border border-red-500/20 transition flex items-center justify-center gap-2 text-sm"
+                   >
+                      <LogOut size={16} /> Keluar Aplikasi
                    </button>
                </div>
           </div>
