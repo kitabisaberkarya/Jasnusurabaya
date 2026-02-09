@@ -97,7 +97,7 @@ export const AdminDashboard: React.FC = () => {
     uploadFile, refreshData, isLoading
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'members' | 'attendance' | 'news' | 'gallery' | 'slider' | 'media' | 'recap' | 'settings' | 'backup' | 'profile' | 'admin-management'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'approval' | 'members' | 'attendance' | 'news' | 'gallery' | 'slider' | 'media' | 'recap' | 'settings' | 'backup' | 'profile' | 'admin-management' | 'korwil-data'>('overview');
   const [newSessionName, setNewSessionName] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
@@ -563,6 +563,7 @@ export const AdminDashboard: React.FC = () => {
                    </div>
                    <li><button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${activeTab === 'overview' ? 'bg-primary-800 text-white shadow-lg' : 'hover:bg-primary-800/50 text-white/70 hover:text-white'}`}><LayoutDashboard size={20} className={activeTab === 'overview' ? 'text-secondary-500' : ''} />{sidebarOpen && <span className="flex-1 text-left font-medium">Dashboard</span>}</button></li>
                    <li><button onClick={() => setActiveTab('admin-management')} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${activeTab === 'admin-management' ? 'bg-primary-800 text-white shadow-lg' : 'hover:bg-primary-800/50 text-white/70 hover:text-white'}`}><ShieldCheck size={20} className={activeTab === 'admin-management' ? 'text-secondary-500' : ''} />{sidebarOpen && <span className="flex-1 text-left font-medium">Manajemen Admin</span>}</button></li>
+                   <li><button onClick={() => setActiveTab('korwil-data')} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${activeTab === 'korwil-data' ? 'bg-primary-800 text-white shadow-lg' : 'hover:bg-primary-800/50 text-white/70 hover:text-white'}`}><Map size={20} className={activeTab === 'korwil-data' ? 'text-secondary-500' : ''} />{sidebarOpen && <span className="flex-1 text-left font-medium">Data Wilayah</span>}</button></li>
                    <li><button onClick={() => setActiveTab('news')} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${activeTab === 'news' ? 'bg-primary-800 text-white shadow-lg' : 'hover:bg-primary-800/50 text-white/70 hover:text-white'}`}><FileText size={20} className={activeTab === 'news' ? 'text-secondary-500' : ''} />{sidebarOpen && <span className="flex-1 text-left font-medium">Berita</span>}</button></li>
                    <li><button onClick={() => setActiveTab('gallery')} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${activeTab === 'gallery' ? 'bg-primary-800 text-white shadow-lg' : 'hover:bg-primary-800/50 text-white/70 hover:text-white'}`}><ImageIcon size={20} className={activeTab === 'gallery' ? 'text-secondary-500' : ''} />{sidebarOpen && <span className="flex-1 text-left font-medium">Galeri</span>}</button></li>
                    <li><button onClick={() => setActiveTab('slider')} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${activeTab === 'slider' ? 'bg-primary-800 text-white shadow-lg' : 'hover:bg-primary-800/50 text-white/70 hover:text-white'}`}><MonitorPlay size={20} className={activeTab === 'slider' ? 'text-secondary-500' : ''} />{sidebarOpen && <span className="flex-1 text-left font-medium">Slider Beranda</span>}</button></li>
@@ -897,6 +898,29 @@ export const AdminDashboard: React.FC = () => {
                    </div>
                </div>
             )}
+
+            {activeTab === 'korwil-data' && isSuperAdmin && (
+               <div className="max-w-4xl space-y-6">
+                  <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm">
+                      <h3 className="text-xl font-bold text-neutral-800 mb-6 flex items-center gap-2"><Map size={20}/> Manajemen Korwil</h3>
+                      <p className="text-sm text-neutral-500 mb-4">Tambahkan daftar wilayah baru agar muncul di pilihan formulir pendaftaran.</p>
+                      
+                      <div className="flex gap-4 mb-6">
+                          <input type="text" placeholder="Nama Wilayah Baru" className="flex-1 border rounded-lg p-3" value={newKorwilName} onChange={e => setNewKorwilName(e.target.value)} />
+                          <button onClick={() => { if(newKorwilName) { addKorwil(newKorwilName); setNewKorwilName(''); } }} className="bg-secondary-600 text-white px-6 rounded-lg font-bold">Tambah</button>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {korwils.map(k => (
+                              <div key={k.id} className="bg-neutral-50 p-3 rounded-lg border border-neutral-200 flex justify-between items-center group hover:border-primary-200 transition-colors">
+                                  <span className="font-medium text-sm">{k.name}</span>
+                                  <button onClick={() => deleteKorwil(k.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"><X size={14}/></button>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+               </div>
+            )}
             
             {/* UPDATED: NEWS TAB WITH FULL WIDTH EDITOR */}
             {activeTab === 'news' && isSuperAdmin && (
@@ -1147,7 +1171,7 @@ export const AdminDashboard: React.FC = () => {
                   {isSuperAdmin && (
                     <>
                       <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm"><h3 className="text-xl font-bold text-neutral-800 mb-6 flex items-center gap-2"><Settings size={20}/> Konfigurasi Website</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className="text-xs font-bold text-neutral-500 mb-1 block">Nama Aplikasi</label><input type="text" className="w-full border rounded-lg p-3" value={configForm.appName} onChange={e => setConfigForm({...configForm, appName: e.target.value})} /></div><div><label className="text-xs font-bold text-neutral-500 mb-1 block">Nama Organisasi</label><input type="text" className="w-full border rounded-lg p-3" value={configForm.orgName} onChange={e => setConfigForm({...configForm, orgName: e.target.value})} /></div><div className="col-span-2"><label className="text-xs font-bold text-neutral-500 mb-1 block">Deskripsi</label><textarea className="w-full border rounded-lg p-3" value={configForm.description} onChange={e => setConfigForm({...configForm, description: e.target.value})} /></div><div><label className="text-xs font-bold text-neutral-500 mb-1 block">Alamat</label><input type="text" className="w-full border rounded-lg p-3" value={configForm.address} onChange={e => setConfigForm({...configForm, address: e.target.value})} /></div><div><label className="text-xs font-bold text-neutral-500 mb-1 block">Email</label><input type="text" className="w-full border rounded-lg p-3" value={configForm.email} onChange={e => setConfigForm({...configForm, email: e.target.value})} /></div><div><label className="text-xs font-bold text-neutral-500 mb-1 block">Telepon</label><input type="text" className="w-full border rounded-lg p-3" value={configForm.phone} onChange={e => setConfigForm({...configForm, phone: e.target.value})} /></div><div><label className="text-xs font-bold text-neutral-500 mb-1 block">Logo URL</label><input type="text" className="w-full border rounded-lg p-3" value={configForm.logoUrl} onChange={e => setConfigForm({...configForm, logoUrl: e.target.value})} /></div></div><div className="mt-8 pt-6 border-t border-neutral-100 text-right"><button onClick={() => updateSiteConfig(configForm)} className="bg-primary-900 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-primary-800 transition">Simpan Konfigurasi</button></div></div>
-                      <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm"><h3 className="text-xl font-bold text-neutral-800 mb-6 flex items-center gap-2"><Map size={20}/> Manajemen Korwil</h3><div className="flex gap-4 mb-6"><input type="text" placeholder="Nama Wilayah Baru" className="flex-1 border rounded-lg p-3" value={newKorwilName} onChange={e => setNewKorwilName(e.target.value)} /><button onClick={() => { if(newKorwilName) { addKorwil(newKorwilName); setNewKorwilName(''); } }} className="bg-secondary-600 text-white px-6 rounded-lg font-bold">Tambah</button></div><div className="grid grid-cols-2 md:grid-cols-4 gap-4">{korwils.map(k => (<div key={k.id} className="bg-neutral-50 p-3 rounded-lg border border-neutral-200 flex justify-between items-center"><span className="font-medium">{k.name}</span><button onClick={() => deleteKorwil(k.id)} className="text-red-500 hover:bg-red-50 p-1 rounded"><X size={14}/></button></div>))}</div></div>
+                      
                     </>
                   )}
                </div>
