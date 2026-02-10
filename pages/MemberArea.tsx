@@ -1,12 +1,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { MapPin, UserCheck, Calendar, Clock, Award, Shield, Camera, RefreshCw, X, CheckCircle2, AlertTriangle, CreditCard, Download, RotateCw, QrCode, Wifi, AlertCircle, RefreshCcw, Navigation, ChevronRight, Sparkles, Lock, Settings, LogOut } from 'lucide-react';
+import { MapPin, Calendar, Camera, RefreshCw, X, CheckCircle2, CreditCard, QrCode, Wifi, Navigation, ChevronRight, Sparkles, Lock, LogOut, Download, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 export const MemberArea: React.FC = () => {
-  const { currentUser, attendanceSessions, markAttendance, showToast, refreshData, changePassword, logout } = useApp();
+  const { currentUser, attendanceSessions, markAttendance, showToast, refreshData, changePassword, logout, siteConfig } = useApp();
   const navigate = useNavigate();
   const [selectedSession, setSelectedSession] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -27,7 +29,9 @@ export const MemberArea: React.FC = () => {
 
   // E-KTA State
   const [isCardOpen, setIsCardOpen] = useState(false);
-  const [isFlipped, setIsFlipped] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const cardFrontRef = useRef<HTMLDivElement>(null);
+  const cardBackRef = useRef<HTMLDivElement>(null);
 
   // Change Password State
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -75,6 +79,47 @@ export const MemberArea: React.FC = () => {
           setIsChangePasswordOpen(false);
           setPasswordForm({ new: '', confirm: '' });
       }
+  };
+
+  const handleDownloadKTA = async () => {
+    if (!cardFrontRef.current || !cardBackRef.current) return;
+    setIsDownloading(true);
+    showToast("Sedang memproses PDF...", "info");
+
+    try {
+        // Options untuk kualitas tinggi
+        const options = {
+            scale: 3, // Upscale 3x untuk ketajaman
+            useCORS: true, // Izinkan gambar cross-origin (logo/avatar)
+            backgroundColor: null,
+            logging: false
+        };
+
+        const canvasFront = await html2canvas(cardFrontRef.current, options);
+        const canvasBack = await html2canvas(cardBackRef.current, options);
+
+        // Ukuran ID Card standar CR-80 (85.6mm x 53.98mm)
+        const pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: [85.6, 53.98]
+        });
+
+        // Halaman 1: Depan
+        pdf.addImage(canvasFront.toDataURL('image/png'), 'PNG', 0, 0, 85.6, 53.98);
+        
+        // Halaman 2: Belakang
+        pdf.addPage([85.6, 53.98], 'landscape');
+        pdf.addImage(canvasBack.toDataURL('image/png'), 'PNG', 0, 0, 85.6, 53.98);
+
+        pdf.save(`E-KTA_JSN_${currentUser.nia || 'MEMBER'}.pdf`);
+        showToast("E-KTA berhasil diunduh!", "success");
+    } catch (error) {
+        console.error("Gagal download KTA", error);
+        showToast("Gagal mengunduh kartu. Coba lagi.", "error");
+    } finally {
+        setIsDownloading(false);
+    }
   };
 
   const getDistanceFromLatLonInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -338,7 +383,7 @@ export const MemberArea: React.FC = () => {
             <p className="text-neutral-500 text-sm mt-1">Silakan lakukan absensi saat sesi dibuka oleh admin.</p>
          </div>
          <button onClick={handleRefresh} className={`flex items-center gap-2 px-4 py-2 bg-white border border-neutral-200 rounded-xl text-neutral-600 text-xs font-bold hover:bg-neutral-50 transition ${isRefreshing ? 'opacity-70' : ''}`}>
-             <RefreshCcw size={14} className={isRefreshing ? 'animate-spin' : ''} /> Refresh Data
+             <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} /> Refresh Data
          </button>
       </div>
 
@@ -456,39 +501,165 @@ export const MemberArea: React.FC = () => {
         )}
       </AnimatePresence>
       
-      {/* Existing Card & Camera Modals... (Keeping logic same) */}
+      {/* E-KTA MODAL REDESIGNED */}
       <AnimatePresence>
         {isCardOpen && (
-           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-              <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="relative max-w-md w-full">
-                 <div className="flex justify-end mb-4"><button onClick={() => setIsCardOpen(false)} className="p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition"><X size={24} /></button></div>
+           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="relative max-w-5xl w-full flex flex-col items-center">
                  
-                 {/* KARTU MEMBER (Reuse component logic) */}
-                 <div className="w-full max-w-sm mx-auto h-[230px] md:h-[250px] cursor-pointer group" onClick={() => setIsFlipped(!isFlipped)} style={{ perspective: '1200px' }}>
-                     <motion.div className="relative w-full h-full shadow-2xl rounded-2xl" initial={false} animate={{ rotateY: isFlipped ? 180 : 0 }} style={{ transformStyle: 'preserve-3d', transition: 'all 0.6s' }}>
-                        <div className="absolute inset-0 w-full h-full rounded-2xl bg-gradient-to-br from-[#064e3b] to-[#022c22] p-6 text-white backface-hidden border border-amber-500/30 overflow-hidden" style={{ backfaceVisibility: 'hidden' }}>
-                            <div className="absolute inset-0 opacity-10 pattern-bg"></div>
-                            <div className="relative z-10 flex justify-between items-start">
-                               <div><h3 className="font-serif font-bold text-amber-400 text-lg tracking-wide">JSN SURABAYA</h3><p className="text-[10px] tracking-[0.2em] text-emerald-200 uppercase">Kartu Anggota Resmi</p></div>
-                               <Wifi className="text-white/20 rotate-90" />
-                            </div>
-                            <div className="mt-8 relative z-10"><p className="text-[10px] text-emerald-300 uppercase tracking-widest mb-1">Nomor Induk Anggota</p><p className="font-mono text-xl tracking-widest text-white drop-shadow-md">{currentUser.nia || 'PENDING'}</p></div>
-                            <div className="absolute bottom-6 left-6 right-6 z-10 flex justify-between items-end">
-                               <div><p className="text-lg font-bold font-serif text-white">{currentUser.name}</p><p className="text-xs text-emerald-300 uppercase tracking-wide">{currentUser.wilayah}</p></div>
-                               <div className="w-12 h-12 rounded-full border-2 border-amber-400/50 flex items-center justify-center bg-gradient-to-tr from-amber-500 to-amber-300 shadow-lg"><span className="text-[10px] font-bold text-primary-900">JSN</span></div>
-                            </div>
-                        </div>
-                        <div className="absolute inset-0 w-full h-full rounded-2xl bg-neutral-900 p-6 text-white overflow-hidden" style={{ transform: "rotateY(180deg)", backfaceVisibility: 'hidden' }}>
-                           <div className="w-full h-12 bg-black -mx-6 mb-6 mt-2 relative"><div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div></div>
-                           <div className="flex gap-4 items-center">
-                              <div className="flex-grow"><div className="h-8 bg-white/10 rounded mb-2"></div><div className="h-2 w-2/3 bg-white/5 rounded"></div><p className="text-[8px] text-neutral-500 mt-4 leading-relaxed">Kartu ini adalah bukti keanggotaan sah Jamiyah Sholawat Nariyah Surabaya.</p></div>
-                              <div className="bg-white p-1 rounded-lg shadow-sm"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentUser.nia || currentUser.email)}`} alt="Kode Anggota" className="w-16 h-16 object-contain"/></div>
-                           </div>
-                        </div>
-                     </motion.div>
+                 <div className="w-full flex justify-between items-center mb-6 max-w-3xl">
+                    <h2 className="text-white font-serif font-bold text-2xl">E-KTA Digital</h2>
+                    <button onClick={() => setIsCardOpen(false)} className="p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition"><X size={24} /></button>
                  </div>
-                 
-                 <p className="text-center text-white/50 text-xs mt-6">Ketuk kartu untuk membalik</p>
+
+                 {/* CONTAINER KARTU - SCROLLABLE ON MOBILE */}
+                 <div className="flex flex-col xl:flex-row gap-8 items-center justify-center w-full">
+                     
+                     {/* KARTU DEPAN - DESIGN BARU */}
+                     <div className="relative group perspective-1000">
+                        <div 
+                          ref={cardFrontRef}
+                          className="w-[323px] h-[204px] sm:w-[400px] sm:h-[252px] bg-gradient-to-br from-[#064e3b] via-[#065f46] to-black rounded-xl shadow-2xl overflow-hidden relative border border-amber-500/50 flex flex-col select-none"
+                        >
+                            {/* Background Pattern & Accents */}
+                            <div className="absolute inset-0 pattern-bg opacity-10"></div>
+                            <div className="absolute top-0 right-0 w-40 h-40 bg-amber-400 rounded-full blur-[80px] opacity-20"></div>
+                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-400 rounded-full blur-[60px] opacity-10"></div>
+                            
+                            {/* HEADER */}
+                            <div className="relative z-10 flex items-center justify-between p-4 sm:p-5 border-b border-white/10">
+                                <div className="flex items-center gap-3">
+                                    <img 
+                                      src={siteConfig.logoUrl || "https://placehold.co/400x400/064e3b/ffffff?text=JSN"} 
+                                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-amber-400 shadow-md object-cover bg-white"
+                                      crossOrigin="anonymous"
+                                      alt="Logo"
+                                    />
+                                    <div>
+                                        <h3 className="text-[10px] sm:text-xs text-amber-400 font-bold tracking-[0.2em] uppercase">Kartu Tanda Anggota</h3>
+                                        <h2 className="text-sm sm:text-base font-serif font-bold text-white leading-none mt-0.5">{siteConfig.appName}</h2>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                     <Wifi className="text-white/20 rotate-90" size={24} />
+                                </div>
+                            </div>
+
+                            {/* BODY */}
+                            <div className="relative z-10 flex-grow px-4 sm:px-5 py-3 flex gap-4 items-center">
+                                {/* FOTO PROFIL */}
+                                <div className="w-20 h-24 sm:w-24 sm:h-28 bg-neutral-900 rounded-lg border-2 border-amber-500/50 shadow-inner overflow-hidden flex-shrink-0">
+                                     <img 
+                                        src={`https://ui-avatars.com/api/?name=${currentUser.name}&background=064e3b&color=fff&size=200`}
+                                        className="w-full h-full object-cover"
+                                        crossOrigin="anonymous"
+                                        alt="User"
+                                     />
+                                </div>
+                                
+                                {/* DATA DIRI */}
+                                <div className="space-y-1.5 sm:space-y-2 flex-grow min-w-0">
+                                    <div>
+                                        <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">Nama Lengkap</p>
+                                        <p className="text-sm sm:text-lg font-bold text-white truncate font-serif leading-tight">{currentUser.name}</p>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <div>
+                                            <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">NIA</p>
+                                            <p className="text-xs sm:text-sm font-mono font-bold text-amber-400 truncate tracking-wide">{currentUser.nia || 'PROSES'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">Wilayah</p>
+                                            <p className="text-xs sm:text-sm font-bold text-white truncate">{currentUser.wilayah}</p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">Jabatan</p>
+                                        <p className="text-[10px] sm:text-xs font-bold text-white bg-white/10 inline-block px-2 py-0.5 rounded border border-white/10 uppercase">{currentUser.role === 'member' ? 'Anggota Jamaah' : currentUser.role}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* FOOTER */}
+                            <div className="relative z-10 bg-gradient-to-r from-amber-500 to-amber-600 p-1.5 sm:p-2 flex justify-between items-center px-4 sm:px-5 mt-auto">
+                                <span className="text-[8px] sm:text-[10px] font-bold text-primary-900 uppercase tracking-widest">Berkhidmat Untuk Umat</span>
+                                <span className="text-[8px] sm:text-[10px] font-bold text-primary-900">Masa Berlaku: SEUMUR HIDUP</span>
+                            </div>
+                        </div>
+                        <p className="text-center text-white/50 text-xs mt-3">Tampilan Depan</p>
+                     </div>
+
+                     {/* KARTU BELAKANG - DESIGN BARU */}
+                     <div className="relative group">
+                         <div 
+                           ref={cardBackRef}
+                           className="w-[323px] h-[204px] sm:w-[400px] sm:h-[252px] bg-white rounded-xl shadow-2xl overflow-hidden relative border-2 border-neutral-200 flex flex-col select-none"
+                         >
+                            {/* Header Stripe */}
+                            <div className="h-4 w-full bg-primary-900"></div>
+                            <div className="h-1 w-full bg-amber-500"></div>
+
+                            <div className="p-5 flex gap-5 h-full">
+                                <div className="flex-grow flex flex-col justify-between">
+                                    <div>
+                                        <h4 className="text-[10px] font-bold text-primary-900 uppercase mb-2">Ketentuan Kartu</h4>
+                                        <ul className="text-[8px] sm:text-[9px] text-neutral-600 space-y-1 list-disc pl-3">
+                                            <li>Kartu ini adalah bukti keanggotaan sah {siteConfig.appName}.</li>
+                                            <li>Harap membawa kartu saat mengikuti kegiatan majelis.</li>
+                                            <li>Apabila menemukan kartu ini, mohon kembalikan ke sekretariat {siteConfig.orgName}.</li>
+                                        </ul>
+                                    </div>
+
+                                    <div className="mt-2">
+                                        <div className="flex items-end justify-between">
+                                            <div>
+                                                <p className="text-[8px] text-neutral-400">Dikeluarkan di Surabaya</p>
+                                                <p className="text-[8px] text-neutral-400 mb-6">Ketua Umum,</p>
+                                                <div className="h-8 border-b border-neutral-300 w-24 relative">
+                                                    {/* Signature placeholder */}
+                                                    <span className="absolute bottom-0 text-[10px] font-script text-primary-900 font-bold italic opacity-70">Ttd Pengurus</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[8px] font-bold text-primary-900">{siteConfig.address}</p>
+                                                <p className="text-[8px] text-neutral-500">{siteConfig.email}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex-shrink-0 flex flex-col items-center justify-center border-l border-neutral-100 pl-4">
+                                     <div className="bg-white p-1 rounded border border-neutral-200 shadow-sm">
+                                        <img 
+                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`MEMBER:${currentUser.nia};NAME:${currentUser.name}`)}`} 
+                                            alt="QR" 
+                                            className="w-20 h-20 object-contain"
+                                            crossOrigin="anonymous"
+                                        />
+                                     </div>
+                                     <span className="text-[8px] text-neutral-400 mt-1 text-center font-mono">Scan Validasi</span>
+                                </div>
+                            </div>
+                            
+                            {/* Footer Stripe */}
+                            <div className="mt-auto h-2 w-full bg-primary-900"></div>
+                         </div>
+                         <p className="text-center text-white/50 text-xs mt-3">Tampilan Belakang</p>
+                     </div>
+                 </div>
+
+                 {/* ACTION BUTTON */}
+                 <div className="mt-10 flex gap-4">
+                    <button 
+                        onClick={handleDownloadKTA}
+                        disabled={isDownloading}
+                        className={`px-8 py-3 rounded-xl font-bold text-white flex items-center gap-2 shadow-lg transition-all transform hover:scale-105 ${isDownloading ? 'bg-neutral-600 cursor-not-allowed' : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-amber-900/20'}`}
+                    >
+                        {isDownloading ? <Loader2 className="animate-spin" /> : <Download size={20} />}
+                        {isDownloading ? 'Memproses PDF...' : 'Download E-KTA (PDF)'}
+                    </button>
+                 </div>
+
               </motion.div>
            </motion.div>
         )}
