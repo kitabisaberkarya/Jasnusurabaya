@@ -115,6 +115,8 @@ export interface SiteConfig {
   email: string;
   phone: string;
   logoUrl: string;
+  signatureUrl?: string; // Added: Tanda Tangan Digital
+  stampUrl?: string;     // Added: Stempel Digital
 }
 
 export interface Korwil {

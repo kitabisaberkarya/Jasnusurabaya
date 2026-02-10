@@ -355,8 +355,6 @@ export const MemberArea: React.FC = () => {
   };
 
   const activeSessions = attendanceSessions.filter(s => s.isOpen);
-
-  // Helper untuk mendapatkan foto profil user atau fallback
   const userPhotoUrl = currentUser.profile_photo_url || `https://ui-avatars.com/api/?name=${currentUser.name}&background=064e3b&color=fff&size=200`;
 
   return (
@@ -364,6 +362,7 @@ export const MemberArea: React.FC = () => {
       
       {/* 1. HERO PROFILE CARD */}
       <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white shadow-2xl p-8 mb-12 border border-primary-700/50 group">
+          {/* ... (Hero Content same as before) ... */}
           <div className="absolute inset-0 opacity-10 pattern-bg mix-blend-overlay"></div>
           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500 rounded-full blur-[100px] opacity-20 group-hover:opacity-30 transition duration-1000"></div>
           
@@ -377,8 +376,6 @@ export const MemberArea: React.FC = () => {
                          alt="Avatar"
                          crossOrigin="anonymous"
                        />
-                       
-                       {/* BUTTON UPLOAD FOTO */}
                        <button 
                          onClick={triggerUpload}
                          disabled={isUploadingPhoto}
@@ -446,6 +443,7 @@ export const MemberArea: React.FC = () => {
       </div>
 
       {/* 2. ATTENDANCE SECTION */}
+      {/* ... (Attendance UI remains unchanged) ... */}
       <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
          <div>
             <h2 className="text-2xl font-serif font-bold text-primary-900 flex items-center gap-2">
@@ -584,7 +582,6 @@ export const MemberArea: React.FC = () => {
                     <button onClick={() => setIsCardOpen(false)} className="p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition"><X size={24} /></button>
                  </div>
 
-                 {/* CONTAINER KARTU - SCROLLABLE ON MOBILE */}
                  <div className="flex flex-col xl:flex-row gap-8 items-center justify-center w-full">
                      
                      {/* KARTU DEPAN - DESIGN BARU */}
@@ -619,7 +616,7 @@ export const MemberArea: React.FC = () => {
 
                             {/* BODY */}
                             <div className="relative z-10 flex-grow px-4 sm:px-5 py-3 flex gap-4 items-center">
-                                {/* FOTO PROFIL DI KTA - Menggunakan Foto Upload jika ada */}
+                                {/* FOTO PROFIL */}
                                 <div className="w-20 h-24 sm:w-24 sm:h-28 bg-neutral-900 rounded-lg border-2 border-amber-500/50 shadow-inner overflow-hidden flex-shrink-0 relative">
                                      <img 
                                         src={userPhotoUrl}
@@ -652,7 +649,7 @@ export const MemberArea: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* LOGO APLIKASI POJOK KANAN BAWAH (REPLACING YELLOW CIRCLE) */}
+                            {/* LOGO FOOTER */}
                             <div className="absolute bottom-10 right-5 z-20 opacity-90">
                                 <img 
                                     src={siteConfig.logoUrl} 
@@ -696,10 +693,32 @@ export const MemberArea: React.FC = () => {
                                         <div className="flex items-end justify-between">
                                             <div>
                                                 <p className="text-[8px] text-neutral-400">Dikeluarkan di Surabaya</p>
-                                                <p className="text-[8px] text-neutral-400 mb-6">Ketua Umum,</p>
-                                                <div className="h-8 border-b border-neutral-300 w-24 relative">
-                                                    {/* Signature placeholder */}
-                                                    <span className="absolute bottom-0 text-[10px] font-script text-primary-900 font-bold italic opacity-70">Ttd Pengurus</span>
+                                                <p className="text-[8px] text-neutral-400 mb-2">Ketua Umum,</p>
+                                                
+                                                {/* DIGITAL SIGNATURE & STAMP AREA */}
+                                                <div className="h-10 w-28 relative flex items-end">
+                                                    {siteConfig.signatureUrl ? (
+                                                        <img 
+                                                          src={siteConfig.signatureUrl} 
+                                                          alt="Tanda Tangan" 
+                                                          className="h-full w-auto object-contain relative z-10"
+                                                          crossOrigin="anonymous"
+                                                        />
+                                                    ) : (
+                                                        <div className="border-b border-neutral-300 w-full h-8 flex items-end">
+                                                            <span className="text-[10px] font-script text-primary-900 font-bold italic opacity-70">Ttd Pengurus</span>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* STAMP OVERLAY */}
+                                                    {siteConfig.stampUrl && (
+                                                        <img 
+                                                            src={siteConfig.stampUrl}
+                                                            alt="Stempel"
+                                                            className="absolute -right-2 -top-2 h-12 w-12 object-contain opacity-80 z-20 rotate-[-10deg] mix-blend-multiply"
+                                                            crossOrigin="anonymous"
+                                                        />
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="text-right">
@@ -747,11 +766,13 @@ export const MemberArea: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* Camera Modal (unchanged) */}
       <AnimatePresence>
         {isCameraOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
             <motion.div className="bg-neutral-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative border border-neutral-700">
-              <div className="absolute top-0 left-0 right-0 p-4 z-20 flex justify-between bg-gradient-to-b from-black/80 to-transparent">
+              {/* ... Camera UI content ... */}
+               <div className="absolute top-0 left-0 right-0 p-4 z-20 flex justify-between bg-gradient-to-b from-black/80 to-transparent">
                 <div>
                     <h3 className="text-white font-bold text-lg drop-shadow-md">Ambil Foto</h3>
                     <div className="text-xs mt-1 flex items-center gap-2">
