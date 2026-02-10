@@ -649,15 +649,7 @@ export const MemberArea: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* LOGO FOOTER */}
-                            <div className="absolute bottom-10 right-5 z-20 opacity-90">
-                                <img 
-                                    src={siteConfig.logoUrl} 
-                                    alt="Logo Footer" 
-                                    className="w-14 h-14 object-contain filter drop-shadow-md"
-                                    crossOrigin="anonymous"
-                                />
-                            </div>
+                            {/* LOGO FOOTER REMOVED HERE */}
 
                             {/* FOOTER */}
                             <div className="relative z-10 bg-gradient-to-r from-amber-500 to-amber-600 p-1.5 sm:p-2 flex justify-between items-center px-4 sm:px-5 mt-auto">
