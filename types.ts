@@ -1,5 +1,4 @@
 
-
 export enum UserRole {
   SUPER_ADMIN = 'admin',       // Legacy 'admin' is now Super Admin
   ADMIN_KORWIL = 'korwil',     // New Role
@@ -26,6 +25,7 @@ export interface User {
   wilayah?: string;
   phone?: string;
   address?: string; 
+  profile_photo_url?: string; // Added field for KTA Photo
   joinedAt: string;
 }
 

@@ -1,14 +1,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { MapPin, Calendar, Camera, RefreshCw, X, CheckCircle2, CreditCard, QrCode, Wifi, Navigation, ChevronRight, Sparkles, Lock, LogOut, Download, Loader2 } from 'lucide-react';
+import { MapPin, Calendar, Camera, RefreshCw, X, CheckCircle2, CreditCard, QrCode, Wifi, Navigation, ChevronRight, Sparkles, Lock, LogOut, Download, Loader2, Edit3, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export const MemberArea: React.FC = () => {
-  const { currentUser, attendanceSessions, markAttendance, showToast, refreshData, changePassword, logout, siteConfig } = useApp();
+  const { currentUser, attendanceSessions, markAttendance, showToast, refreshData, changePassword, logout, siteConfig, uploadFile, updateMember } = useApp();
   const navigate = useNavigate();
   const [selectedSession, setSelectedSession] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -32,6 +32,10 @@ export const MemberArea: React.FC = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const cardFrontRef = useRef<HTMLDivElement>(null);
   const cardBackRef = useRef<HTMLDivElement>(null);
+
+  // Photo Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // Change Password State
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -79,6 +83,47 @@ export const MemberArea: React.FC = () => {
           setIsChangePasswordOpen(false);
           setPasswordForm({ new: '', confirm: '' });
       }
+  };
+
+  // --- PHOTO UPLOAD LOGIC ---
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        
+        // Validasi Ukuran (Max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            showToast("Ukuran file terlalu besar (Maks 2MB)", "error");
+            return;
+        }
+
+        setIsUploadingPhoto(true);
+        try {
+            // Upload ke folder 'profiles'
+            const url = await uploadFile(file, 'profiles');
+            if (url) {
+                // Update user di database
+                await updateMember(currentUser.id, { profile_photo_url: url });
+                
+                showToast("Foto profil berhasil diperbarui! Memuat ulang...", "success");
+                
+                // Refresh data dan reload halaman agar session terupdate (karena context session disimpan di localStorage)
+                await refreshData();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            }
+        } catch (error) {
+            console.error("Upload error", error);
+            showToast("Gagal mengupload foto", "error");
+        } finally {
+            setIsUploadingPhoto(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    }
+  };
+
+  const triggerUpload = () => {
+      fileInputRef.current?.click();
   };
 
   const handleDownloadKTA = async () => {
@@ -311,6 +356,9 @@ export const MemberArea: React.FC = () => {
 
   const activeSessions = attendanceSessions.filter(s => s.isOpen);
 
+  // Helper untuk mendapatkan foto profil user atau fallback
+  const userPhotoUrl = currentUser.profile_photo_url || `https://ui-avatars.com/api/?name=${currentUser.name}&background=064e3b&color=fff&size=200`;
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto px-4 py-8 lg:py-12 pb-24 lg:pb-12 min-h-screen">
       
@@ -322,11 +370,35 @@ export const MemberArea: React.FC = () => {
           <div className="relative z-10 flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
                <div className="relative">
                    <div className="absolute inset-0 bg-amber-400 blur-lg opacity-30 rounded-full animate-pulse"></div>
-                   <div className="relative w-28 h-28 rounded-full border-[3px] border-amber-400 p-1 shadow-2xl">
+                   <div className="relative w-28 h-28 rounded-full border-[3px] border-amber-400 p-1 shadow-2xl group/photo">
                        <img 
-                         src={`https://ui-avatars.com/api/?name=${currentUser.name}&background=064e3b&color=fff&size=200`} 
+                         src={userPhotoUrl} 
                          className="w-full h-full rounded-full object-cover"
                          alt="Avatar"
+                         crossOrigin="anonymous"
+                       />
+                       
+                       {/* BUTTON UPLOAD FOTO */}
+                       <button 
+                         onClick={triggerUpload}
+                         disabled={isUploadingPhoto}
+                         className="absolute inset-0 bg-black/50 rounded-full flex flex-col items-center justify-center opacity-0 group-hover/photo:opacity-100 transition duration-300 cursor-pointer text-xs font-bold"
+                       >
+                          {isUploadingPhoto ? (
+                              <Loader2 className="animate-spin text-white" size={24} />
+                          ) : (
+                              <>
+                                <Camera className="text-white mb-1" size={24} />
+                                <span>Ganti Foto</span>
+                              </>
+                          )}
+                       </button>
+                       <input 
+                         type="file" 
+                         ref={fileInputRef} 
+                         onChange={handlePhotoUpload} 
+                         accept="image/*" 
+                         className="hidden" 
                        />
                    </div>
                    <div className="absolute -bottom-2 -right-2 bg-amber-400 text-primary-900 text-[10px] font-bold px-2 py-1 rounded-full shadow-lg border-2 border-primary-900 uppercase tracking-wider">
@@ -547,10 +619,10 @@ export const MemberArea: React.FC = () => {
 
                             {/* BODY */}
                             <div className="relative z-10 flex-grow px-4 sm:px-5 py-3 flex gap-4 items-center">
-                                {/* FOTO PROFIL */}
-                                <div className="w-20 h-24 sm:w-24 sm:h-28 bg-neutral-900 rounded-lg border-2 border-amber-500/50 shadow-inner overflow-hidden flex-shrink-0">
+                                {/* FOTO PROFIL DI KTA - Menggunakan Foto Upload jika ada */}
+                                <div className="w-20 h-24 sm:w-24 sm:h-28 bg-neutral-900 rounded-lg border-2 border-amber-500/50 shadow-inner overflow-hidden flex-shrink-0 relative">
                                      <img 
-                                        src={`https://ui-avatars.com/api/?name=${currentUser.name}&background=064e3b&color=fff&size=200`}
+                                        src={userPhotoUrl}
                                         className="w-full h-full object-cover"
                                         crossOrigin="anonymous"
                                         alt="User"
