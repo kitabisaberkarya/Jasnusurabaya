@@ -561,23 +561,33 @@ export const MemberArea: React.FC = () => {
                                 <div className="space-y-1.5 sm:space-y-2 flex-grow min-w-0">
                                     <div>
                                         <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">Nama Lengkap</p>
-                                        <p className="text-sm sm:text-lg font-bold text-white truncate font-serif leading-tight">{currentUser.name}</p>
+                                        <p className="text-sm sm:text-lg font-bold text-white truncate font-serif leading-tight pb-1">{currentUser.name}</p>
                                     </div>
                                     <div className="flex gap-4">
                                         <div>
                                             <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">NIA</p>
-                                            <p className="text-xs sm:text-sm font-mono font-bold text-amber-400 truncate tracking-wide">{currentUser.nia || 'PROSES'}</p>
+                                            <p className="text-xs sm:text-sm font-mono font-bold text-amber-400 truncate tracking-wide pb-1">{currentUser.nia || 'PROSES'}</p>
                                         </div>
                                         <div>
                                             <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">Wilayah</p>
-                                            <p className="text-xs sm:text-sm font-bold text-white truncate">{currentUser.wilayah}</p>
+                                            <p className="text-xs sm:text-sm font-bold text-white truncate pb-1">{currentUser.wilayah}</p>
                                         </div>
                                     </div>
                                     <div>
                                         <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">Jabatan</p>
-                                        <p className="text-[10px] sm:text-xs font-bold text-white bg-white/10 inline-block px-2 py-0.5 rounded border border-white/10 uppercase">{currentUser.role === 'member' ? 'Anggota Jamaah' : currentUser.role}</p>
+                                        <p className="text-[10px] sm:text-xs font-bold text-white bg-white/10 inline-block px-2 py-0.5 rounded border border-white/10 uppercase pb-1">{currentUser.role === 'member' ? 'Anggota Jamaah' : currentUser.role}</p>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* LOGO APLIKASI POJOK KANAN BAWAH (REPLACING YELLOW CIRCLE) */}
+                            <div className="absolute bottom-10 right-5 z-20 opacity-90">
+                                <img 
+                                    src={siteConfig.logoUrl} 
+                                    alt="Logo Footer" 
+                                    className="w-14 h-14 object-contain filter drop-shadow-md"
+                                    crossOrigin="anonymous"
+                                />
                             </div>
 
                             {/* FOOTER */}
