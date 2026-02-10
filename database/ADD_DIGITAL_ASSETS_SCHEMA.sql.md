@@ -18,6 +18,6 @@ ADD COLUMN IF NOT EXISTS stamp_url text;
 -- =================================================================
 -- CATATAN PENGGUNAAN:
 -- Disarankan menggunakan file format PNG dengan background transparan
--- agar hasil pada E-KTA terlihat profesional dan menyatu.
+-- agar hasil pada E-KTA terlihat profesional dan menyatu.ok
 -- =================================================================
 ```
