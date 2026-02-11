@@ -47,12 +47,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const refreshData = async () => {
-    // Note: Do not set isLoading(true) here if we want background refresh behaviour 
-    // to avoid UI flickering, but for initial load it's fine.
-    // We only set it if it's currently true (initial load) or we want to block UI.
-    // For now, let's keep it simply but handled robustly.
-    
     try {
+      // 1. Fetch Critical Data (Configuration) first for instant perceived speed
+      const { data: configData } = await supabase.from('site_config').select('*').single();
+      
+      if (configData) {
+          const newConfig: SiteConfig = { 
+              ...configData, 
+              logoUrl: configData.logo_url, 
+              appName: configData.app_name, 
+              orgName: configData.org_name,
+              signatureUrl: configData.signature_url,
+              stampUrl: configData.stamp_url
+          };
+          
+          setState(prev => ({
+             ...prev,
+             siteConfig: newConfig
+          }));
+      }
+
+      // 2. Fetch the rest in parallel
       const results = await Promise.allSettled([
         supabase.from('users').select('*'),
         supabase.from('registrations').select('*'),
@@ -63,18 +78,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         supabase.from('profile_pages').select('*'),
         supabase.from('attendance_sessions').select('*'),
         supabase.from('attendance_records').select('*'),
-        supabase.from('site_config').select('*').single(),
-        supabase.from('korwils').select('*').order('name', { ascending: true }) // ORDER BY NAME ASC
+        supabase.from('korwils').select('*').order('name', { ascending: true })
       ]);
 
       // Helper to safely extract data from Promise.allSettled results
       const unwrap = (res: PromiseSettledResult<any>, defaultValue: any) => {
         if (res.status === 'fulfilled' && res.value.data) {
           return res.value.data;
-        }
-        if (res.status === 'rejected') {
-          // Log error but don't crash
-          console.warn("Partial fetch failed:", res.reason); 
         }
         return defaultValue;
       };
@@ -88,8 +98,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const fetchedProfiles = unwrap(results[6], []);
       const fetchedSessions = unwrap(results[7], []);
       const fetchedRecords = unwrap(results[8], []);
-      const fetchedConfigRaw = unwrap(results[9], null);
-      const fetchedKorwils = unwrap(results[10], []);
+      const fetchedKorwils = unwrap(results[9], []);
 
       setState(prev => {
         // Sync currentUser with fresh data
@@ -101,21 +110,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 localStorage.setItem('jsn_session', JSON.stringify(syncedCurrentUser));
             }
         }
-
-        // Handle Site Config Mapping with Fallback
-        const newConfig: SiteConfig = fetchedConfigRaw ? { 
-            ...fetchedConfigRaw, 
-            logoUrl: fetchedConfigRaw.logo_url, 
-            appName: fetchedConfigRaw.app_name, 
-            orgName: fetchedConfigRaw.org_name,
-            signatureUrl: fetchedConfigRaw.signature_url,
-            stampUrl: fetchedConfigRaw.stamp_url
-        } : {
-            // Fallback if config fetch fails
-            ...prev.siteConfig,
-            appName: prev.siteConfig.appName || "JSN Surabaya",
-            orgName: prev.siteConfig.orgName || "Jamiyah Sholawat Nariyah"
-        };
 
         return {
           ...prev,
@@ -129,19 +123,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           profilePages: fetchedProfiles,
           attendanceSessions: fetchedSessions,
           attendanceRecords: fetchedRecords.map((r: any) => ({...r, sessionId: r.session_id, userId: r.user_id, userName: r.user_name, photoUrl: r.photo_url})),
-          siteConfig: newConfig,
           korwils: fetchedKorwils.map((k: any) => ({...k, coordinatorName: k.coordinator_name}))
         };
       });
     } catch (error) {
-      console.error("Critical Error refreshing data:", error);
+      console.error("Error refreshing data:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    refreshData();
+    // Immediate Local Session Restore for speed
     const storedSession = localStorage.getItem('jsn_session');
     if (storedSession) {
       try {
@@ -151,6 +144,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         localStorage.removeItem('jsn_session');
       }
     }
+    
+    // Background Fetch
+    refreshData();
   }, []);
 
   // --- Auth Actions ---
@@ -536,15 +532,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           await supabase.from('site_config').update({
               app_name: config.appName, org_name: config.orgName, description: config.description,
               address: config.address, email: config.email, phone: config.phone, logo_url: config.logoUrl,
-              signature_url: config.signatureUrl, // NEW
-              stamp_url: config.stampUrl          // NEW
+              signature_url: config.signatureUrl, 
+              stamp_url: config.stampUrl          
           }).eq('id', 1); // Assume ID 1
           refreshData();
           showToast("Konfigurasi disimpan", "success");
       } catch(e) { showToast("Gagal simpan config", "error"); }
   };
 
-  // FIX: Use UPSERT to allow creating new profile pages if they don't exist
   const updateProfilePage = async (slug: string, title: string, content: string) => {
       try {
           const { error } = await supabase.from('profile_pages').upsert(

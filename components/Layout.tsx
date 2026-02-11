@@ -8,7 +8,7 @@ import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, logout, toasts, removeToast, siteConfig, isLoading } = useApp();
+  const { currentUser, logout, toasts, removeToast, siteConfig } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [isProfileHovered, setIsProfileHovered] = useState(false);
@@ -91,42 +91,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       </div>
   );
 
-  // SKELETON NAVBAR (Shown ONLY when explicitly loading AND no critical data)
-  // Modified logic: If isLoading is true, show skeleton. If false, allow rendering even if appName is missing (fallback used)
-  // This prevents infinite loading screen.
-  if (isLoading && !siteConfig.appName) {
-     if (isAdminRoute) return <>{children}</>; // Don't block admin route
-
-     return (
-        <div className="min-h-screen flex flex-col font-sans bg-neutral-50 relative">
-           <nav className="sticky top-0 z-40 bg-white border-b border-neutral-200/50 shadow-sm h-24 flex items-center">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex justify-between items-center">
-                 <div className="flex items-center gap-4 animate-pulse">
-                    <div className="w-16 h-16 rounded-full bg-neutral-200"></div>
-                    <div className="flex flex-col gap-2">
-                       <div className="h-6 w-48 bg-neutral-200 rounded"></div>
-                       <div className="h-3 w-24 bg-neutral-200 rounded"></div>
-                    </div>
-                 </div>
-                 <div className="hidden lg:flex gap-8 items-center animate-pulse">
-                    <div className="h-4 w-16 bg-neutral-200 rounded"></div>
-                    <div className="h-4 w-16 bg-neutral-200 rounded"></div>
-                    <div className="h-4 w-16 bg-neutral-200 rounded"></div>
-                    <div className="h-4 w-16 bg-neutral-200 rounded"></div>
-                    <div className="h-10 w-24 bg-neutral-200 rounded-full"></div>
-                 </div>
-              </div>
-           </nav>
-           <main className="flex-grow flex items-center justify-center">
-              <div className="animate-pulse flex flex-col items-center">
-                 <div className="h-8 w-64 bg-neutral-200 rounded mb-4"></div>
-                 <div className="h-4 w-48 bg-neutral-200 rounded"></div>
-                 <p className="text-neutral-400 mt-4 text-sm">Memuat data aplikasi...</p>
-              </div>
-           </main>
-        </div>
-     );
-  }
+  // REMOVED: Blocking Skeleton Loader. 
+  // The app now renders immediately with defaults, providing a faster perceived performance.
 
   // IF ADMIN ROUTE: Render ONLY content + toasts
   if (isAdminRoute) {

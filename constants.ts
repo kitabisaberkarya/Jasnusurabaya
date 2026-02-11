@@ -4,12 +4,12 @@ import { AppState } from "./types";
 export const MOCK_INITIAL_STATE: AppState = {
   currentUser: null,
   siteConfig: {
-    appName: "", // Empty to trigger Skeleton
-    orgName: "",
-    description: "",
-    address: "",
-    email: "",
-    phone: "",
+    appName: "JSN Surabaya", // Default Value for Instant Load
+    orgName: "Jamiyah Sholawat Nariyah", // Default Value
+    description: "Sistem Informasi Manajemen Jamiyah Sholawat Nariyah Kota Surabaya.",
+    address: "Surabaya, Jawa Timur",
+    email: "info@jsn-surabaya.com",
+    phone: "-",
     logoUrl: "" 
   },
   users: [],
