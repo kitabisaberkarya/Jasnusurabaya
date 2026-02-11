@@ -49,6 +49,13 @@ export const MemberArea: React.FC = () => {
     };
   }, []);
 
+  // Force Refresh Data when E-KTA is opened to ensure Signature/Stamp is latest
+  useEffect(() => {
+    if (isCardOpen) {
+        refreshData();
+    }
+  }, [isCardOpen]);
+
   const stopCamera = () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
@@ -688,7 +695,7 @@ export const MemberArea: React.FC = () => {
                                                 <p className="text-[8px] text-neutral-400 mb-2">Ketua Umum,</p>
                                                 
                                                 {/* DIGITAL SIGNATURE & STAMP AREA */}
-                                                <div className="h-10 w-28 relative flex items-end">
+                                                <div className="h-14 w-32 relative flex items-center justify-start">
                                                     {siteConfig.signatureUrl ? (
                                                         <img 
                                                           src={siteConfig.signatureUrl} 
@@ -707,7 +714,7 @@ export const MemberArea: React.FC = () => {
                                                         <img 
                                                             src={siteConfig.stampUrl}
                                                             alt="Stempel"
-                                                            className="absolute -right-2 -top-2 h-12 w-12 object-contain opacity-80 z-20 rotate-[-10deg] mix-blend-multiply"
+                                                            className="absolute -right-1 -top-4 h-16 w-16 object-contain opacity-90 z-20 rotate-[-10deg]"
                                                             crossOrigin="anonymous"
                                                         />
                                                     )}

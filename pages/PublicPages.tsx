@@ -1,9 +1,8 @@
 
-
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube, ArrowLeft, Clock, Share2, Facebook, Twitter, Link as LinkIcon, MessageCircle, ImageOff } from 'lucide-react';
+import { ArrowRight, Search, Calendar, MapPin, CheckCircle, ChevronDown, User, PlayCircle, Instagram, Youtube, ArrowLeft, Clock, Share2, Facebook, Twitter, Link as LinkIcon, MessageCircle, ImageOff, Phone } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { MemberStatus, UserRole } from '../types';
@@ -684,8 +683,17 @@ export const Database: React.FC = () => {
 export const ProfileView: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
     const { profilePages, korwils } = useApp();
+    const [korwilSearch, setKorwilSearch] = useState('');
     
     const page = profilePages.find(p => p.slug === slug);
+
+    const filteredKorwils = useMemo(() => {
+       if (!korwils) return [];
+       return korwils.filter(k => 
+          k.name.toLowerCase().includes(korwilSearch.toLowerCase()) || 
+          (k.coordinatorName && k.coordinatorName.toLowerCase().includes(korwilSearch.toLowerCase()))
+       );
+    }, [korwils, korwilSearch]);
 
     if (!page) {
         return (
@@ -711,21 +719,37 @@ export const ProfileView: React.FC = () => {
                     <div dangerouslySetInnerHTML={{ __html: page.content }} />
                 </article>
 
-                {/* AUTO GENERATED LIST FOR KORWIL */}
+                {/* FEATURE: INFO KORWIL DENGAN SEARCH & RESPONSIF TABLE */}
                 {slug === 'korwil' && korwils.length > 0 && (
-                    <div className="mt-8 pt-8 border-t border-neutral-100">
-                        <h3 className="font-serif font-bold text-2xl text-primary-900 mb-6">Daftar Koordinator Wilayah</h3>
-                        <div className="overflow-x-auto rounded-xl border border-neutral-200 shadow-sm">
+                    <div className="mt-12 pt-8 border-t border-neutral-100">
+                        <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-6 gap-4">
+                            <h3 className="font-serif font-bold text-2xl text-primary-900 flex items-center gap-2">
+                               <MapPin className="text-secondary-600" /> Daftar Wilayah
+                            </h3>
+                            <div className="relative w-full md:w-64">
+                                <input 
+                                    type="text" 
+                                    placeholder="Cari wilayah..." 
+                                    className="w-full pl-9 pr-4 py-2 border rounded-full text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                                    value={korwilSearch}
+                                    onChange={e => setKorwilSearch(e.target.value)}
+                                />
+                                <Search size={16} className="absolute left-3 top-2.5 text-neutral-400" />
+                            </div>
+                        </div>
+
+                        {/* DESKTOP TABLE VIEW */}
+                        <div className="hidden md:block overflow-x-auto rounded-xl border border-neutral-200 shadow-sm">
                             <table className="w-full text-left bg-white">
                                 <thead className="bg-primary-900 text-white text-sm font-bold uppercase tracking-wider">
                                     <tr>
-                                        <th className="px-6 py-4 border-b border-primary-800">Wilayah / Jabatan</th>
-                                        <th className="px-6 py-4 border-b border-primary-800">Nama Koordinator</th>
-                                        <th className="px-6 py-4 border-b border-primary-800">Kontak / Keterangan</th>
+                                        <th className="px-6 py-4 border-b border-primary-800 w-1/3">Wilayah / Jabatan</th>
+                                        <th className="px-6 py-4 border-b border-primary-800 w-1/3">Nama Koordinator</th>
+                                        <th className="px-6 py-4 border-b border-primary-800 w-1/3">Kontak / Keterangan</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-neutral-100">
-                                    {korwils.map((k) => (
+                                    {filteredKorwils.length > 0 ? filteredKorwils.map((k) => (
                                         <tr key={k.id} className="hover:bg-neutral-50 transition-colors">
                                             <td className="px-6 py-4 font-bold text-primary-900 text-sm">
                                                 {k.name}
@@ -733,14 +757,50 @@ export const ProfileView: React.FC = () => {
                                             <td className="px-6 py-4 text-neutral-700 text-sm">
                                                 {k.coordinatorName || '-'}
                                             </td>
-                                            <td className="px-6 py-4 text-neutral-600 text-sm font-mono">
-                                                {k.contact || '-'}
+                                            <td className="px-6 py-4 text-neutral-600 text-sm font-mono flex items-center gap-2">
+                                                {k.contact ? <><Phone size={14} className="text-emerald-600"/> {k.contact}</> : '-'}
                                             </td>
                                         </tr>
-                                    ))}
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={3} className="px-6 py-8 text-center text-neutral-400 italic">
+                                                Wilayah tidak ditemukan.
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* MOBILE CARD VIEW */}
+                        <div className="md:hidden space-y-4">
+                            {filteredKorwils.length > 0 ? filteredKorwils.map((k) => (
+                                <div key={k.id} className="bg-white border border-neutral-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                                    <h4 className="font-bold text-lg text-primary-900 mb-2">{k.name}</h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex items-start gap-3">
+                                            <User size={16} className="text-secondary-600 mt-0.5 flex-shrink-0" />
+                                            <div>
+                                                <span className="block text-xs font-bold text-neutral-400 uppercase">Koordinator</span>
+                                                <span className="text-neutral-800">{k.coordinatorName || '-'}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 pt-2 border-t border-neutral-50">
+                                            <Phone size={16} className="text-emerald-600 mt-0.5 flex-shrink-0" />
+                                            <div>
+                                                <span className="block text-xs font-bold text-neutral-400 uppercase">Kontak</span>
+                                                <span className="font-mono text-neutral-600">{k.contact || '-'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="text-center py-8 text-neutral-400 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
+                                    Wilayah tidak ditemukan.
+                                </div>
+                            )}
+                        </div>
+
                     </div>
                 )}
             </div>

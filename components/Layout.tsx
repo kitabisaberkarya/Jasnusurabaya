@@ -91,9 +91,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       </div>
   );
 
-  // SKELETON NAVBAR (Shown when isLoading is true or data is empty)
-  // This prevents showing old data. It shows a professional "loading" state.
-  if (isLoading || !siteConfig.appName) {
+  // SKELETON NAVBAR (Shown ONLY when explicitly loading AND no critical data)
+  // Modified logic: If isLoading is true, show skeleton. If false, allow rendering even if appName is missing (fallback used)
+  // This prevents infinite loading screen.
+  if (isLoading && !siteConfig.appName) {
      if (isAdminRoute) return <>{children}</>; // Don't block admin route
 
      return (
@@ -120,6 +121,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <div className="animate-pulse flex flex-col items-center">
                  <div className="h-8 w-64 bg-neutral-200 rounded mb-4"></div>
                  <div className="h-4 w-48 bg-neutral-200 rounded"></div>
+                 <p className="text-neutral-400 mt-4 text-sm">Memuat data aplikasi...</p>
               </div>
            </main>
         </div>
@@ -156,8 +158,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                  />
                </div>
                <div className="block">
-                 <h1 className="text-xl md:text-2xl font-bold font-serif text-primary-900 leading-none tracking-tight">{siteConfig.appName}</h1>
-                 <p className="text-[10px] md:text-xs text-secondary-600 tracking-[0.2em] font-medium mt-1">{siteConfig.orgName}</p>
+                 <h1 className="text-xl md:text-2xl font-bold font-serif text-primary-900 leading-none tracking-tight">{siteConfig.appName || "JSN Surabaya"}</h1>
+                 <p className="text-[10px] md:text-xs text-secondary-600 tracking-[0.2em] font-medium mt-1">{siteConfig.orgName || "Jamiyah Sholawat Nariyah"}</p>
                </div>
             </Link>
 
@@ -284,8 +286,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                  className="w-16 h-16 rounded-full object-cover border-2 border-white/20 shadow-lg" 
                 />
                 <div>
-                   <h3 className="font-serif text-2xl font-bold text-white leading-none">{siteConfig.appName}</h3>
-                   <span className="text-xs text-secondary-400 tracking-widest uppercase">{siteConfig.orgName}</span>
+                   <h3 className="font-serif text-2xl font-bold text-white leading-none">{siteConfig.appName || "JSN Surabaya"}</h3>
+                   <span className="text-xs text-secondary-400 tracking-widest uppercase">{siteConfig.orgName || "Jamiyah Sholawat Nariyah"}</span>
                 </div>
               </div>
               <p className="text-primary-100 leading-relaxed text-sm">
@@ -319,7 +321,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </div>
           </div>
           <div className="border-t border-white/10 pt-8 text-center text-xs text-primary-300">
-            &copy; {new Date().getFullYear()} {siteConfig.appName} {siteConfig.orgName}. All rights reserved.
+            &copy; {new Date().getFullYear()} {siteConfig.appName || "JSN Surabaya"} {siteConfig.orgName}. All rights reserved.
           </div>
         </div>
       </footer>
