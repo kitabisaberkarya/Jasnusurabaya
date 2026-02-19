@@ -1,6 +1,6 @@
 
 -- =================================================================
--- FIX ATTENDANCE ACCESS & DATA RECORDING (REVISION 2)
+-- FIX ATTENDANCE ACCESS & DATA RECORDING (REVISION 3)
 -- Description: Script ini memperbaiki masalah permission error (42710) 
 -- dan memastikan data absensi masuk ke database.
 -- =================================================================
@@ -13,6 +13,7 @@ drop policy if exists "Admin Manage Sessions" on public.attendance_sessions;
 drop policy if exists "Member Update Sessions" on public.attendance_sessions;
 drop policy if exists "All Update Sessions" on public.attendance_sessions;
 drop policy if exists "Admin Delete Sessions" on public.attendance_sessions;
+drop policy if exists "Admin Insert Sessions" on public.attendance_sessions; -- FIX: Tambahkan ini agar tidak error 42710
 
 -- Buat Policy: Semua orang bisa melihat sesi
 create policy "Public Read Sessions"

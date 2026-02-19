@@ -1,5 +1,3 @@
-
-
 // @ts-nocheck
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -33,11 +31,13 @@ export const Login: React.FC = () => {
     const user = await login(id, pass);
     
     if (user) {
-      // Role Validation based on Active Tab (Optional strictness, here used for better UX redirection)
-      const isSuper = user.role === UserRole.SUPER_ADMIN;
-      const isStaff = user.role === UserRole.ADMIN_KORWIL || user.role === UserRole.ADMIN_PENGURUS;
-      const isMember = user.role === UserRole.MEMBER;
-
+      // Role Validation based on Active Tab (Case Insensitive)
+      // Normalisasi role ke lowercase untuk menghindari error jika di DB tertulis 'Admin' bukan 'admin'
+      const role = (user.role || '').toLowerCase();
+      
+      const isSuper = role === UserRole.SUPER_ADMIN;
+      const isStaff = role === UserRole.ADMIN_KORWIL || role === UserRole.ADMIN_PENGURUS;
+      
       // Smart Redirect Logic
       if (isSuper || isStaff) {
         navigate('/admin');

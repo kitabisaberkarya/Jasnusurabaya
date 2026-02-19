@@ -25,6 +25,13 @@ import { MOCK_INITIAL_STATE } from '../constants';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// --- KONFIGURASI CLOUDINARY ---
+// Cloud Name dari akun baru Anda
+const CLOUDINARY_CLOUD_NAME = 'dlbljcblg'; 
+// Upload Preset: HARUS SAMA dengan yang ada di Dashboard Cloudinary (Settings -> Upload -> Upload presets)
+// Pastikan Mode-nya "Unsigned"
+const CLOUDINARY_UPLOAD_PRESET = 'jsn_preset'; 
+
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(MOCK_INITIAL_STATE);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -108,6 +115,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             if (freshUserData) {
                 syncedCurrentUser = { ...prev.currentUser, ...freshUserData };
                 localStorage.setItem('jsn_session', JSON.stringify(syncedCurrentUser));
+            } else {
+                // If user in local storage NOT found in DB (e.g. after DB reset), logout automatically
+                syncedCurrentUser = null;
+                localStorage.removeItem('jsn_session');
             }
         }
 
@@ -121,7 +132,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           sliders: fetchedSliders.map((s: any) => ({...s, imageUrl: s.image_url})),
           mediaPosts: fetchedMedia.map((m: any) => ({...m, embedUrl: m.embed_url, createdAt: m.created_at})),
           profilePages: fetchedProfiles,
-          attendanceSessions: fetchedSessions,
+          // MAP: snake_case (DB) -> camelCase (App)
+          attendanceSessions: fetchedSessions.map((s: any) => ({
+              ...s, 
+              isOpen: s.is_open, // MAPPING PENTING
+              mapsUrl: s.maps_url // MAPPING PENTING
+          })),
           attendanceRecords: fetchedRecords.map((r: any) => ({...r, sessionId: r.session_id, userId: r.user_id, userName: r.user_name, photoUrl: r.photo_url})),
           korwils: fetchedKorwils.map((k: any) => ({...k, coordinatorName: k.coordinator_name}))
         };
@@ -338,18 +354,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const createSession = async (name: string, lat?: number, lng?: number, rad?: number, mapsUrl?: string) => {
       try {
           const { error } = await supabase.from('attendance_sessions').insert([{
-              name, latitude: lat, longitude: lng, radius: rad, mapsUrl: mapsUrl, isOpen: true, date: new Date().toISOString().split('T')[0], attendees: []
+              name, 
+              latitude: lat, 
+              longitude: lng, 
+              radius: rad, 
+              maps_url: mapsUrl, // MAPPING KE DB (Snake Case)
+              is_open: true,     // MAPPING KE DB (Snake Case)
+              date: new Date().toISOString().split('T')[0], 
+              attendees: []
           }]);
           if (error) throw error;
           refreshData();
           showToast("Sesi dibuat", "success");
-      } catch(e) { showToast("Gagal buat sesi", "error"); }
+      } catch(e) { 
+          console.error(e);
+          showToast("Gagal buat sesi", "error"); 
+      }
   };
 
   const updateSession = async (sessionId: number, name: string, lat?: number, lng?: number, rad?: number, mapsUrl?: string) => {
       try {
           const { error } = await supabase.from('attendance_sessions').update({
-              name, latitude: lat, longitude: lng, radius: rad, mapsUrl: mapsUrl
+              name, 
+              latitude: lat, 
+              longitude: lng, 
+              radius: rad, 
+              maps_url: mapsUrl // MAPPING KE DB
           }).eq('id', sessionId);
           if (error) throw error;
           refreshData();
@@ -370,7 +400,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const s = state.attendanceSessions.find(x => x.id === sessionId);
       if (!s) return;
       try {
-          await supabase.from('attendance_sessions').update({ isOpen: !s.isOpen }).eq('id', sessionId);
+          // 's.isOpen' berasal dari state aplikasi (sudah dimapping saat fetch)
+          // Kita kirim 'is_open' ke DB
+          await supabase.from('attendance_sessions').update({ is_open: !s.isOpen }).eq('id', sessionId);
           refreshData();
           showToast(s.isOpen ? "Sesi ditutup" : "Sesi dibuka", "info");
       } catch(e) { showToast("Gagal toggle sesi", "error"); }
@@ -379,12 +411,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const markAttendance = async (sessionId: number, userId: number, photoUrl: string, location: string, distance?: number) => {
       try {
           let finalPhotoUrl = photoUrl;
+          
+          // Jika foto masih Base64 (dari kamera), upload ke Cloudinary dulu
           if (photoUrl.startsWith('data:image')) {
               const res = await fetch(photoUrl);
               const blob = await res.blob();
               const file = new File([blob], `attend_${Date.now()}.jpg`, { type: 'image/jpeg' });
+              
               const uploaded = await uploadFile(file, 'attendance');
               if (uploaded) finalPhotoUrl = uploaded;
+              else throw new Error("Gagal upload foto ke server");
           }
 
           const { error } = await supabase.from('attendance_records').insert([{
@@ -401,6 +437,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           const s = state.attendanceSessions.find(x => x.id === sessionId);
           if (s) {
               const newAttendees = [...s.attendees, userId];
+              // Update kolom 'attendees' (JSONB)
               await supabase.from('attendance_sessions').update({ attendees: newAttendees }).eq('id', sessionId);
           }
 
@@ -429,21 +466,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       } catch(e) { showToast("Gagal hapus absensi", "error"); }
   };
 
-  // --- Content Management ---
+  // --- Content Management with Cloudinary ---
 
   const uploadFile = async (file: File, folder: string = 'uploads'): Promise<string | null> => {
       try {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-          const filePath = `${folder}/${fileName}`;
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET); 
+          formData.append('folder', `jsn_surabaya/${folder}`); // Folder organization in Cloudinary
 
-          const { error: uploadError } = await supabase.storage.from('jsn_bucket').upload(filePath, file);
-          if (uploadError) throw uploadError;
+          // Debugging Log
+          console.log(`Starting upload to Cloudinary. Cloud: ${CLOUDINARY_CLOUD_NAME}, Preset: ${CLOUDINARY_UPLOAD_PRESET}`);
 
-          const { data } = supabase.storage.from('jsn_bucket').getPublicUrl(filePath);
-          return data.publicUrl;
-      } catch (e) {
-          console.error(e);
+          const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+              method: 'POST',
+              body: formData,
+          });
+
+          if (!response.ok) {
+              const errorData = await response.json();
+              console.error("Cloudinary API Error:", errorData);
+              throw new Error(errorData.error?.message || 'Upload failed');
+          }
+
+          const data = await response.json();
+          let optimizedUrl = data.secure_url;
+          
+          // Auto-Optimization: Insert auto-format & auto-quality into the URL
+          if (optimizedUrl && optimizedUrl.includes('/upload/')) {
+              optimizedUrl = optimizedUrl.replace('/upload/', '/upload/q_auto,f_auto/');
+          }
+
+          return optimizedUrl;
+      } catch (e: any) {
+          console.error("Cloudinary Upload Error:", e);
+          let msg = "Gagal mengupload gambar.";
+          if (e.message && e.message.includes("preset")) {
+             msg += " Pastikan nama Preset di Cloudinary sesuai dengan kode (jsn_preset) & Mode Unsigned.";
+          }
+          showToast(msg, "error");
           return null;
       }
   };
