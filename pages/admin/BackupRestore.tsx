@@ -92,7 +92,9 @@ const BackupRestore: React.FC = () => {
           // Untuk tabel lain yang mungkin tidak punya ID konsisten, kita set onConflict.
           let upsertOptions: any = {};
           
-          if (selectedTable === 'registrations') {
+          if (selectedTable === 'users') {
+             upsertOptions = { onConflict: 'nik' };
+          } else if (selectedTable === 'registrations') {
              upsertOptions = { onConflict: 'nik' };
           } else if (selectedTable === 'korwils') {
              upsertOptions = { onConflict: 'name' };
