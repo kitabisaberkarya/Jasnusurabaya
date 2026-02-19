@@ -80,36 +80,56 @@ const BackupRestore: React.FC = () => {
       setIsImporting(true);
       try {
           // Batch insert/upsert
-          const BATCH_SIZE = 50; // Turunkan batch size agar lebih stabil
+          const BATCH_SIZE = 50; 
           let successCount = 0;
           
-          // Tentukan strategi konflik berdasarkan tabel
-          // Ini PENTING untuk mengatasi error "users_nia_key" atau duplicate key lainnya
+          // UNIQUE COLUMNS to sanitize (convert "" to null)
+          // Ini mencegah error "unique constraint violation" pada kolom opsional
+          const UNIQUE_COLS = ['nik', 'nia', 'email', 'phone', 'coordinator_name', 'contact'];
+
+          // Strategi Konflik:
+          // Untuk users, kita biarkan default (Primary Key ID) karena CSV memiliki ID.
+          // Untuk tabel lain yang mungkin tidak punya ID konsisten, kita set onConflict.
           let upsertOptions: any = {};
           
-          if (selectedTable === 'users') {
-             // Jika data memiliki ID yang sama, update. 
-             // Jika data memiliki NIA yang sama, juga update (hindari error duplicate NIA).
-             upsertOptions = { onConflict: 'nia', ignoreDuplicates: false };
-          } else if (selectedTable === 'registrations') {
-             upsertOptions = { onConflict: 'nik', ignoreDuplicates: false };
+          if (selectedTable === 'registrations') {
+             upsertOptions = { onConflict: 'nik' };
           } else if (selectedTable === 'korwils') {
-             upsertOptions = { onConflict: 'name', ignoreDuplicates: false };
+             upsertOptions = { onConflict: 'name' };
           } else if (selectedTable === 'profile_pages') {
-             upsertOptions = { onConflict: 'slug', ignoreDuplicates: false };
+             upsertOptions = { onConflict: 'slug' };
           }
 
           for (let i = 0; i < importPreview.length; i += BATCH_SIZE) {
               const chunk = importPreview.slice(i, i + BATCH_SIZE);
               
-              // Sanitasi data: Pastikan string kosong ('') diubah menjadi null jika perlu, 
-              // atau biarkan Supabase menanganinya.
-              // Kita kirim chunk apa adanya, tapi dengan opsi onConflict yang tepat.
+              // DATA SANITIZATION
+              const sanitizedChunk = chunk.map((row: any) => {
+                  const newRow = { ...row };
+                  
+                  // 1. Handle Empty Strings in Unique Columns -> NULL
+                  UNIQUE_COLS.forEach(col => {
+                      if (newRow[col] === '' || (typeof newRow[col] === 'string' && newRow[col].trim() === '')) {
+                          newRow[col] = null;
+                      }
+                  });
+
+                  // 2. Handle ID (Ensure it's integer if present, remove if empty/invalid)
+                  if ('id' in newRow) {
+                      if (!newRow.id || newRow.id === '') {
+                          delete newRow.id; // Let DB auto-generate
+                      } else {
+                          newRow.id = parseInt(newRow.id);
+                      }
+                  }
+
+                  return newRow;
+              });
               
-              const { error } = await supabase.from(selectedTable).upsert(chunk, upsertOptions);
+              const { error } = await supabase.from(selectedTable).upsert(sanitizedChunk, upsertOptions);
               
               if (error) {
-                 console.error("Error importing chunk:", error, chunk);
+                 console.error("Error importing chunk:", error, sanitizedChunk);
                  throw new Error(`Gagal pada baris ${i+1}-${i+chunk.length}: ${error.message}`);
               }
               successCount += chunk.length;
@@ -121,7 +141,7 @@ const BackupRestore: React.FC = () => {
 
           // Special notification for ID sequence reset
           if (['users', 'registrations', 'attendance_sessions', 'news', 'gallery', 'sliders', 'media_posts', 'korwils'].includes(selectedTable)) {
-             alert(`IMPORT SUKSES!\n\nSangat disarankan untuk mereset "Sequence ID" agar data baru selanjutnya tidak error.\n\nSilakan jalankan script SQL ini di Dashboard Supabase:\n\nSELECT setval(pg_get_serial_sequence('${selectedTable}', 'id'), coalesce(max(id),0) + 1, false) FROM ${selectedTable};`);
+             alert(`IMPORT SUKSES!\n\nSangat disarankan untuk mereset "Sequence ID" agar data baru selanjutnya tidak error.\n\nSilakan jalankan script SQL FIX_IMPORT_SEQUENCES.sql di Dashboard Supabase.`);
           }
 
       } catch (error: any) {
@@ -266,7 +286,7 @@ const BackupRestore: React.FC = () => {
                      <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
                      <p>
                         <strong>PENTING:</strong> Pastikan header kolom di file CSV sama persis dengan nama kolom di database. <br/>
-                        Sistem kini otomatis mendeteksi duplikat NIA/NIK dan akan melakukan <strong>UPDATE</strong> pada data lama, bukan error. <br/>
+                        Data kosong akan dikonversi menjadi NULL untuk menghindari error duplikasi. <br/>
                         Jangan lupa jalankan script reset sequence ID di SQL Editor setelah selesai import.
                      </p>
                  </div>
