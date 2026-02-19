@@ -340,6 +340,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       } catch (e) { showToast("Gagal hapus anggota", "error"); }
   };
 
+  const deleteMembersBulk = async (ids: number[]) => {
+      if (ids.length === 0) return false;
+      try {
+          // Safety: Jangan hapus Super Admin (meskipun filter UI sudah handle)
+          const safeIds = ids.filter(id => {
+              const u = state.users.find(user => user.id === id);
+              return u && u.role !== UserRole.SUPER_ADMIN;
+          });
+
+          if (safeIds.length === 0) {
+              showToast("Tidak ada anggota yang bisa dihapus.", "info");
+              return false;
+          }
+
+          const { error } = await supabase.from('users').delete().in('id', safeIds);
+          if (error) throw error;
+          
+          refreshData();
+          showToast(`Berhasil menghapus ${safeIds.length} anggota.`, "success");
+          return true;
+      } catch (e: any) {
+          console.error(e);
+          showToast("Gagal hapus massal: " + e.message, "error");
+          return false;
+      }
+  };
+
   const resetMemberPassword = async (userId: number) => {
       try {
           const defaultPass = "jsn123";
@@ -682,7 +709,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       login, logout, register,
       createAdminUser, changePassword,
       verifyMemberByKorwil, approveMemberFinal, rejectMember,
-      updateMember, deleteMember, resetMemberPassword,
+      updateMember, deleteMember, deleteMembersBulk, resetMemberPassword,
       createSession, updateSession, deleteSession, toggleSession,
       markAttendance, updateAttendanceRecord, deleteAttendanceRecord,
       uploadFile,

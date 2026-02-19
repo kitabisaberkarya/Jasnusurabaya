@@ -176,6 +176,7 @@ export interface AppContextType extends AppState {
   
   updateMember: (userId: number, data: Partial<User>) => void; 
   deleteMember: (userId: number) => void;
+  deleteMembersBulk: (ids: number[]) => Promise<boolean>; // NEW BULK DELETE FEATURE
   resetMemberPassword: (userId: number) => void;
   
   // Session with Geo
