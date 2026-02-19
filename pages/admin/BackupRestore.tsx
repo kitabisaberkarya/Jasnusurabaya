@@ -80,15 +80,38 @@ const BackupRestore: React.FC = () => {
       setIsImporting(true);
       try {
           // Batch insert/upsert
-          const BATCH_SIZE = 100;
+          const BATCH_SIZE = 50; // Turunkan batch size agar lebih stabil
           let successCount = 0;
           
+          // Tentukan strategi konflik berdasarkan tabel
+          // Ini PENTING untuk mengatasi error "users_nia_key" atau duplicate key lainnya
+          let upsertOptions: any = {};
+          
+          if (selectedTable === 'users') {
+             // Jika data memiliki ID yang sama, update. 
+             // Jika data memiliki NIA yang sama, juga update (hindari error duplicate NIA).
+             upsertOptions = { onConflict: 'nia', ignoreDuplicates: false };
+          } else if (selectedTable === 'registrations') {
+             upsertOptions = { onConflict: 'nik', ignoreDuplicates: false };
+          } else if (selectedTable === 'korwils') {
+             upsertOptions = { onConflict: 'name', ignoreDuplicates: false };
+          } else if (selectedTable === 'profile_pages') {
+             upsertOptions = { onConflict: 'slug', ignoreDuplicates: false };
+          }
+
           for (let i = 0; i < importPreview.length; i += BATCH_SIZE) {
               const chunk = importPreview.slice(i, i + BATCH_SIZE);
               
-              // Cleaning keys (remove spaces, etc if needed, but assuming headers match DB columns)
-              const { error } = await supabase.from(selectedTable).upsert(chunk);
-              if (error) throw error;
+              // Sanitasi data: Pastikan string kosong ('') diubah menjadi null jika perlu, 
+              // atau biarkan Supabase menanganinya.
+              // Kita kirim chunk apa adanya, tapi dengan opsi onConflict yang tepat.
+              
+              const { error } = await supabase.from(selectedTable).upsert(chunk, upsertOptions);
+              
+              if (error) {
+                 console.error("Error importing chunk:", error, chunk);
+                 throw new Error(`Gagal pada baris ${i+1}-${i+chunk.length}: ${error.message}`);
+              }
               successCount += chunk.length;
           }
 
@@ -97,8 +120,8 @@ const BackupRestore: React.FC = () => {
           if (importFileInputRef.current) importFileInputRef.current.value = '';
 
           // Special notification for ID sequence reset
-          if (selectedTable === 'users' || selectedTable === 'registrations' || selectedTable === 'attendance_sessions') {
-             alert(`PENTING: Karena Anda mengimport data ke tabel '${selectedTable}', disarankan untuk mereset Sequence ID database agar data baru tidak error.\n\nSilakan jalankan script: SELECT setval(pg_get_serial_sequence('${selectedTable}', 'id'), coalesce(max(id),0) + 1, false) FROM ${selectedTable};`);
+          if (['users', 'registrations', 'attendance_sessions', 'news', 'gallery', 'sliders', 'media_posts', 'korwils'].includes(selectedTable)) {
+             alert(`IMPORT SUKSES!\n\nSangat disarankan untuk mereset "Sequence ID" agar data baru selanjutnya tidak error.\n\nSilakan jalankan script SQL ini di Dashboard Supabase:\n\nSELECT setval(pg_get_serial_sequence('${selectedTable}', 'id'), coalesce(max(id),0) + 1, false) FROM ${selectedTable};`);
           }
 
       } catch (error: any) {
@@ -242,9 +265,9 @@ const BackupRestore: React.FC = () => {
                  <div className="mt-6 p-4 bg-amber-50 text-amber-800 rounded-xl text-xs flex items-start gap-2">
                      <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
                      <p>
-                        <strong>PENTING:</strong> Pastikan header kolom di file CSV sama persis dengan nama kolom di database (misal: <code>name</code>, <code>email</code>, <code>role</code>). 
-                        Data dengan ID yang sama akan ditimpa (Upsert). <br/>
-                        Jika terjadi error <code>Identity Column</code>, jalankan script SQL perbaikan di Supabase Editor.
+                        <strong>PENTING:</strong> Pastikan header kolom di file CSV sama persis dengan nama kolom di database. <br/>
+                        Sistem kini otomatis mendeteksi duplikat NIA/NIK dan akan melakukan <strong>UPDATE</strong> pada data lama, bukan error. <br/>
+                        Jangan lupa jalankan script reset sequence ID di SQL Editor setelah selesai import.
                      </p>
                  </div>
              </div>
