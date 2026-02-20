@@ -616,6 +616,9 @@ export const MemberArea: React.FC = () => {
 
                             {/* MEMBER INFO */}
                             <div className="flex-grow flex flex-col items-center px-6 pt-4 text-center">
+                                <div className="mb-1">
+                                    <span className="text-[10px] font-serif text-emerald-700/70 italic">نهضة العلماء</span>
+                                </div>
                                 <h2 className="text-xl sm:text-2xl font-bold text-primary-900 font-serif leading-tight uppercase tracking-tight">
                                     {currentUser.name}
                                 </h2>
@@ -625,15 +628,15 @@ export const MemberArea: React.FC = () => {
 
                                 <div className="mt-6 w-full space-y-3 text-left border-t border-neutral-50 pt-6">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Join Date</span>
-                                        <span className="text-xs font-bold text-neutral-700">{currentUser.joinedAt || '-'}</span>
+                                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Korwil / Wilayah</span>
+                                        <span className="text-xs font-bold text-emerald-700">{currentUser.wilayah || '-'}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Email</span>
-                                        <span className="text-xs font-bold text-neutral-700 truncate max-w-[150px]">{currentUser.email || '-'}</span>
+                                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Masa Berlaku</span>
+                                        <span className="text-xs font-bold text-neutral-700">SEUMUR HIDUP</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">ID Number</span>
+                                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Nomor Anggota</span>
                                         <span className="text-xs font-bold text-primary-800 font-mono tracking-wider">{currentUser.nia || 'PROSES'}</span>
                                     </div>
                                 </div>
@@ -677,13 +680,14 @@ export const MemberArea: React.FC = () => {
                                 <h2 className="text-xl sm:text-2xl font-serif font-bold text-white leading-tight">
                                     {siteConfig.appName}
                                 </h2>
+                                <p className="text-[10px] font-serif text-amber-200 italic mt-1">نهضة العلماء</p>
                                 <p className="text-xs text-amber-400 font-bold tracking-[0.3em] uppercase mt-2">
                                     Official Member
                                 </p>
 
                                 <div className="mt-12 space-y-4">
                                     <div className="h-px w-12 bg-amber-500/50 mx-auto"></div>
-                                    <p className="text-[10px] text-primary-200 leading-relaxed italic opacity-80">
+                                    <p className="text-[10px] text-emerald-50 leading-relaxed italic">
                                         "Wadah silaturahmi dan majelis dzikir untuk mempererat ukhuwah islamiyah."
                                     </p>
                                     <div className="h-px w-12 bg-amber-500/50 mx-auto"></div>
