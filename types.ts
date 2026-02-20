@@ -173,6 +173,7 @@ export interface AppContextType extends AppState {
   verifyMemberByKorwil: (registrationId: number) => void;
   approveMemberFinal: (registrationId: number) => void;
   rejectMember: (registrationId: number) => void;
+  deleteRegistration: (registrationId: number) => void;
   
   updateMember: (userId: number, data: Partial<User>) => void; 
   deleteMember: (userId: number) => void;

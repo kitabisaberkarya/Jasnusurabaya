@@ -197,15 +197,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const register = async (input: RegistrationInput): Promise<boolean> => {
     try {
-      const { error } = await supabase.from('registrations').insert([{
+      // 1. Cek apakah NIK sudah terdaftar sebagai anggota aktif (di tabel users)
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('id, name, nia')
+        .eq('nik', input.nik)
+        .maybeSingle();
+
+      if (existingUser) {
+        showToast(`NIK ini sudah terdaftar sebagai anggota aktif (${existingUser.name} - ${existingUser.nia}). Silakan masuk.`, 'error');
+        return false;
+      }
+
+      // 2. Gunakan UPSERT agar jika NIK sudah ada di tabel registrations (misal status ditolak), 
+      // data akan diperbarui dan status kembali ke PENDING.
+      const { error } = await supabase.from('registrations').upsert([{
         ...input,
         status: MemberStatus.PENDING,
         date: new Date().toISOString().split('T')[0]
-      }]);
+      }], { onConflict: 'nik' });
       
       if (error) throw error;
       
-      showToast('Pendaftaran berhasil dikirim', 'success');
+      showToast('Pendaftaran berhasil dikirim. Mohon tunggu verifikasi admin.', 'success');
       refreshData();
       return true;
     } catch (err: any) {
@@ -289,6 +303,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           refreshData();
           showToast("Permohonan ditolak", "info");
       } catch(e) { showToast("Gagal menolak", "error"); }
+  };
+
+  const deleteRegistration = async (regId: number) => {
+      try {
+          const { error } = await supabase.from('registrations').delete().eq('id', regId);
+          if (error) throw error;
+          refreshData();
+          showToast("Pendaftaran dihapus permanen", "success");
+      } catch(e) { showToast("Gagal hapus pendaftaran", "error"); }
   };
 
   const updateMember = async (userId: number, data: Partial<User>) => {
@@ -708,7 +731,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       isLoading,
       login, logout, register,
       createAdminUser, changePassword,
-      verifyMemberByKorwil, approveMemberFinal, rejectMember,
+      verifyMemberByKorwil, approveMemberFinal, rejectMember, deleteRegistration,
       updateMember, deleteMember, deleteMembersBulk, resetMemberPassword,
       createSession, updateSession, deleteSession, toggleSession,
       markAttendance, updateAttendanceRecord, deleteAttendanceRecord,

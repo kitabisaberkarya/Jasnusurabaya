@@ -93,7 +93,9 @@ const BackupRestore: React.FC = () => {
           let upsertOptions: any = {};
           
           if (selectedTable === 'users') {
-             upsertOptions = { onConflict: 'nik' };
+             // Use 'id' as conflict target to allow updating existing records
+             // This fixes the "duplicate key value violates unique constraint 'users_pkey'" error
+             upsertOptions = { onConflict: 'id' };
           } else if (selectedTable === 'registrations') {
              upsertOptions = { onConflict: 'nik' };
           } else if (selectedTable === 'korwils') {
@@ -118,10 +120,15 @@ const BackupRestore: React.FC = () => {
 
                   // 2. Handle ID (Ensure it's integer if present, remove if empty/invalid)
                   if ('id' in newRow) {
-                      if (!newRow.id || newRow.id === '') {
+                      if (newRow.id === undefined || newRow.id === null || newRow.id === '') {
                           delete newRow.id; // Let DB auto-generate
                       } else {
-                          newRow.id = parseInt(newRow.id);
+                          const parsedId = parseInt(newRow.id);
+                          if (isNaN(parsedId)) {
+                              delete newRow.id;
+                          } else {
+                              newRow.id = parsedId;
+                          }
                       }
                   }
 
