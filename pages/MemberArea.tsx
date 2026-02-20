@@ -150,19 +150,19 @@ export const MemberArea: React.FC = () => {
         const canvasFront = await html2canvas(cardFrontRef.current, options);
         const canvasBack = await html2canvas(cardBackRef.current, options);
 
-        // Ukuran ID Card standar CR-80 (85.6mm x 53.98mm)
+        // Ukuran ID Card standar CR-80 Portrait (53.98mm x 85.6mm)
         const pdf = new jsPDF({
-            orientation: 'landscape',
+            orientation: 'portrait',
             unit: 'mm',
-            format: [85.6, 53.98]
+            format: [53.98, 85.6]
         });
 
         // Halaman 1: Depan
-        pdf.addImage(canvasFront.toDataURL('image/png'), 'PNG', 0, 0, 85.6, 53.98);
+        pdf.addImage(canvasFront.toDataURL('image/png'), 'PNG', 0, 0, 53.98, 85.6);
         
         // Halaman 2: Belakang
-        pdf.addPage([85.6, 53.98], 'landscape');
-        pdf.addImage(canvasBack.toDataURL('image/png'), 'PNG', 0, 0, 85.6, 53.98);
+        pdf.addPage([53.98, 85.6], 'portrait');
+        pdf.addImage(canvasBack.toDataURL('image/png'), 'PNG', 0, 0, 53.98, 85.6);
 
         pdf.save(`E-KTA_JSN_${currentUser.nia || 'MEMBER'}.pdf`);
         showToast("E-KTA berhasil diunduh!", "success");
@@ -591,160 +591,109 @@ export const MemberArea: React.FC = () => {
 
                  <div className="flex flex-col xl:flex-row gap-8 items-center justify-center w-full">
                      
-                     {/* KARTU DEPAN - DESIGN BARU */}
-                     <div className="relative group perspective-1000">
+                     {/* KARTU DEPAN - DESIGN PORTRAIT BARU */}
+                     <div className="relative group">
                         <div 
                           ref={cardFrontRef}
-                          className="w-[323px] h-[204px] sm:w-[400px] sm:h-[252px] bg-gradient-to-br from-[#064e3b] via-[#065f46] to-black rounded-xl shadow-2xl overflow-hidden relative border border-amber-500/50 flex flex-col select-none"
+                          className="w-[280px] h-[444px] sm:w-[320px] sm:h-[508px] bg-white rounded-2xl shadow-2xl overflow-hidden relative border border-neutral-200 flex flex-col select-none"
                         >
-                            {/* Background Pattern & Accents */}
-                            <div className="absolute inset-0 pattern-bg opacity-10"></div>
-                            <div className="absolute top-0 right-0 w-40 h-40 bg-amber-400 rounded-full blur-[80px] opacity-20"></div>
-                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-400 rounded-full blur-[60px] opacity-10"></div>
-                            
-                            {/* HEADER */}
-                            <div className="relative z-10 flex items-center justify-between p-4 sm:p-5 border-b border-white/10">
-                                <div className="flex items-center gap-3">
-                                    <img 
-                                      src={siteConfig.logoUrl || "https://placehold.co/400x400/064e3b/ffffff?text=JSN"} 
-                                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-amber-400 shadow-md object-cover bg-white"
-                                      crossOrigin="anonymous"
-                                      alt="Logo"
-                                    />
-                                    <div>
-                                        <h3 className="text-[10px] sm:text-xs text-amber-400 font-bold tracking-[0.2em] uppercase">Kartu Tanda Anggota</h3>
-                                        <h2 className="text-sm sm:text-base font-serif font-bold text-white leading-none mt-0.5">{siteConfig.appName}</h2>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                     <Wifi className="text-white/20 rotate-90" size={24} />
-                                </div>
+                            {/* TOP ORNAMENT BAND */}
+                            <div className="h-20 sm:h-24 w-full kta-pattern relative overflow-hidden border-b border-neutral-100">
+                                <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"></div>
                             </div>
-
-                            {/* BODY */}
-                            <div className="relative z-10 flex-grow px-4 sm:px-5 py-3 flex gap-4 items-center">
-                                {/* FOTO PROFIL */}
-                                <div className="w-20 h-24 sm:w-24 sm:h-28 bg-neutral-900 rounded-lg border-2 border-amber-500/50 shadow-inner overflow-hidden flex-shrink-0 relative">
-                                     <img 
+                            
+                            {/* PROFILE PHOTO CIRCLE */}
+                            <div className="relative -mt-12 sm:-mt-14 flex justify-center z-10">
+                                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl overflow-hidden bg-neutral-100">
+                                    <img 
                                         src={userPhotoUrl}
                                         className="w-full h-full object-cover"
                                         crossOrigin="anonymous"
                                         alt="User"
-                                     />
-                                </div>
-                                
-                                {/* DATA DIRI */}
-                                <div className="space-y-1.5 sm:space-y-2 flex-grow min-w-0">
-                                    <div>
-                                        <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">Nama Lengkap</p>
-                                        <p className="text-sm sm:text-lg font-bold text-white truncate font-serif leading-tight pb-1">{currentUser.name}</p>
-                                    </div>
-                                    <div className="flex gap-4">
-                                        <div>
-                                            <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">NIA</p>
-                                            <p className="text-xs sm:text-sm font-mono font-bold text-amber-400 truncate tracking-wide pb-1">{currentUser.nia || 'PROSES'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">Wilayah</p>
-                                            <p className="text-xs sm:text-sm font-bold text-white truncate pb-1">{currentUser.wilayah}</p>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p className="text-[8px] sm:text-[10px] text-emerald-300 uppercase tracking-wider">Jabatan</p>
-                                        <p className="text-[10px] sm:text-xs font-bold text-white bg-white/10 inline-block px-2 py-0.5 rounded border border-white/10 uppercase pb-1">{currentUser.role === 'member' ? 'Anggota Jamaah' : currentUser.role}</p>
-                                    </div>
+                                    />
                                 </div>
                             </div>
 
-                            {/* LOGO FOOTER REMOVED HERE */}
+                            {/* MEMBER INFO */}
+                            <div className="flex-grow flex flex-col items-center px-6 pt-4 text-center">
+                                <h2 className="text-xl sm:text-2xl font-bold text-primary-900 font-serif leading-tight uppercase tracking-tight">
+                                    {currentUser.name}
+                                </h2>
+                                <p className="text-xs sm:text-sm font-bold text-emerald-600 uppercase tracking-widest mt-1">
+                                    {currentUser.role === 'member' ? 'Anggota Jamaah' : currentUser.role}
+                                </p>
 
-                            {/* FOOTER */}
-                            <div className="relative z-10 bg-gradient-to-r from-amber-500 to-amber-600 p-1.5 sm:p-2 flex justify-between items-center px-4 sm:px-5 mt-auto">
-                                <span className="text-[8px] sm:text-[10px] font-bold text-primary-900 uppercase tracking-widest">Berkhidmat Untuk Umat</span>
-                                <span className="text-[8px] sm:text-[10px] font-bold text-primary-900">Masa Berlaku: SEUMUR HIDUP</span>
+                                <div className="mt-6 w-full space-y-3 text-left border-t border-neutral-50 pt-6">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Join Date</span>
+                                        <span className="text-xs font-bold text-neutral-700">{currentUser.joinedAt || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Email</span>
+                                        <span className="text-xs font-bold text-neutral-700 truncate max-w-[150px]">{currentUser.email || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">ID Number</span>
+                                        <span className="text-xs font-bold text-primary-800 font-mono tracking-wider">{currentUser.nia || 'PROSES'}</span>
+                                    </div>
+                                </div>
+
+                                {/* QR CODE */}
+                                <div className="mt-auto mb-6 flex flex-col items-center">
+                                    <div className="bg-white p-1.5 rounded-xl border border-neutral-100 shadow-sm">
+                                        <img 
+                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`MEMBER:${currentUser.nia};NAME:${currentUser.name}`)}`} 
+                                            alt="QR" 
+                                            className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                                            crossOrigin="anonymous"
+                                        />
+                                    </div>
+                                    <span className="text-[9px] font-bold text-neutral-400 mt-2 uppercase tracking-widest">QR CODE VALIDATION</span>
+                                </div>
                             </div>
+
+                            {/* BOTTOM ORNAMENT BAND */}
+                            <div className="h-10 sm:h-12 w-full kta-pattern border-t border-neutral-100"></div>
                         </div>
                         <p className="text-center text-white/50 text-xs mt-3">Tampilan Depan</p>
                      </div>
 
-                     {/* KARTU BELAKANG - DESIGN BARU */}
+                     {/* KARTU BELAKANG - DESIGN PORTRAIT BARU */}
                      <div className="relative group">
-                         <div 
-                           ref={cardBackRef}
-                           className="w-[323px] h-[204px] sm:w-[400px] sm:h-[252px] bg-white rounded-xl shadow-2xl overflow-hidden relative border-2 border-neutral-200 flex flex-col select-none"
-                         >
-                            {/* Header Stripe */}
-                            <div className="h-4 w-full bg-primary-900"></div>
-                            <div className="h-1 w-full bg-amber-500"></div>
+                        <div 
+                          ref={cardBackRef}
+                          className="w-[280px] h-[444px] sm:w-[320px] sm:h-[508px] bg-primary-900 rounded-2xl shadow-2xl overflow-hidden relative border border-primary-800 flex flex-col select-none"
+                        >
+                            {/* TOP ORNAMENT BAND */}
+                            <div className="h-20 sm:h-24 w-full kta-pattern-dark relative overflow-hidden border-b border-primary-800"></div>
+                            
+                            <div className="flex-grow flex flex-col items-center justify-center px-8 text-center">
+                                <img 
+                                    src={siteConfig.logoUrl || "https://placehold.co/400x400/064e3b/ffffff?text=JSN"} 
+                                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-amber-400 shadow-xl object-cover bg-white mb-4"
+                                    crossOrigin="anonymous"
+                                    alt="Logo"
+                                />
+                                <h2 className="text-xl sm:text-2xl font-serif font-bold text-white leading-tight">
+                                    {siteConfig.appName}
+                                </h2>
+                                <p className="text-xs text-amber-400 font-bold tracking-[0.3em] uppercase mt-2">
+                                    Official Member
+                                </p>
 
-                            <div className="p-5 flex gap-5 h-full">
-                                <div className="flex-grow flex flex-col justify-between">
-                                    <div>
-                                        <h4 className="text-[10px] font-bold text-primary-900 uppercase mb-2">Ketentuan Kartu</h4>
-                                        <ul className="text-[8px] sm:text-[9px] text-neutral-600 space-y-1 list-disc pl-3">
-                                            <li>Kartu ini adalah bukti keanggotaan sah {siteConfig.appName}.</li>
-                                            <li>Harap membawa kartu saat mengikuti kegiatan majelis.</li>
-                                            <li>Apabila menemukan kartu ini, mohon kembalikan ke sekretariat {siteConfig.orgName}.</li>
-                                        </ul>
-                                    </div>
-
-                                    <div className="mt-2">
-                                        <div className="flex items-end justify-between">
-                                            <div>
-                                                <p className="text-[8px] text-neutral-400">Dikeluarkan di Surabaya</p>
-                                                <p className="text-[8px] text-neutral-400 mb-2">Ketua Umum,</p>
-                                                
-                                                {/* DIGITAL SIGNATURE & STAMP AREA */}
-                                                <div className="h-14 w-32 relative flex items-center justify-start">
-                                                    {siteConfig.signatureUrl ? (
-                                                        <img 
-                                                          src={siteConfig.signatureUrl} 
-                                                          alt="Tanda Tangan" 
-                                                          className="h-full w-auto object-contain relative z-10"
-                                                          crossOrigin="anonymous"
-                                                        />
-                                                    ) : (
-                                                        <div className="border-b border-neutral-300 w-full h-8 flex items-end">
-                                                            <span className="text-[10px] font-script text-primary-900 font-bold italic opacity-70">Ttd Pengurus</span>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {/* STAMP OVERLAY */}
-                                                    {siteConfig.stampUrl && (
-                                                        <img 
-                                                            src={siteConfig.stampUrl}
-                                                            alt="Stempel"
-                                                            className="absolute -right-1 -top-4 h-16 w-16 object-contain opacity-90 z-20 rotate-[-10deg]"
-                                                            crossOrigin="anonymous"
-                                                        />
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-[8px] font-bold text-primary-900">{siteConfig.address}</p>
-                                                <p className="text-[8px] text-neutral-500">{siteConfig.email}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex-shrink-0 flex flex-col items-center justify-center border-l border-neutral-100 pl-4">
-                                     <div className="bg-white p-1 rounded border border-neutral-200 shadow-sm">
-                                        <img 
-                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`MEMBER:${currentUser.nia};NAME:${currentUser.name}`)}`} 
-                                            alt="QR" 
-                                            className="w-20 h-20 object-contain"
-                                            crossOrigin="anonymous"
-                                        />
-                                     </div>
-                                     <span className="text-[8px] text-neutral-400 mt-1 text-center font-mono">Scan Validasi</span>
+                                <div className="mt-12 space-y-4">
+                                    <div className="h-px w-12 bg-amber-500/50 mx-auto"></div>
+                                    <p className="text-[10px] text-primary-200 leading-relaxed italic opacity-80">
+                                        "Wadah silaturahmi dan majelis dzikir untuk mempererat ukhuwah islamiyah."
+                                    </p>
+                                    <div className="h-px w-12 bg-amber-500/50 mx-auto"></div>
                                 </div>
                             </div>
-                            
-                            {/* Footer Stripe */}
-                            <div className="mt-auto h-2 w-full bg-primary-900"></div>
-                         </div>
-                         <p className="text-center text-white/50 text-xs mt-3">Tampilan Belakang</p>
+
+                            {/* BOTTOM ORNAMENT BAND */}
+                            <div className="h-20 sm:h-24 w-full kta-pattern-dark border-t border-primary-800"></div>
+                        </div>
+                        <p className="text-center text-white/50 text-xs mt-3">Tampilan Belakang</p>
                      </div>
                  </div>
 
