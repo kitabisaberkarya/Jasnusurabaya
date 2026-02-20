@@ -209,15 +209,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return false;
       }
 
-      // 2. Gunakan UPSERT agar jika NIK sudah ada di tabel registrations (misal status ditolak), 
-      // data akan diperbarui dan status kembali ke PENDING.
-      const { error } = await supabase.from('registrations').upsert([{
-        ...input,
-        status: MemberStatus.PENDING,
-        date: new Date().toISOString().split('T')[0]
-      }], { onConflict: 'nik' });
+      // 2. Cek apakah sudah ada pendaftaran dengan NIK ini di tabel registrations
+      const { data: existingReg } = await supabase
+        .from('registrations')
+        .select('id')
+        .eq('nik', input.nik)
+        .maybeSingle();
+
+      let result;
+      if (existingReg) {
+        // Jika sudah ada, update datanya (agar pendaftar bisa memperbaiki data jika sebelumnya ditolak)
+        result = await supabase.from('registrations').update({
+          ...input,
+          status: MemberStatus.PENDING,
+          date: new Date().toISOString().split('T')[0]
+        }).eq('id', existingReg.id);
+      } else {
+        // Jika belum ada, masukkan sebagai data baru
+        result = await supabase.from('registrations').insert([{
+          ...input,
+          status: MemberStatus.PENDING,
+          date: new Date().toISOString().split('T')[0]
+        }]);
+      }
       
-      if (error) throw error;
+      if (result.error) throw result.error;
       
       showToast('Pendaftaran berhasil dikirim. Mohon tunggu verifikasi admin.', 'success');
       refreshData();
