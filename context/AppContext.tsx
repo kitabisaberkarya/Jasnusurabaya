@@ -489,28 +489,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               else throw new Error("Gagal upload foto ke server");
           }
 
-          const { error } = await supabase.from('attendance_records').insert([{
+          // 1. Simpan Record Absensi (Gunakan crypto.randomUUID() untuk ID jika DB tidak auto-gen)
+          const recordId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `rec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          const { error: insertError } = await supabase.from('attendance_records').insert([{
+              id: recordId,
               session_id: sessionId,
               user_id: userId,
               user_name: state.currentUser?.name || 'User',
-              timestamp: new Date().toLocaleString(),
+              timestamp: new Date().toLocaleString('id-ID'),
               photo_url: finalPhotoUrl,
               location,
               distance
           }]);
-          if (error) throw error;
+          
+          if (insertError) {
+              console.error("Insert Error:", insertError);
+              throw insertError;
+          }
 
+          // 2. Update Daftar Attendees di Sesi (JSONB)
           const s = state.attendanceSessions.find(x => x.id === sessionId);
           if (s) {
-              const newAttendees = [...s.attendees, userId];
-              // Update kolom 'attendees' (JSONB)
-              await supabase.from('attendance_sessions').update({ attendees: newAttendees }).eq('id', sessionId);
+              const currentAttendees = Array.isArray(s.attendees) ? s.attendees : [];
+              // Hindari duplikasi di array attendees sesi
+              if (!currentAttendees.includes(userId)) {
+                  const newAttendees = [...currentAttendees, userId];
+                  const { error: updateError } = await supabase.from('attendance_sessions').update({ attendees: newAttendees }).eq('id', sessionId);
+                  if (updateError) console.error("Update Session Error:", updateError);
+              }
           }
 
           refreshData();
           return true;
-      } catch(e) { 
-          console.error(e);
+      } catch(e: any) { 
+          console.error("Attendance Error:", e);
+          showToast(e.message || "Gagal mencatat absensi", "error");
           return false; 
       }
   };

@@ -339,11 +339,11 @@ export const MemberArea: React.FC = () => {
     setSelectedSession(null);
   };
 
-  const submitAttendance = () => {
+  const submitAttendance = async () => {
     if (selectedSession && capturedImage) {
       setIsSubmitting(true);
-      setTimeout(() => {
-        const success = markAttendance(
+      try {
+        const success = await markAttendance(
             selectedSession, 
             currentUser.id, 
             capturedImage, 
@@ -356,8 +356,12 @@ export const MemberArea: React.FC = () => {
         } else {
           showToast('Absensi gagal.', 'error');
         }
+      } catch (err) {
+        console.error(err);
+        showToast('Terjadi kesalahan saat absensi.', 'error');
+      } finally {
         setIsSubmitting(false);
-      }, 1000);
+      }
     }
   };
 
