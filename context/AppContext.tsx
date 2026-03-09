@@ -176,7 +176,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         .select('*')
         .or(`email.eq.${identifier},nia.eq.${identifier}`)
         .eq('password', password)
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (error || !data) return null;
 
