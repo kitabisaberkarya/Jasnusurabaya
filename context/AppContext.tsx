@@ -75,16 +75,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
 
       // 2. Fetch the rest in parallel
+      // NOTE: Supabase limits select() to 1000 rows by default. 
+      // We use .limit(10000) to ensure we get all members.
       const results = await Promise.allSettled([
-        supabase.from('users').select('*'),
-        supabase.from('registrations').select('*'),
+        supabase.from('users').select('*').limit(10000),
+        supabase.from('registrations').select('*').limit(10000),
         supabase.from('news').select('*').order('date', { ascending: false }),
         supabase.from('gallery').select('*'),
         supabase.from('sliders').select('*'),
         supabase.from('media_posts').select('*').order('created_at', { ascending: false }),
         supabase.from('profile_pages').select('*'),
         supabase.from('attendance_sessions').select('*'),
-        supabase.from('attendance_records').select('*'),
+        supabase.from('attendance_records').select('*').limit(10000),
         supabase.from('korwils').select('*').order('name', { ascending: true })
       ]);
 

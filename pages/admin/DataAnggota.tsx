@@ -97,6 +97,7 @@ const DataAnggota: React.FC = () => {
                         <Search size={16} className="absolute left-3 top-2.5 text-neutral-400" />
                     </div>
                     {isKorwil && <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold border border-blue-100 whitespace-nowrap">Wilayah: {currentUser?.wilayah}</span>}
+                    <span className="text-xs font-bold text-neutral-500 bg-neutral-200 px-3 py-1 rounded-full">Total: {filteredUsers.length} Data</span>
                 </div>
 
                 {/* Bulk Delete Action Button */}

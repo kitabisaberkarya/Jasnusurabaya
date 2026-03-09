@@ -75,7 +75,7 @@ const Dashboard: React.FC = () => {
             <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white p-6 rounded-3xl shadow-lg relative overflow-hidden group">
                 <div className="absolute right-0 top-0 w-24 h-24 bg-white opacity-10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
                 <p className="text-sm font-bold text-emerald-100 uppercase tracking-wider relative z-10">Total Anggota</p>
-                <h3 className="text-4xl font-serif font-bold mt-2 relative z-10">{users.filter(u => u.status === 'active' && u.role === UserRole.MEMBER).length}</h3>
+                <h3 className="text-4xl font-serif font-bold mt-2 relative z-10">{users.filter(u => (u.status === 'active' || !u.status || u.status === '') && (u.role === UserRole.MEMBER || !u.role || u.role === '')).length}</h3>
                 <div className="absolute bottom-4 right-4 text-white opacity-20"><Users size={40}/></div>
             </div>
             <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white p-6 rounded-3xl shadow-lg relative overflow-hidden group">
