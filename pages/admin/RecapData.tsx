@@ -4,12 +4,15 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { UserRole, MemberStatus } from '../../types';
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { FileSpreadsheet } from 'lucide-react';
+import { FileSpreadsheet, RefreshCw } from 'lucide-react';
 import XLSX from 'xlsx-js-style';
 
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby5kku9Rmq7sLm7lE1dODUi1498ktVitoq9NJEkAV5q5fJUjRPvJ4T2bmgWwjKbhmUj/exec';
+
 const RecapData: React.FC = () => {
-  const { attendanceSessions, attendanceRecords, users, showToast } = useApp();
+  const { attendanceSessions, attendanceRecords, users, registrations, showToast } = useApp();
   const [recapType, setRecapType] = useState<'attendance' | 'members'>('attendance');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const attendanceStatsData = useMemo(() => {
      if (!attendanceSessions || attendanceSessions.length === 0) return [];
@@ -65,12 +68,68 @@ const RecapData: React.FC = () => {
      } catch (e) { showToast("Gagal export data", "error"); }
   };
 
+  const handleSyncToSheets = async () => {
+      setIsSyncing(true);
+      showToast("Memulai sinkronisasi ke Google Spreadsheet...", "info");
+      
+      try {
+          const detailData = attendanceRecords.map(r => {
+             const session = attendanceSessions.find(s => s.id === r.sessionId);
+             const user = users.find(u => Number(u.id) === Number(r.userId));
+             return { Waktu: r.timestamp, Nama: r.userName || '-', NIA: user?.nia || '-', Kegiatan: session?.name || '-', Lokasi: r.location || '-' };
+          });
+
+          const membersData = users.filter(u => u.role === UserRole.MEMBER).map(u => ({ 
+              Nama: u.name || '-', NIA: u.nia || '-', NIK: u.nik || '-', Wilayah: u.wilayah || '-', HP: u.phone || '-', Alamat: u.address || '-' 
+          }));
+
+          const pendaftarData = registrations.map(r => ({
+              Waktu: r.date || '-', Nama: r.name || '-', NIK: r.nik || '-', Email: r.email || '-', HP: r.phone || '-', Wilayah: r.wilayah || '-', Status: r.status || '-'
+          }));
+
+          const payload = {
+              action: "sync",
+              absensi: detailData,
+              anggota: membersData,
+              pendaftar: pendaftarData
+          };
+
+          const response = await fetch(SCRIPT_URL, {
+              method: 'POST',
+              mode: 'no-cors', // Because Apps Script requires no-cors for simple requests from browser, or CORS is handled server-side
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(payload)
+          });
+          
+          showToast("Data sedang disinkronisasikan ke Spreadsheet! Cek Google Sheet Anda.", "success");
+      } catch (err) {
+          console.error(err);
+          showToast("Gagal sync ke Spreadsheet. Periksa koneksi.", "error");
+      } finally {
+          setIsSyncing(false);
+      }
+  };
+
   return (
     <div className="space-y-6">
-        <div className="flex gap-4">
-            <button onClick={() => setRecapType('attendance')} className={`px-4 py-2 rounded-xl font-bold text-sm ${recapType === 'attendance' ? 'bg-primary-900 text-white' : 'bg-white border text-neutral-600'}`}>Rekap Absensi</button>
-            <button onClick={() => setRecapType('members')} className={`px-4 py-2 rounded-xl font-bold text-sm ${recapType === 'members' ? 'bg-primary-900 text-white' : 'bg-white border text-neutral-600'}`}>Rekap Anggota</button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex gap-4">
+                <button onClick={() => setRecapType('attendance')} className={`px-4 py-2 rounded-xl font-bold text-sm ${recapType === 'attendance' ? 'bg-primary-900 text-white' : 'bg-white border text-neutral-600'}`}>Rekap Absensi</button>
+                <button onClick={() => setRecapType('members')} className={`px-4 py-2 rounded-xl font-bold text-sm ${recapType === 'members' ? 'bg-primary-900 text-white' : 'bg-white border text-neutral-600'}`}>Rekap Anggota</button>
+            </div>
+            
+            <button 
+                onClick={handleSyncToSheets} 
+                disabled={isSyncing}
+                className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 disabled:opacity-50"
+            >
+                <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} /> 
+                {isSyncing ? "Syncing..." : "Sync Online Spreadsheet"}
+            </button>
         </div>
+        
         {recapType === 'attendance' && (
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100">
                 <h3 className="font-bold text-lg mb-4">Statistik Kehadiran</h3>

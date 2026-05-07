@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Helper Functions
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isOwner(userId) { return request.auth.uid == userId; }
+
+    // Blueprint Validations
+    function isValidSiteConfig(data) { return data.keys().hasAny(['appName', 'orgName']) && data.appName is string; }
+    function isValidNews(data) { return data.keys().hasAll(['title', 'content']) && data.title is string && data.title.size() > 0; }
+    function isValidGallery(data) { return data.keys().hasAll(['type', 'url']) && data.url is string; }
+    function isValidSlider(data) { return data.keys().hasAll(['imageUrl']) && data.imageUrl is string; }
+    function isValidMediaPost(data) { return data.keys().hasAll(['type', 'url', 'embedUrl']) && data.url is string; }
+    function isValidProfilePage(data) { return data.keys().hasAll(['slug', 'title', 'content']) && data.slug is string; }
+    function isValidKorwil(data) { return data.keys().hasAll(['name']) && data.name is string; }
+
+    // Users
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+
+    // Registrations
+    match /registrations/{regId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if true;
+    }
+
+    // Attendance Sessions
+    match /attendance_sessions/{sessionId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Attendance Records
+    match /attendance_records/{recordId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if true;
+    }
+
+    // News
+    match /news/{newsId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Gallery
+    match /gallery/{galleryId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Sliders
+    match /sliders/{sliderId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Media Posts
+    match /media_posts/{postId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Profile Pages
+    match /profile_pages/{slug} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Site Config
+    match /site_config/{configId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Korwils
+    match /korwils/{korwilId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

@@ -1,0 +1,199 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string" },
+        "nia": { "type": ["string", "null"] },
+        "nik": { "type": ["string", "null"] },
+        "password": { "type": ["string", "null"] },
+        "wilayah": { "type": ["string", "null"] },
+        "phone": { "type": ["string", "null"] },
+        "address": { "type": ["string", "null"] },
+        "profile_photo_url": { "type": ["string", "null"] },
+        "joinedAt": { "type": "string" }
+      },
+      "required": ["name", "role", "status"]
+    },
+    "Registration": {
+      "title": "Registration",
+      "description": "User registration request",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "nik": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "wilayah": { "type": "string" },
+        "password": { "type": "string" },
+        "status": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["name", "nik", "email", "status"]
+    },
+    "AttendanceSession": {
+      "title": "Attendance Session",
+      "description": "A session for attendance",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "date": { "type": "string" },
+        "isOpen": { "type": "boolean" },
+        "attendees": { "type": "array", "items": { "type": "string" } },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "radius": { "type": "number" },
+        "mapsUrl": { "type": "string" }
+      },
+      "required": ["name", "date", "isOpen", "attendees"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "description": "A user's attendance log for a session",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "location": { "type": "string" },
+        "distance": { "type": "number" }
+      },
+      "required": ["sessionId", "userId", "userName", "timestamp", "photoUrl", "location"]
+    },
+    "News": {
+      "title": "News",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "excerpt": { "type": "string" },
+        "content": { "type": "string" },
+        "date": { "type": "string" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["title", "content", "date", "imageUrl"]
+    },
+    "Gallery": {
+      "title": "Gallery",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "url": { "type": "string" },
+        "caption": { "type": "string" }
+      },
+      "required": ["type", "url"]
+    },
+    "Slider": {
+      "title": "Slider",
+      "type": "object",
+      "properties": {
+        "imageUrl": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["imageUrl"]
+    },
+    "MediaPost": {
+      "title": "Media Post",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "url": { "type": "string" },
+        "embedUrl": { "type": "string" },
+        "caption": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["type", "url", "embedUrl", "createdAt"]
+    },
+    "ProfilePage": {
+      "title": "Profile Page",
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["slug", "title", "content"]
+    },
+    "SiteConfig": {
+      "title": "Site Config",
+      "type": "object",
+      "properties": {
+        "appName": { "type": "string" },
+        "orgName": { "type": "string" },
+        "description": { "type": "string" },
+        "address": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "signatureUrl": { "type": "string" },
+        "stampUrl": { "type": "string" }
+      },
+      "required": ["appName", "orgName"]
+    },
+    "Korwil": {
+      "title": "Korwil",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "coordinatorName": { "type": "string" },
+        "contact": { "type": "string" }
+      },
+      "required": ["name"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Members and Admins of the application"
+    },
+    "registrations": {
+      "schema": { "$ref": "#/entities/Registration" },
+      "description": "Registration queue"
+    },
+    "attendance_sessions": {
+      "schema": { "$ref": "#/entities/AttendanceSession" },
+      "description": "Geofenced sessions for attendance"
+    },
+    "attendance_records": {
+      "schema": { "$ref": "#/entities/AttendanceRecord" },
+      "description": "Attendance history of all users"
+    },
+    "news": {
+      "schema": { "$ref": "#/entities/News" },
+      "description": "News posts"
+    },
+    "gallery": {
+      "schema": { "$ref": "#/entities/Gallery" },
+      "description": "Gallery images"
+    },
+    "sliders": {
+      "schema": { "$ref": "#/entities/Slider" },
+      "description": "Home screen sliders"
+    },
+    "media_posts": {
+      "schema": { "$ref": "#/entities/MediaPost" },
+      "description": "Media content like YT or IG"
+    },
+    "profile_pages": {
+      "schema": { "$ref": "#/entities/ProfilePage" },
+      "description": "Static pages content"
+    },
+    "site_config": {
+      "schema": { "$ref": "#/entities/SiteConfig" },
+      "description": "Global website configuration"
+    },
+    "korwils": {
+      "schema": { "$ref": "#/entities/Korwil" },
+      "description": "Regional divisions"
+    }
+  }
+}

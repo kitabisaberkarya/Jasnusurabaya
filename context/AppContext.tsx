@@ -115,7 +115,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (prev.currentUser) {
             const freshUserData = fetchedUsers.find((u: any) => u.id === prev.currentUser?.id);
             if (freshUserData) {
-                syncedCurrentUser = { ...prev.currentUser, ...freshUserData };
+                syncedCurrentUser = { ...prev.currentUser, ...freshUserData, joinedAt: freshUserData.created_at || freshUserData.joinedAt };
                 localStorage.setItem('jsn_session', JSON.stringify(syncedCurrentUser));
             } else {
                 // If user in local storage NOT found in DB (e.g. after DB reset), logout automatically
@@ -126,9 +126,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         return {
           ...prev,
-          users: fetchedUsers,
+          users: fetchedUsers.map((u: any) => ({ ...u, joinedAt: u.created_at || u.joinedAt })),
           currentUser: syncedCurrentUser,
-          registrations: fetchedRegs,
+          registrations: fetchedRegs.map((r: any) => ({ ...r, joinedAt: r.created_at || r.joinedAt })),
           news: fetchedNews.map((n: any) => ({...n, imageUrl: n.image_url})),
           gallery: fetchedGallery,
           sliders: fetchedSliders.map((s: any) => ({...s, imageUrl: s.image_url})),
@@ -138,7 +138,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           attendanceSessions: fetchedSessions.map((s: any) => ({
               ...s, 
               isOpen: s.is_open, // MAPPING PENTING
-              mapsUrl: s.maps_url // MAPPING PENTING
+              mapsUrl: s.maps_url, // MAPPING PENTING
+              attendees: typeof s.attendees === 'string' ? JSON.parse(s.attendees) : (s.attendees || [])
           })),
           attendanceRecords: fetchedRecords.map((r: any) => ({...r, sessionId: r.session_id, userId: r.user_id, userName: r.user_name, photoUrl: r.photo_url})),
           korwils: fetchedKorwils.map((k: any) => ({...k, coordinatorName: k.coordinator_name}))
